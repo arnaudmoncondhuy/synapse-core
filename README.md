@@ -111,7 +111,7 @@ PolyForm Noncommercial 1.0.0 (usage non-commercial uniquement)
 
 ## Support
 
-- 📖 [Documentation officielle](https://synapse-bundle.readthedocs.io/)
+- 📖 [Documentation Core](https://arnaudmoncondhuy.github.io/synapse-bundle/core/)
 - 🐛 [Issues](https://github.com/arnaudmoncondhuy/synapse-bundle/issues)
 - 💬 [Discussions](https://github.com/arnaudmoncondhuy/synapse-bundle/discussions)
 
