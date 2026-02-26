@@ -1,0 +1,76 @@
+# Source: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini?hl=fr
+models:
+  gemini-3.1-pro:
+    provider: gemini
+    thinking: true
+    safety_settings: true
+    top_k: true
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 1048576 # Source docs.cloud.google.com (1,048,576 jetons d'entrée)
+    pricing_input: 2.00
+    pricing_output: 12.00
+
+  gemini-3-flash:
+    provider: gemini
+    thinking: true
+    safety_settings: true
+    top_k: true
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 1048576
+    pricing_input: 0.50
+    pricing_output: 3.00
+
+  gemini-2.5-pro:
+    provider: gemini
+    thinking: true
+    safety_settings: true
+    top_k: true
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 1048576
+    pricing_input: 1.25
+    pricing_output: 5.00
+
+  gemini-2.5-flash:
+    provider: gemini
+    thinking: true
+    safety_settings: true
+    top_k: true
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 1048576
+    pricing_input: 0.30
+    pricing_output: 2.50
+
+  gemini-2.5-flash-lite:
+    provider: gemini
+    thinking: true
+    safety_settings: true
+    top_k: true
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 1048576 # Source docs.cloud.google.com (1,048,576 jetons d'entrée)
+    pricing_input: 0.10
+    pricing_output: 0.40
+
+  gemini-embedding-001:
+    type: embedding
+    provider: gemini
+    dimensions: [3072, 1536, 768] # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
+    thinking: false
+    safety_settings: false
+    top_k: false
+    function_calling: false
+    streaming: false
+    system_prompt: false
+    context_window: 2048 # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
+    pricing_input: 0.15 # Source: https://cloud.google.com/vertex-ai/pricing ($0.15 / 1M tokens)
+    pricing_output: 0.00
+

@@ -1,0 +1,55 @@
+site_name: core
+
+nav:
+  - Prise en main:
+      - Installation: getting-started/installation.md
+      - Guide rapide: getting-started/quickstart.md
+      - Guide Intégration IA: getting-started/guide-integration-ia.md
+  - Guides d'utilisation:
+      - Configuration: guides/configuration.md
+      - Créer des outils IA: guides/ai-tools.md
+      - Personas & Presets: guides/personas-presets.md
+      - Conversations & Persistance: guides/rle-management.md
+      - RAG & Mémoire Vectorielle: guides/rag-memory.md
+      - Mémoire Sémantique (Human-in-the-loop): guides/semantic-memory.md
+  - Référence Technique:
+      - Services Cœurs:
+          - ChatService: reference/chat-service.md
+          - ConversationManager: reference/conversation-manager.md
+      - Interfaces (Contrats):
+          - Vue d'ensemble: reference/contracts/overview.md
+          - AgentInterface: reference/contracts/agent-interface.md
+          - AiToolInterface: reference/contracts/ai-tool-interface.md
+          - ConfigProvider: reference/contracts/config-provider-interface.md
+          - ContextProvider: reference/contracts/context-provider-interface.md
+          - ConversationOwner: reference/contracts/conversation-owner-interface.md
+          - EmbeddingClient: reference/contracts/embedding-client-interface.md
+          - EncryptionService: reference/contracts/encryption-service-interface.md
+          - LlmClient: reference/contracts/llm-client-interface.md
+          - MessageFormatter: reference/contracts/message-formatter-interface.md
+          - PermissionChecker: reference/contracts/permission-checker-interface.md
+          - RetentionPolicy: reference/contracts/retention-policy-interface.md
+          - TextSplitter: reference/contracts/text-splitter-interface.md
+          - DebugLogger: reference/contracts/synapse-debug-logger-interface.md
+          - VectorStore: reference/contracts/vector-store-interface.md
+      - Événements (Events):
+          - Cycle de vie: reference/events/overview.md
+          - GenerationStarted: reference/events/generation-started-event.md
+          - PrePrompt: reference/events/pre-prompt-event.md
+          - ChunkReceived: reference/events/chunk-received-event.md
+          - ToolCallRequested: reference/events/tool-call-requested-event.md
+          - ToolCallCompleted: reference/events/tool-call-completed-event.md
+          - GenerationCompleted: reference/events/generation-completed-event.md
+          - ExchangeCompleted (Debug): reference/events/exchange-completed-event.md
+      - Enums & Formats:
+          - MessageRole: reference/shared/message-role.md
+          - ConversationStatus: reference/shared/conversation-status.md
+          - MemoryScope: reference/shared/memory-scope.md
+      - Entités Doctrine: reference/entities.md
+      - Commandes CLI: reference/cli.md
+      - Guide d'implémentation: reference/implementation-guide.md
+  - Architecture & Concepts:
+      - Vue d'ensemble: explanation/architecture.md
+      - Sécurité & RGPD: explanation/security.md
+      - Contexte IA & Test: explanation/gemini-context.md
+  - Changelog: changelog.md

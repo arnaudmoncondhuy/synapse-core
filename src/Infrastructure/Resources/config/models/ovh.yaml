@@ -1,0 +1,76 @@
+# Source: https://www.ovhcloud.com/fr/public-cloud/ai-endpoints/
+models:
+  gpt-oss-20b:
+    provider: ovh
+    thinking: true
+    safety_settings: false
+    top_k: false
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 131072 # 128k tokens context
+    pricing_input: 0.04
+    pricing_output: 0.15
+
+  gpt-oss-120b:
+    provider: ovh
+    thinking: true
+    safety_settings: false
+    top_k: false
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 131072 # 128k tokens context
+    pricing_input: 0.08
+    pricing_output: 0.40
+
+  Qwen3-32B:
+    provider: ovh
+    thinking: true
+    safety_settings: false
+    top_k: false
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 32768 # 32k tokens context
+    pricing_input: 0.08
+    pricing_output: 0.23
+
+  Llama-3.1-8B-Instruct:
+    provider: ovh
+    thinking: false
+    safety_settings: false
+    top_k: false
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 131072 # 128k tokens context
+    pricing_input: 0.10
+    pricing_output: 0.10
+
+  Mistral-7B-Instruct-v0.3:
+    provider: ovh
+    thinking: false
+    safety_settings: false
+    top_k: false
+    function_calling: true
+    streaming: true
+    system_prompt: true
+    context_window: 32768 # Standard 32k context for V0.3
+    pricing_input: 0.10
+    pricing_output: 0.10
+
+  bge-m3:
+    type: embedding
+    provider: ovh
+    dimensions: [1024] # Dimension standard pour bge-m3
+    thinking: false
+    safety_settings: false
+    top_k: false
+    function_calling: false
+    streaming: false
+    system_prompt: false
+    context_window: 8192
+    pricing_input: 0.01 # Source : https://www.ovhcloud.com/fr/ai-machine-learning/ai-endpoints/pricing/ (0.01€ / 1M tokens d'entrée)
+    pricing_output: 0.00
+
