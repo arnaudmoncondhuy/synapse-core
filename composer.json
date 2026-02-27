@@ -1,7 +1,7 @@
 {
     "name": "arnaudmoncondhuy/synapse-core",
     "type": "symfony-bundle",
-    "description": "Headless AI orchestration engine for Symfony — LLM clients, agents, memory, and storage.",
+    "description": "Moteur d'orchestration IA sans interface pour Symfony — Clients LLM, agents, mémoire et stockage.",
     "license": "PolyForm-Noncommercial-1.0.0",
     "keywords": ["symfony", "ai", "llm", "chatbot", "gemini", "openai", "bundle", "headless"],
     "authors": [
