@@ -144,10 +144,7 @@ services:
     ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService:
         arguments:
             $llmRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\LlmClientRegistry'
-            $promptBuilder: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder'
-            $toolRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
-            $em: '@doctrine.orm.entity_manager'
             $dispatcher: '@event_dispatcher'
 
     ArnaudMoncondhuy\SynapseCore\Core\Service\EmbeddingService:
