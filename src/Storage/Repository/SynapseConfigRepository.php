@@ -52,6 +52,7 @@ class SynapseConfigRepository extends ServiceEntityRepository
         $config->setRetentionDays(30);
         $config->setContextLanguage('fr');
         $config->setSystemPrompt(null);
+        $config->setSpendingLimitsEnabled(true);
 
         return $config;
     }

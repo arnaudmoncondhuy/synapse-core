@@ -103,7 +103,6 @@ class PresetValidatorAgent implements AgentInterface
                     'debug'       => true,
                     'stateless'   => true,
                     'tools'       => [],
-                    'conversation_id' => null,
                 ]
             );
         } catch (\Throwable $e) {
@@ -148,7 +147,6 @@ class PresetValidatorAgent implements AgentInterface
                     'debug'       => true,
                     'stateless'   => true,
                     'tools'       => [],
-                    'conversation_id' => null,
                     'streaming'   => true,
                 ]
             );

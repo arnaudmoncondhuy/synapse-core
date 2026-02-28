@@ -16,9 +16,26 @@ Utilisez Composer pour ajouter le bundle à votre projet :
 composer require arnaudmoncondhuy/synapse-core
 ```
 
-## 2. Création des entités (Optionnel mais recommandé)
+## 2. Initialisation Rapide (Recommandé)
 
-Si vous souhaitez enregistrer les conversations en base de données, vous devez créer deux entités dans votre application qui étendent les classes de base du bundle.
+Plutôt que de configurer manuellement les entités et fichiers, utilisez l'assistant de diagnostic pour initialiser votre projet en une commande :
+
+```bash
+php bin/console synapse:doctor --init
+```
+
+Cette commande va :
+1. Créer le fichier `config/packages/synapse.yaml` avec les réglages par défaut.
+2. Générer les entités `SynapseConversation` et `SynapseMessage` dans `src/Entity/`.
+3. Ajouter le chargeur de routes Synapse dans `config/routes.yaml`.
+4. Configurer un `security.yaml` fonctionnel avec un utilisateur `admin` / `admin`.
+
+---
+
+## 3. Configuration Manuelle (Expert)
+
+Si vous préférez tout configurer vous-même, suivez les étapes ci-dessous.
+
 
 ### Entité Conversation
 

@@ -39,12 +39,10 @@ class ChatService
 
     public function __construct(
         private LlmClientRegistry $llmRegistry,
-        private PromptBuilder $promptBuilder,
-        private ToolRegistry $toolRegistry,
         private ConfigProviderInterface $configProvider,
-        private EntityManagerInterface $em,
         private EventDispatcherInterface $dispatcher,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager $conversationManager = null,
+        private ?\ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
     ) {}
 
     /**
@@ -55,7 +53,7 @@ class ChatService
      *
      * @param string        $message Le texte envoyé par l'utilisateur.
      * @param array{
-     *     persona?: string,
+     *     tone?: string,
      *     history?: array,
      *     stateless?: bool,
      *     debug?: bool,
@@ -82,7 +80,13 @@ class ChatService
         ?callable $onToolExecuted = null
     ): array {
         if (empty($message) && ($options['reset_conversation'] ?? false)) {
-            return ['answer' => '', 'debug' => null];
+            return [
+                'answer' => '',
+                'debug_id' => null,
+                'usage' => [],
+                'safety' => [],
+                'model' => 'unknown',
+            ];
         }
 
         if ($onStatusUpdate) {
@@ -105,6 +109,15 @@ class ChatService
             $this->configProvider->setOverride($config);
         }
 
+        // Vérification des plafonds de dépense (avant appel LLM)
+        $userId = $options['user_id'] ?? null;
+        $presetId = $config['preset_id'] ?? null;
+        $missionId = isset($config['mission_id']) ? (int) $config['mission_id'] : null;
+        if ($this->spendingLimitChecker !== null && is_string($userId)) {
+            $estimatedCostRef = $options['estimated_cost_reference'] ?? 0.0;
+            $this->spendingLimitChecker->assertCanSpend($userId, $presetId !== null ? (int) $presetId : null, (float) $estimatedCostRef, $missionId);
+        }
+
         // Check debug mode
         $globalDebugMode = $config['debug_mode'] ?? false;
         $debugMode = ($options['debug'] ?? false) || ($globalDebugMode && ($options['debug'] ?? true) !== false);
@@ -113,9 +126,14 @@ class ChatService
         $activeClient = $this->llmRegistry->getClient();
         $streamingEnabled = $config['streaming_enabled'] ?? true;
 
-        // Accumulators
+        // Accumulators (usage is accumulated across all turns for correct multi-turn counting)
         $fullTextAccumulator = '';
-        $finalUsageMetadata = [];
+        $cumulativeUsage = [
+            'prompt_tokens'     => 0,
+            'completion_tokens' => 0,
+            'thinking_tokens'   => 0,
+            'total_tokens'      => 0,
+        ];
         $finalSafetyRatings = [];
         $debugId = null;
         $firstTurnRawData = []; // Capture raw API data from first turn
@@ -170,9 +188,13 @@ class ChatService
                     // Note: thinking is handled by native LLM thinking, not stored separately in history
                 }
 
-                // Update usage/safety metadata
+                // Accumulate usage across all turns (multi-turn = multiple LLM calls)
                 if (!empty($chunk['usage'])) {
-                    $finalUsageMetadata = $chunk['usage'];
+                    $u = $chunk['usage'];
+                    $cumulativeUsage['prompt_tokens']     += (int) ($u['prompt_tokens'] ?? 0);
+                    $cumulativeUsage['completion_tokens'] += (int) ($u['completion_tokens'] ?? 0);
+                    $cumulativeUsage['thinking_tokens']   += (int) ($u['thinking_tokens'] ?? 0);
+                    $cumulativeUsage['total_tokens']      += (int) ($u['total_tokens'] ?? 0);
                 }
                 if (!empty($chunk['safety_ratings'])) {
                     $finalSafetyRatings = $chunk['safety_ratings'];
@@ -228,8 +250,14 @@ class ChatService
 
             // ── PROCESS TOOL CALLS ──
             if ($hasToolCalls && !empty($modelToolCalls)) {
-                // Dispatch ToolCallRequestedEvent
-                $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($modelToolCalls));
+                // Dispatch ToolCallRequestedEvent - Normalise modelToolCalls to Event format
+                $eventToolCalls = array_map(fn($tc) => [
+                    'id'   => $tc['id'],
+                    'name' => $tc['function']['name'],
+                    'args' => (array) (json_decode($tc['function']['arguments'], true) ?: [])
+                ], $modelToolCalls);
+
+                $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($eventToolCalls));
                 $toolResults = $toolEvent->getResults();
 
                 // Add tool responses to prompt for next iteration (one message per tool)
@@ -263,6 +291,14 @@ class ChatService
             break;
         }
 
+        // Ensure total_tokens is set (sum if not provided by API)
+        if ($cumulativeUsage['total_tokens'] === 0) {
+            $cumulativeUsage['total_tokens'] = $cumulativeUsage['prompt_tokens']
+                + $cumulativeUsage['completion_tokens']
+                + $cumulativeUsage['thinking_tokens'];
+        }
+        $finalUsageMetadata = $cumulativeUsage;
+
         // ── FINALIZE AND LOG ──
         if ($debugMode) {
             $debugId = uniqid('dbg_', true);
@@ -293,11 +329,13 @@ class ChatService
         ));
 
         return [
-            'answer'   => $fullTextAccumulator,
-            'debug_id' => $debugId,
-            'usage'    => $finalUsageMetadata,
-            'safety'   => $finalSafetyRatings,
-            'model'    => $config['model'] ?? ($config['provider'] ?? 'unknown'),
+            'answer'     => $fullTextAccumulator,
+            'debug_id'   => $debugId,
+            'usage'      => $finalUsageMetadata,
+            'safety'     => $finalSafetyRatings,
+            'model'      => $config['model'] ?? ($config['provider'] ?? 'unknown'),
+            'preset_id'  => $config['preset_id'] ?? null,
+            'mission_id' => $config['mission_id'] ?? null,
         ];
     }
 
@@ -333,18 +371,5 @@ class ChatService
         }
 
         return $this->conversationManager->getHistoryArray($conversation);
-    }
-
-    /**
-     * Convertit un MessageRole vers le format OpenAI canonical
-     */
-    private function convertRoleToOpenAi(\ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole $role): string
-    {
-        return match ($role) {
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole::USER => 'user',
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole::MODEL => 'assistant',
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole::FUNCTION => 'tool',
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole::SYSTEM => 'user',
-        };
     }
 }

@@ -10,6 +10,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseVectorMemory;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseVectorMemoryRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Service de haut niveau pour la gestion de la mémoire sémantique.
@@ -96,7 +97,7 @@ class MemoryManager
 
         // Sécurité : vérifier que le souvenir appartient bien à l'utilisateur
         if ($userId && $memory->getUserId() !== $userId) {
-            throw new \AccessDeniedHttpException("Vous n'avez pas le droit de supprimer ce souvenir.");
+            throw new AccessDeniedHttpException("Vous n'avez pas le droit de supprimer ce souvenir.");
         }
 
         $this->em->remove($memory);
@@ -130,7 +131,7 @@ class MemoryManager
         }
 
         if ($userId && $memory->getUserId() !== $userId) {
-            throw new \AccessDeniedHttpException("Vous n'avez pas le droit de modifier ce souvenir.");
+            throw new AccessDeniedHttpException("Vous n'avez pas le droit de modifier ce souvenir.");
         }
 
         // On doit re-générer l'embedding pour le nouveau texte

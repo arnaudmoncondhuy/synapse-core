@@ -20,6 +20,9 @@ interface ConfigProviderInterface
      * Retourne la configuration dynamique active.
      *
      * @return array{
+     *     model: string,
+     *     provider: string,
+     *     provider_credentials: array<string, mixed>,
      *     safety_settings: array{
      *         enabled: bool,
      *         default_threshold: string,

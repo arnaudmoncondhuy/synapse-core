@@ -445,6 +445,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $this->generationTemperature     = (float) ($gen['temperature'] ?? $this->generationTemperature);
             $this->generationTopP            = (float) ($gen['top_p'] ?? $this->generationTopP);
             $this->generationTopK            = (int) ($gen['top_k'] ?? $this->generationTopK);
+            $this->generationMaxOutputTokens = !empty($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : null;
         }
     }
 

@@ -43,16 +43,12 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
     public function onToolCallRequested(SynapseToolCallRequestedEvent $event): void
     {
         foreach ($event->getToolCalls() as $toolCall) {
-            // Format OpenAI : ['function' => ['name' => ..., 'arguments' => json string]]
-            $toolName = $toolCall['function']['name'] ?? $toolCall['name'] ?? null;
+            // Le format est déjà normalisé par l'événement : array{id: string, name: string, args: array}
+            $toolName = $toolCall['name'] ?? null;
             if ($toolName === null || $toolName === '') {
                 continue;
             }
             $args = $toolCall['args'] ?? [];
-            if (isset($toolCall['function']['arguments']) && is_string($toolCall['function']['arguments'])) {
-                $decoded = json_decode($toolCall['function']['arguments'], true);
-                $args = is_array($decoded) ? $decoded : [];
-            }
 
             $result = $this->executeTool($toolName, $args);
             $event->setToolResult($toolName, $result);

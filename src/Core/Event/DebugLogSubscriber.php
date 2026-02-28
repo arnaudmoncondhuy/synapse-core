@@ -47,7 +47,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
 
         // Extract system instruction from contents (first message with role: 'system')
         $systemInstruction = null;
-        $contents = $prompt['contents'] ?? [];
+        $contents = $event->getPrompt();
         if (!empty($contents) && ($contents[0]['role'] ?? '') === 'system') {
             $systemInstruction = $contents[0]['content'] ?? null;
         }
@@ -77,8 +77,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'system_prompt'       => $systemInstruction,
             'config'              => $config,
             'preset_config'       => $presetConfig,
-            'history'             => $prompt['contents'] ?? [],
-            'history_size'        => count($prompt['contents'] ?? []),
+            'history'             => $contents,
+            'history_size'        => count($contents),
             'turns'               => [],
             'tool_executions'     => [],
             'tool_definitions'    => $toolDefinitions,

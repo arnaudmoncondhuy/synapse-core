@@ -1,0 +1,57 @@
+##############################################################################
+# SynapseBundle — Configuration de référence
+#
+# Config minimale : la section `persistence` ci-dessous suffit.
+# Tout le reste est optionnel — les valeurs par défaut s'appliquent.
+#
+# Les credentials LLM (provider, modèle, API keys, presets, temperature…)
+# se configurent entièrement via l'interface admin /synapse/admin.
+# Aucun YAML supplémentaire requis après installation.
+#
+# Régénérer ce fichier : bin/console synapse:doctor --init
+##############################################################################
+
+synapse:
+
+    ###########################################################################
+    # CORE — arnaud-moncondhuy/synapse-core
+    ###########################################################################
+
+    # ── Persistence — Doctrine ORM (requis) ──────────────────────────────────
+    # Entités concrètes à créer dans votre application (étendent les bases du bundle).
+    # Générées automatiquement par : bin/console synapse:doctor --init
+    persistence:
+        enabled: true
+        conversation_class: 'App\Entity\SynapseConversation'
+        message_class: 'App\Entity\SynapseMessage'
+
+    # ── Security — Rôles Symfony (optionnel) ─────────────────────────────────
+    # Décommentez uniquement si vous avez besoin de rôles différents des défauts.
+    #
+    # security:
+    #     admin_role: ROLE_ADMIN   # Protège /synapse/admin* (défaut : ROLE_ADMIN)
+    #     chat_role:  ROLE_USER    # Protège /synapse/chat et /synapse/api/* (défaut : ROLE_USER)
+    #                              # Utilisez PUBLIC_ACCESS pour ouvrir le chat sans authentification
+    #
+    #     # Protection CSRF sur /synapse/api/* — ne désactiver qu'en dernier recours
+    #     # (ex : appel depuis un client externe sans cookie de session Symfony)
+    #     api_csrf_enabled: true
+
+    # ── Context — Langue des prompts système (optionnel) ─────────────────────
+    # context:
+    #     language: fr   # "fr" ou "en" (défaut : fr)
+
+    # ── Encryption — Chiffrement des messages en base (optionnel) ────────────
+    # Chiffrement libsodium AES-256-GCM appliqué sur le contenu des messages.
+    # encryption:
+    #     enabled: false
+    #     key: '%env(SYNAPSE_ENCRYPTION_KEY)%'   # 32 bytes, base64-encodé
+    #     # Générer la clé : php -r "echo base64_encode(sodium_crypto_secretbox_keygen());"
+
+    # ── Vector Store — Mémoire vectorielle RAG (optionnel) ───────────────────
+    # vector_store:
+    #     default: null   # "null" = désactivé (défaut)
+    #                     # "in_memory" = stockage en mémoire vive (non persistant)
+    #                     # "doctrine" = stockage PostgreSQL + pgvector (persistant)
+    #                     # ou service ID implémentant VectorStoreInterface
+

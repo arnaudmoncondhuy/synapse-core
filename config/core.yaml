@@ -3,10 +3,8 @@ services:
         autowire: true
         autoconfigure: true
 
-    # ── Controllers & Core Services ──────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Controller\:
-        resource: '../src/Core/Controller/'
-        tags: ['controller.service_arguments']
+    # ── Core Services ───────────────────────────────────────────────────────────
+    # Note: Controllers are now in synapse-chat package (configured in synapse-chat/config/chat.yaml)
 
     ArnaudMoncondhuy\SynapseCore\Core\Manager\:
         resource: '../src/Core/Manager/'
@@ -14,8 +12,19 @@ services:
     ArnaudMoncondhuy\SynapseCore\Core\Accounting\:
         resource: '../src/Core/Accounting/'
 
+    ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenAccountingService:
+        arguments:
+            $referenceCurrency: '%synapse.token_tracking.reference_currency%'
+            $currencyRates: '%synapse.token_tracking.currency_rates%'
+
     ArnaudMoncondhuy\SynapseCore\Infrastructure\Command\:
         resource: '../src/Infrastructure/Command/'
+
+    # ── Route Loader ─────────────────────────────────────────────────────────
+    # Permet: resource: . / type: synapse dans routes.yaml (charge Admin + Chat auto)
+    ArnaudMoncondhuy\SynapseCore\Infrastructure\Routing\SynapseRoutesLoader:
+        tags:
+            - { name: routing.loader }
 
     ArnaudMoncondhuy\SynapseCore\MessageHandler\:
         resource: '../src/MessageHandler/'
@@ -53,6 +62,9 @@ services:
     # ── Registre des capacités par modèle ────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry: ~
 
+    # ── Chat (estimation tokens, troncature contexte) ───────────────────────────
+    ArnaudMoncondhuy\SynapseCore\Core\Chat\ContextTruncationService: ~
+
     # ── Registre des outils ──────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry:
         arguments:
@@ -75,11 +87,18 @@ services:
 
 
     # ── Default implementations (can be overridden by user) ──────────────────
+    ArnaudMoncondhuy\SynapseCore\Core\PresetValidator:
+        arguments:
+            $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
+            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry'
+            $em: '@doctrine.orm.entity_manager'
+
     ArnaudMoncondhuy\SynapseCore\Core\DatabaseConfigProvider:
         arguments:
             $presetRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository'
             $globalConfigRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
+            $presetValidator: '@ArnaudMoncondhuy\SynapseCore\Core\PresetValidator'
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
 
     ArnaudMoncondhuy\SynapseCore\Core\Impl\DefaultContextProvider: ~
@@ -131,14 +150,31 @@ services:
     ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface:
         alias: ArnaudMoncondhuy\SynapseCore\Core\Chunking\RecursiveTextSplitter
 
-    ArnaudMoncondhuy\SynapseCore\Core\PersonaRegistry:
+    ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry:
         arguments:
-            $configPath: '%synapse.personas_path%'
+            $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository'
+
+    ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry:
+        arguments:
+            $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository'
 
     ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder:
         arguments:
-            $personaRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\PersonaRegistry'
+            $toneRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
+
+    # ── DataFixtures (optionnel — requiert doctrine/doctrine-fixtures-bundle) ───
+    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapsePresetFixture:
+        autoconfigure: true
+        autowire: true
+
+    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapseToneFixture:
+        autoconfigure: true
+        autowire: true
+
+    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapseMissionFixture:
+        autoconfigure: true
+        autowire: true
 
     # ── Main service ──────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService:
@@ -172,6 +208,16 @@ services:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']
 
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker:
+        arguments:
+            $configRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
+            $referenceCurrency: '%synapse.token_tracking.reference_currency%'
+
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository:
         arguments:
             $registry: '@doctrine'
@@ -198,6 +244,16 @@ services:
         tags: ['doctrine.repository_service']
 
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseVectorMemoryRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository:
         arguments:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']

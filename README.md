@@ -40,9 +40,19 @@ composer require arnaudmoncondhuy/synapse-core:^0.1
 - **EmbeddingService** - Génération d'embeddings via Gemini ou OpenAI
 - **MemoryManager** - Gestion des souvenirs avec contexte sémantique
 
-### 📊 Token Accounting
-- **TokenAccountingService** - Suivi de l'usage (input/output tokens par conversation)
-- **SynapseTokenUsage** - Entité pour historique des dépenses
+### 💰 Accounting & Plafonds
+- **TokenAccountingService** - Suivi de l'usage (input/output/thinking par conversation et par action système)
+- **SpendingLimitChecker** - Vérification des quotas avant chaque requête LLM
+- **SynapseTokenUsage** - Historique détaillé des dépenses avec conversion monétaire
+- **SynapseSpendingLimit** - Configuration des plafonds (par utilisateur, mission ou preset)
+
+### 🗺️ Missions et Tons
+- **SynapseMission** - Abstraction d'agent combinant instructions, preset et style
+- **SynapseTone** - Tons de réponse réutilisables (ex: Professionnel, Concis)
+- **MissionRegistry** - Inscription et découverte dynamique des missions
+
+### 🩺 Diagnostic
+- **SynapseDoctorCommand** - Commande unique pour installer, diagnostiquer et réparer l'intégration (`synapse:doctor`)
 
 ## Configuration minimale
 
@@ -83,6 +93,8 @@ Le bundle dispatch plusieurs événements pour hook custom logic :
 - `SynapseToolCallRequestedEvent` - Tool use détecté
 - `SynapseToolCallCompletedEvent` - Exécution d'outil terminée
 - `SynapseExchangeCompletedEvent` - Échange complet terminé
+- `SynapseUsageRecordedEvent` - Usage de tokens enregistré (Accounting)
+- `SynapseSpendingLimitExceededEvent` - Plafond de dépense atteint
 
 ## Routes API disponibles
 
@@ -109,7 +121,34 @@ Les bundles **admin** et **chat** dépendent de **core**.
 
 PolyForm Noncommercial 1.0.0 (usage non-commercial uniquement)
 
-## Support
+## 🩺 Synapse Doctor
+
+L'assistant de diagnostic est votre meilleur allié pour l'installation et la maintenance :
+
+```bash
+# Diagnostic complet
+php bin/console synapse:doctor
+
+# Réparation automatique (création config, entités, security, routes)
+php bin/console synapse:doctor --fix
+
+# Installation fraîche
+php bin/console synapse:doctor --init
+```
+
+## 💰 Gestion des Coûts (Accounting)
+
+Synapse Core propose un système robuste pour suivre et limiter les dépenses IA.
+
+### Configuration des Tarifs
+Les tarifs sont configurés directement dans l'entité `SynapseModel` (via l'admin ou SQL) en prix par million de tokens.
+
+### Plafonds de dépense
+Vous pouvez définir des limites dans `SynapseSpendingLimit` :
+- **Scopes** : `USER`, `MISSION`, `PRESET`.
+- **Périodes** : `CALENDAR_DAY`, `CALENDAR_MONTH`, `SLIDING_DAY` (24h), `SLIDING_MONTH` (30j).
+
+## 📖 Support
 
 - 📖 [Documentation Core](https://arnaudmoncondhuy.github.io/synapse-bundle/core/)
 - 🐛 [Issues](https://github.com/arnaudmoncondhuy/synapse-bundle/issues)

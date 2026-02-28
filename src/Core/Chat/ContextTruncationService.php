@@ -84,6 +84,19 @@ class ContextTruncationService
     }
 
     /**
+     * Estime le nombre de tokens pour un tableau de messages (contenu + historique).
+     * Heuristique : 1 token ≈ 4 caractères.
+     */
+    public function estimateTokensForContents(array $contents): int
+    {
+        $total = 0;
+        foreach ($contents as $message) {
+            $total += $this->estimateTokens($message);
+        }
+        return $total;
+    }
+
+    /**
      * Heuristique : 1 token ≈ 4 caractères.
      */
     private function estimateTokens(array $message): int

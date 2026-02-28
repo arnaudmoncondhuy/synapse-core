@@ -20,8 +20,18 @@ Gère les accès à l'administration et au chat.
 
 | Option | Type | Défaut | Description |
 |---|---|---|---|
-| `admin_role` | string | `ROLE_ADMIN` | Le rôle requis pour accéder à `/synapse/admin` (via le checker par défaut). |
 | `permission_checker` | string | `default` | Service de sécurité. Par défaut, bloque l'admin si la sécurité Symfony est absente. |
+| `admin_role` | string | `ROLE_ADMIN` | Le rôle requis pour accéder à `/synapse/admin`. |
+| `chat_role` | string | `ROLE_USER` | Le rôle requis pour le chat (si restreint). |
+
+### Plafonds & Coûts (`spending_limits` & `accounting`)
+
+Synapse permet de suivre l'usage et de brider la consommation.
+
+| Option | Type | Défaut | Description |
+|---|---|---|---|
+| `spending_limits.enabled` | bool | `true` | Active la vérification des quotas avant chaque requête. |
+| `accounting.reference_currency` | string | `EUR` | Devise utilisée pour les plafonds et agrégats (EUR/USD). |
 
 ### Protection CSRF
 

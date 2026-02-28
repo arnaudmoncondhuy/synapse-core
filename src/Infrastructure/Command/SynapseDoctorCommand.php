@@ -15,273 +15,550 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\KernelInterface;
-use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 #[AsCommand(
     name: 'synapse:doctor',
-    description: 'Diagnostique et répare l\'intégration de SynapseBundle dans votre projet.',
+    description: 'Diagnose and repair SynapseBundle integration. Use --init for first-time setup.',
 )]
 class SynapseDoctorCommand extends Command
 {
     private Filesystem $filesystem;
+    private bool $hasAdmin;
+    private bool $hasChat;
 
     public function __construct(
         private readonly KernelInterface $kernel,
         private readonly ParameterBagInterface $parameterBag,
-        private readonly PermissionCheckerInterface $permissionChecker,
-        private readonly ?CsrfTokenManagerInterface $csrfTokenManager = null,
         ?Filesystem $filesystem = null
     ) {
         parent::__construct();
         $this->filesystem = $filesystem ?? new Filesystem();
+
+        $bundles = $this->kernel->getBundles();
+        $this->hasAdmin = isset($bundles['SynapseAdminBundle']);
+        $this->hasChat = isset($bundles['SynapseChatBundle']);
     }
 
     protected function configure(): void
     {
         $this
-            ->addOption('fix', null, InputOption::VALUE_NONE, 'Tente de réparer automatiquement les problèmes détectés');
+            ->addOption('fix', null, InputOption::VALUE_NONE, 'Auto-repair detected issues')
+            ->addOption('init', null, InputOption::VALUE_NONE, 'First-time setup: create all missing files and configuration');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $io->title('🩺 Synapse Doctor - Diagnostic de l\'intégration');
+        $io->title('Synapse Doctor');
 
         $projectDir = $this->kernel->getProjectDir();
-        $fix = $input->getOption('fix');
+        $fix = $input->getOption('fix') || $input->getOption('init');
+        $init = $input->getOption('init');
 
-        $results = [];
-        $errors = 0;
+        $checks = [];
 
-        // 0. Vérification de l'environnement
-        $results['env'] = $this->checkEnvironment($io);
+        $checks['PHP version (8.2+)'] = $this->checkPhpVersion($io);
+        $checks['Sodium extension'] = $this->checkSodium($io);
+        $checks['Bundle registration'] = $this->checkBundleRegistration($projectDir, $fix, $io);
+        $checks['Core config (synapse.yaml)'] = $this->checkCoreConfig($projectDir, $fix, $io);
+        $checks['Routes'] = $this->checkRoutes($projectDir, $fix, $io);
+        $checks['Entities'] = $this->checkEntities($projectDir, $fix, $io);
+        $checks['Security'] = $this->checkSecurity($projectDir, $fix, $io);
 
-        // 1. Vérification de la configuration
-        $results['config'] = $this->checkConfig($projectDir, $fix, $io);
-
-        // 2. Vérification des entités
-        $results['entities'] = $this->checkEntities($projectDir, $fix, $io);
-
-        // 3. Vérification de la sécurité
-        $results['security'] = $this->checkSecurity($io);
-
-        // 4. Vérification des assets
-        $results['assets'] = $this->checkAssets($projectDir, $fix, $io);
-
-        // 5. Vérification des routes
-        $results['routes'] = $this->checkRoutes($projectDir, $fix, $io);
-
-        $io->section('Résumé du diagnostic');
-        foreach ($results as $category => $status) {
-            if ($status === false) {
-                $errors++;
-            }
+        if ($this->hasChat) {
+            $checks['Importmap (Stimulus)'] = $this->checkImportmap($projectDir, $fix, $io);
         }
 
+        $checks['Database connection'] = $this->checkDatabase($io);
+        $checks['Database tables'] = $this->checkDatabaseTables($io);
+
+        if ($init) {
+            $this->runInit($projectDir, $io);
+        }
+
+        $this->printSummary($checks, $io);
+
+        $errors = count(array_filter($checks, fn($v) => $v === false));
+
         if ($errors === 0) {
-            $io->success('Tout semble correct ! Votre intégration de SynapseBundle est opérationnelle.');
+            $io->success('All checks passed! Synapse is ready.');
             return Command::SUCCESS;
         }
 
         if (!$fix) {
-            $io->warning(sprintf('Il y a %d problème(s) détecté(s). Relancez avec --fix pour tenter une réparation automatique.', $errors));
+            $io->note(sprintf('%d issue(s) detected. Run with --fix to auto-repair, or --init for first-time setup.', $errors));
         }
 
         return Command::FAILURE;
     }
 
-    private function checkConfig(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    // ── Checks ────────────────────────────────────────────────────────────────
+
+    private function checkPhpVersion(SymfonyStyle $io): bool
     {
-        $configPath = $projectDir . '/config/packages/synapse.yaml';
-        if (!$this->filesystem->exists($configPath)) {
-            $io->error('Fichier config/packages/synapse.yaml manquant.');
-            if ($fix) {
-                $io->note('Création du fichier de configuration par défaut...');
-                $defaultConfig = <<<YAML
-synapse:
-    persistence:
-        enabled: true
-        conversation_class: 'App\Entity\SynapseConversation'
-        message_class: 'App\Entity\SynapseMessage'
-    admin:
-        enabled: true
-YAML;
-                $this->filesystem->dumpFile($configPath, $defaultConfig);
-                $io->success('Fichier créé.');
-                return true;
-            }
+        if (version_compare(PHP_VERSION, '8.2.0', '<')) {
+            $io->error(sprintf('[PHP] Version %s detected. PHP 8.2+ required.', PHP_VERSION));
             return false;
         }
-        $io->writeln('✅ Configuration : config/packages/synapse.yaml détecté.');
+        $io->writeln(sprintf('  <info>[OK]</info> PHP %s', PHP_VERSION));
         return true;
     }
 
-    private function checkEntities(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    private function checkSodium(SymfonyStyle $io): bool
     {
-        $convClass = $this->parameterBag->get('synapse.persistence.conversation_class') ?? 'App\Entity\SynapseConversation';
-        $msgClass = $this->parameterBag->get('synapse.persistence.message_class') ?? 'App\Entity\SynapseMessage';
-
-        $isValid = true;
-
-        // Vérification Conversation
-        if (!class_exists($convClass)) {
-            $io->error(sprintf('Entité %s manquante.', $convClass));
-            if ($fix && $convClass === 'App\Entity\SynapseConversation') {
-                $this->createConversationEntity($projectDir, $io);
-            } else {
-                $isValid = false;
-            }
+        if (!extension_loaded('sodium')) {
+            $io->writeln('  <comment>[WARN]</comment> Sodium extension not found (optional — needed for message encryption)');
         } else {
-            $io->writeln(sprintf('✅ Entité Conversation : %s détectée.', $convClass));
-            // Vérification de l'héritage
-            if (!is_subclass_of($convClass, BaseConversation::class)) {
-                $io->error(sprintf('L\'entité %s doit étendre %s', $convClass, BaseConversation::class));
-                $isValid = false;
-            }
-            // Vérification du mapping inverse (messages)
-            if (!property_exists($convClass, 'messages')) {
-                $io->error(sprintf('L\'entité %s doit redéfinir la propriété $messages avec l\'attribut #[ORM\OneToMany]', $convClass));
-                $isValid = false;
-            }
+            $io->writeln('  <info>[OK]</info> Sodium extension');
         }
-
-        // Vérification Message
-        if (!class_exists($msgClass)) {
-            $io->error(sprintf('Entité %s manquante.', $msgClass));
-            if ($fix && $msgClass === 'App\Entity\SynapseMessage') {
-                $this->createMessageEntity($projectDir, $io);
-            } else {
-                $isValid = false;
-            }
-        } else {
-            $io->writeln(sprintf('✅ Entité Message : %s détectée.', $msgClass));
-            if (!is_subclass_of($msgClass, BaseMessage::class)) {
-                $io->error(sprintf('L\'entité %s doit étendre %s', $msgClass, BaseMessage::class));
-                $isValid = false;
-            }
-            // Vérification de la relation vers conversation
-            if (!property_exists($msgClass, 'conversation')) {
-                $io->error(sprintf('L\'entité %s doit redéfinir la propriété $conversation avec l\'attribut #[ORM\ManyToOne]', $msgClass));
-                $isValid = false;
-            }
-        }
-
-        return $isValid;
+        return true;
     }
 
-    private function checkAssets(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    private function checkBundleRegistration(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
+        $bundlesFile = $projectDir . '/config/bundles.php';
+        if (!$this->filesystem->exists($bundlesFile)) {
+            $io->error('[Bundles] config/bundles.php not found.');
+            return false;
+        }
+
+        $content = file_get_contents($bundlesFile);
         $isValid = true;
 
-        // 1. importmap.php
-        $importmapPath = $projectDir . '/importmap.php';
-        if ($this->filesystem->exists($importmapPath)) {
-            $content = file_get_contents($importmapPath);
-            if (strpos($content, 'synapse/controllers/synapse_chat_controller.js') === false) {
-                $io->error('Les assets Synapse manquent dans importmap.php');
-                if ($fix) {
-                    $io->note('Mise à jour de importmap.php...');
-                    // Utilisation des chemins logiques du mapper (le namespace 'synapse' est déjà enregistré par l'Extension)
-                    $newEntry = "    'synapse/controllers/synapse_chat_controller.js' => [\n        'path' => 'synapse/controllers/synapse_chat_controller.js',\n    ],\n    'synapse/controllers/synapse_sidebar_controller.js' => [\n        'path' => 'synapse/controllers/synapse_sidebar_controller.js',\n    ],\n";
-                    $content = preg_replace('/(\];\s*)$/', $newEntry . "$1", $content);
-                    $this->filesystem->dumpFile($importmapPath, $content);
-                    $io->success('importmap.php mis à jour.');
-                } else {
-                    $isValid = false;
-                }
+        $expected = ['ArnaudMoncondhuy\\SynapseCore\\SynapseCoreBundle' => 'SynapseCoreBundle'];
+        if ($this->hasAdmin) {
+            $expected['ArnaudMoncondhuy\\SynapseAdmin\\SynapseAdminBundle'] = 'SynapseAdminBundle';
+        }
+        if ($this->hasChat) {
+            $expected['ArnaudMoncondhuy\\SynapseChat\\SynapseChatBundle'] = 'SynapseChatBundle';
+        }
+
+        foreach ($expected as $fqn => $name) {
+            if (!str_contains($content, $fqn)) {
+                $io->error(sprintf('[Bundles] %s not registered in bundles.php', $name));
+                $isValid = false;
             }
         }
 
-        // 2. app.css (Injection automatique de l'import)
-        $cssPath = $projectDir . '/assets/styles/app.css';
-        if ($this->filesystem->exists($cssPath)) {
-            $content = file_get_contents($cssPath);
-            if (strpos($content, 'synapse/styles/synapse.css') === false) {
-                $io->error('Les imports CSS Synapse manquent dans app.css');
-                if ($fix) {
-                    $io->note('Injection des @import dans app.css...');
-                    $imports = "\n/* --- Synapse Bundle --- */\n@import \"synapse/styles/synapse.css\";\n@import \"synapse/styles/sidebar.css\";\n";
-                    $content = $imports . $content;
-                    $this->filesystem->dumpFile($cssPath, $content);
-                    $io->success('app.css mis à jour.');
-                } else {
-                    $isValid = false;
-                }
-            }
-        }
-
-        // 2. controllers.json
-        $controllersPath = $projectDir . '/assets/controllers.json';
-        if ($this->filesystem->exists($controllersPath)) {
-            $content = file_get_contents($controllersPath);
-            if (strpos($content, 'arnaudmoncondhuy/synapse-bundle') === false) {
-                $io->error('Le bundle n\'est pas enregistré dans assets/controllers.json (Stimulus)');
-                if ($fix) {
-                    $io->note('Mise à jour de controllers.json...');
-                    $json = json_decode($content, true);
-                    $json['controllers']['arnaudmoncondhuy/synapse-bundle'] = [
-                        'synapse-chat' => [
-                            'enabled' => true,
-                            'fetch' => 'eager',
-                        ],
-                        'synapse-sidebar' => [
-                            'enabled' => true,
-                            'fetch' => 'eager',
-                        ]
-                    ];
-                    $this->filesystem->dumpFile($controllersPath, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                    $io->success('controllers.json mis à jour.');
-                    return true;
-                }
+        // Detect stale meta-bundle
+        if (str_contains($content, 'ArnaudMoncondhuy\\SynapseBundle\\SynapseBundle')) {
+            $io->warning('[Bundles] Old meta-package SynapseBundle still registered.');
+            if ($fix) {
+                $updated = preg_replace(
+                    '/\s*ArnaudMoncondhuy\\\\SynapseBundle\\\\SynapseBundle::class\s*=>\s*\[.*?\],\n?/s',
+                    '',
+                    $content
+                );
+                $this->filesystem->dumpFile($bundlesFile, $updated);
+                $io->writeln('  -> Old bundle removed from bundles.php');
+            } else {
                 $isValid = false;
             }
         }
 
         if ($isValid) {
-            $io->writeln('✅ Assets : Configuration AssetMapper/Stimulus semble correcte.');
+            $io->writeln('  <info>[OK]</info> Bundles registered');
+        }
+        return $isValid;
+    }
+
+    private function checkCoreConfig(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $configPath = $projectDir . '/config/packages/synapse.yaml';
+        if (!$this->filesystem->exists($configPath)) {
+            $io->error('[Config] config/packages/synapse.yaml missing.');
+            if ($fix) {
+                $this->filesystem->dumpFile($configPath, $this->getDefaultCoreConfig());
+                $io->writeln('  -> synapse.yaml created.');
+            }
+            return false;
+        }
+        $io->writeln('  <info>[OK]</info> config/packages/synapse.yaml');
+        return true;
+    }
+
+    private function checkRoutes(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $mainRoutesFile = $projectDir . '/config/routes.yaml';
+        $hasRoutes = false;
+
+        if ($this->filesystem->exists($mainRoutesFile)) {
+            $content = file_get_contents($mainRoutesFile);
+            $hasRoutes = str_contains($content, 'type: synapse')
+                || str_contains($content, 'SynapseAdminBundle')
+                || str_contains($content, 'SynapseChatBundle');
+
+            // Also scan sub-files referenced in routes.yaml
+            if (!$hasRoutes) {
+                preg_match_all('/resource:\s+[\'"]?(\S+)[\'"]?/', $content, $matches);
+                foreach ($matches[1] as $resource) {
+                    if (str_starts_with($resource, '@') || str_starts_with($resource, 'http')) {
+                        continue;
+                    }
+                    $subFile = $projectDir . '/config/' . ltrim($resource, './');
+                    if (!$this->filesystem->exists($subFile)) {
+                        $subFile = $projectDir . '/' . ltrim($resource, './');
+                    }
+                    if ($this->filesystem->exists($subFile)) {
+                        $sub = file_get_contents($subFile);
+                        if (str_contains($sub, 'SynapseAdminBundle')
+                            || str_contains($sub, 'SynapseChatBundle')
+                            || str_contains($sub, 'type: synapse')) {
+                            $hasRoutes = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!$hasRoutes) {
+            $io->error('[Routes] No Synapse routes configured.');
+            $io->writeln('         Add to config/routes.yaml:');
+            $io->writeln('           _synapse:');
+            $io->writeln('               resource: .');
+            $io->writeln('               type: synapse');
+            if ($fix) {
+                $this->addSynapseRouteEntry($projectDir, $io);
+            }
+            return false;
+        }
+
+        $io->writeln('  <info>[OK]</info> Routes');
+        return true;
+    }
+
+    private function checkEntities(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        if (!$this->parameterBag->get('synapse.persistence.enabled')) {
+            $io->writeln('  <comment>[SKIP]</comment> Persistence disabled');
+            return true;
+        }
+
+        $convClass = $this->parameterBag->get('synapse.persistence.conversation_class');
+        $msgClass = $this->parameterBag->get('synapse.persistence.message_class');
+
+        if (!$convClass && !$msgClass) {
+            $io->writeln('  <comment>[INFO]</comment> No custom entity classes configured');
+            return true;
+        }
+
+        $isValid = true;
+
+        if ($convClass) {
+            if (!class_exists($convClass)) {
+                $io->error(sprintf('[Entities] %s not found.', $convClass));
+                if ($fix && $convClass === 'App\\Entity\\SynapseConversation') {
+                    $this->createConversationEntity($projectDir, $io);
+                } else {
+                    $isValid = false;
+                }
+            } elseif (!is_subclass_of($convClass, BaseConversation::class)) {
+                $io->error(sprintf('[Entities] %s must extend %s', $convClass, BaseConversation::class));
+                $isValid = false;
+            } elseif (!property_exists($convClass, 'messages')) {
+                $io->error(sprintf('[Entities] %s must declare $messages with #[ORM\\OneToMany]', $convClass));
+                $isValid = false;
+            } else {
+                $io->writeln(sprintf('  <info>[OK]</info> Conversation: %s', $convClass));
+            }
+        }
+
+        if ($msgClass) {
+            if (!class_exists($msgClass)) {
+                $io->error(sprintf('[Entities] %s not found.', $msgClass));
+                if ($fix && $msgClass === 'App\\Entity\\SynapseMessage') {
+                    $this->createMessageEntity($projectDir, $io);
+                } else {
+                    $isValid = false;
+                }
+            } elseif (!is_subclass_of($msgClass, BaseMessage::class)) {
+                $io->error(sprintf('[Entities] %s must extend %s', $msgClass, BaseMessage::class));
+                $isValid = false;
+            } elseif (!property_exists($msgClass, 'conversation')) {
+                $io->error(sprintf('[Entities] %s must declare $conversation with #[ORM\\ManyToOne]', $msgClass));
+                $isValid = false;
+            } else {
+                $io->writeln(sprintf('  <info>[OK]</info> Message: %s', $msgClass));
+            }
         }
 
         return $isValid;
     }
 
-    private function checkRoutes(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    private function checkSecurity(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $routePath = $projectDir . '/config/routes/synapse.yaml';
-        if (!$this->filesystem->exists($routePath)) {
-            $io->error('Fichier config/routes/synapse.yaml manquant.');
+        $securityFile = $projectDir . '/config/packages/security.yaml';
+        if (!$this->filesystem->exists($securityFile)) {
+            $io->error('[Security] config/packages/security.yaml not found.');
             if ($fix) {
-                $io->note('Création du fichier de routes...');
-                $routes = <<<YAML
-synapse_bundle:
-    resource: '@SynapseBundle/config/routes.yaml'
-    prefix: /
-YAML;
-                $this->filesystem->dumpFile($routePath, $routes);
-                $io->success('Routes importées.');
+                $this->generateSecurityConfig($projectDir, $io);
                 return true;
             }
             return false;
         }
-        $io->writeln('✅ Routes : config/routes/synapse.yaml détecté.');
+
+        $content = file_get_contents($securityFile);
+        if (!str_contains($content, 'firewalls:')) {
+            $io->error('[Security] No firewall configured in security.yaml.');
+            return false;
+        }
+
+        $adminRole = ($this->parameterBag->has('synapse.security.admin_role')
+            ? $this->parameterBag->get('synapse.security.admin_role')
+            : null) ?: 'ROLE_ADMIN';
+        $chatRole = ($this->parameterBag->has('synapse.security.chat_role')
+            ? $this->parameterBag->get('synapse.security.chat_role')
+            : null) ?: 'ROLE_USER';
+
+        $hasAdminControl = str_contains($content, '/synapse/admin');
+        $hasChatControl = str_contains($content, '/synapse');
+
+        if ($this->hasAdmin && !$hasAdminControl) {
+            $io->writeln('  <comment>[WARN]</comment> No access_control for /synapse/admin in security.yaml');
+            $io->writeln(sprintf('         Add: - { path: ^/synapse/admin, roles: %s }', $adminRole));
+            $io->writeln(sprintf('              - { path: ^/synapse, roles: %s }', $chatRole));
+        } else {
+            $io->writeln(sprintf('  <info>[OK]</info> Security (admin: %s, chat: %s)', $adminRole, $chatRole));
+        }
+
         return true;
+    }
+
+    private function checkImportmap(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $importmapFile = $projectDir . '/importmap.php';
+        if (!$this->filesystem->exists($importmapFile)) {
+            $io->writeln('  <comment>[SKIP]</comment> importmap.php not found');
+            return true;
+        }
+
+        $content = file_get_contents($importmapFile);
+        if (!str_contains($content, 'synapse_chat_controller')) {
+            $io->error('[Importmap] Synapse chat Stimulus controller missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_controller.js']");
+            if ($fix) {
+                $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
+                    . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
+                    . "    ],\n";
+                $this->filesystem->dumpFile($importmapFile, str_replace('];', $entry . '];', $content));
+                $io->writeln('  -> importmap.php updated.');
+            }
+            return false;
+        }
+
+        $io->writeln('  <info>[OK]</info> Importmap (Stimulus controller)');
+        return true;
+    }
+
+    private function checkDatabase(SymfonyStyle $io): bool
+    {
+        try {
+            $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
+            $connection->executeQuery('SELECT 1');
+            $io->writeln('  <info>[OK]</info> Database connection');
+            return true;
+        } catch (\Exception $e) {
+            $io->error('[Database] Cannot connect: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function checkDatabaseTables(SymfonyStyle $io): bool
+    {
+        $expected = ['synapse_conversation', 'synapse_message', 'synapse_preset', 'synapse_provider', 'synapse_model', 'synapse_config'];
+        try {
+            $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
+            $existing = $connection->createSchemaManager()->listTableNames();
+            $missing = array_diff($expected, $existing);
+
+            if (!empty($missing)) {
+                $io->error(sprintf('[Database] Missing tables: %s', implode(', ', $missing)));
+                $io->writeln('         Run: bin/console doctrine:migrations:migrate');
+                return false;
+            }
+
+            // pgvector (optional)
+            try {
+                $hasPgvector = (bool) $connection->executeQuery("SELECT 1 FROM pg_extension WHERE extname = 'vector'")->fetchOne();
+                $suffix = $hasPgvector ? ' + pgvector' : ' (pgvector not installed — needed for vector memory)';
+                $io->writeln(sprintf('  <info>[OK]</info> Database tables%s', $suffix));
+            } catch (\Exception) {
+                $io->writeln('  <info>[OK]</info> Database tables');
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            $io->writeln('  <comment>[WARN]</comment> Could not verify tables: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    private function runInit(string $projectDir, SymfonyStyle $io): void
+    {
+        $io->section('Init — creating missing files');
+
+        // synapse.yaml
+        $configPath = $projectDir . '/config/packages/synapse.yaml';
+        if (!$this->filesystem->exists($configPath)) {
+            $this->filesystem->dumpFile($configPath, $this->getDefaultCoreConfig());
+            $io->writeln('  -> Created config/packages/synapse.yaml');
+        }
+
+        // Routes
+        $this->addSynapseRouteEntry($projectDir, $io);
+
+        // Entities — use configured class names if set, otherwise fall back to defaults.
+        // synapse.yaml may have just been created this run (container not reloaded yet),
+        // so the parameter may be null/empty even if has() returns true.
+        $convClass = ($this->parameterBag->has('synapse.persistence.conversation_class')
+            ? $this->parameterBag->get('synapse.persistence.conversation_class')
+            : null) ?: 'App\\Entity\\SynapseConversation';
+        $msgClass = ($this->parameterBag->has('synapse.persistence.message_class')
+            ? $this->parameterBag->get('synapse.persistence.message_class')
+            : null) ?: 'App\\Entity\\SynapseMessage';
+        if ($convClass && !class_exists($convClass) && str_starts_with($convClass, 'App\\')) {
+            $this->createConversationEntity($projectDir, $io);
+        }
+        if ($msgClass && !class_exists($msgClass) && str_starts_with($msgClass, 'App\\')) {
+            $this->createMessageEntity($projectDir, $io);
+        }
+
+        // Security
+        $securityFile = $projectDir . '/config/packages/security.yaml';
+        if (!$this->filesystem->exists($securityFile)) {
+            $this->generateSecurityConfig($projectDir, $io);
+        }
+
+        $io->writeln('');
+        $io->writeln('  <info>Next steps:</info>');
+        $io->writeln('  1. bin/console doctrine:migrations:diff');
+        $io->writeln('  2. bin/console doctrine:migrations:migrate');
+        $io->writeln('  3. Visit /admin to configure your LLM provider');
+    }
+
+    // ── Fixes ─────────────────────────────────────────────────────────────────
+
+    private function addSynapseRouteEntry(string $projectDir, SymfonyStyle $io): void
+    {
+        $routesFile = $projectDir . '/config/routes.yaml';
+        if (!$this->filesystem->exists($routesFile)) {
+            return;
+        }
+
+        $content = file_get_contents($routesFile);
+        if (str_contains($content, 'type: synapse')
+            || str_contains($content, 'SynapseAdminBundle')
+            || str_contains($content, 'SynapseChatBundle')) {
+            return;
+        }
+
+        $entry = "\n# Synapse — loads Admin (/admin) and Chat routes automatically\n"
+            . "_synapse:\n"
+            . "    resource: .\n"
+            . "    type: synapse\n";
+
+        $this->filesystem->dumpFile($routesFile, $content . $entry);
+        $io->writeln('  -> Added Synapse route loader to config/routes.yaml');
+    }
+
+    private function generateSecurityConfig(string $projectDir, SymfonyStyle $io): void
+    {
+        $adminRole = ($this->parameterBag->has('synapse.security.admin_role')
+            ? $this->parameterBag->get('synapse.security.admin_role')
+            : null) ?: 'ROLE_ADMIN';
+        $chatRole = ($this->parameterBag->has('synapse.security.chat_role')
+            ? $this->parameterBag->get('synapse.security.chat_role')
+            : null) ?: 'ROLE_USER';
+
+        $this->filesystem->dumpFile(
+            $projectDir . '/config/packages/security.yaml',
+            <<<YAML
+security:
+    password_hashers:
+        Symfony\\Component\\Security\\Core\\User\\InMemoryUser: 'auto'
+
+    providers:
+        users_in_memory:
+            memory:
+                users:
+                    # Dev credentials: admin / admin — replace for production
+                    admin: { password: '\$2y\$13\$bBql5D2aPJh.ecpkJRCNOejSNtrcOa69XWsUaRE1bE5kDl8kAVfFq', roles: ['ROLE_ADMIN'] }
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        main:
+            lazy: true
+            provider: users_in_memory
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+            logout:
+                path: app_logout
+
+    access_control:
+        - { path: ^/synapse/admin, roles: $adminRole }
+        - { path: ^/synapse, roles: $chatRole }
+YAML
+        );
+
+        $controllerPath = $projectDir . '/src/Controller/SecurityController.php';
+        if (!$this->filesystem->exists($controllerPath)) {
+            $this->filesystem->dumpFile($controllerPath, <<<'PHP'
+<?php
+
+namespace App\Controller;
+
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+
+class SecurityController extends AbstractController
+{
+    #[Route('/login', name: 'app_login')]
+    public function login(AuthenticationUtils $authenticationUtils): Response
+    {
+        return $this->render('@Synapse/security/login.html.twig', [
+            'last_username' => $authenticationUtils->getLastUsername(),
+            'error' => $authenticationUtils->getLastAuthenticationError(),
+        ]);
+    }
+
+    #[Route('/logout', name: 'app_logout')]
+    public function logout(): void {}
+}
+PHP);
+        }
+
+        $io->writeln('  -> Created security.yaml (dev: admin / admin)');
+        $io->writeln('  -> Created src/Controller/SecurityController.php');
     }
 
     private function createConversationEntity(string $projectDir, SymfonyStyle $io): void
     {
         $path = $projectDir . '/src/Entity/SynapseConversation.php';
-        $content = <<<'PHP'
+        if ($this->filesystem->exists($path)) {
+            return;
+        }
+        $this->filesystem->dumpFile($path, <<<'PHP'
 <?php
 
 namespace App\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation as BaseConversation;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: SynapseConversationRepository::class)]
 #[ORM\Table(name: 'synapse_conversation')]
 class SynapseConversation extends BaseConversation
 {
@@ -296,115 +573,81 @@ class SynapseConversation extends BaseConversation
 
     public function getOwner(): ?ConversationOwnerInterface
     {
-        // Optionnel : liez ici à votre entité User
-        return null; 
+        // Optional: link to your User entity here
+        return null;
     }
 
-    public function setOwner(ConversationOwnerInterface $owner): self
+    public function setOwner(ConversationOwnerInterface $owner): static
     {
         return $this;
     }
 }
-PHP;
-        $this->filesystem->dumpFile($path, $content);
-        $io->success('Entité App\Entity\SynapseConversation créée.');
+PHP);
+        $io->writeln('  -> Created src/Entity/SynapseConversation.php');
     }
 
     private function createMessageEntity(string $projectDir, SymfonyStyle $io): void
     {
         $path = $projectDir . '/src/Entity/SynapseMessage.php';
-        $content = <<<'PHP'
+        if ($this->filesystem->exists($path)) {
+            return;
+        }
+        $this->filesystem->dumpFile($path, <<<'PHP'
 <?php
 
 namespace App\Entity;
 
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation as BaseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage as BaseMessage;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation as BaseBaseConversation;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: SynapseMessageRepository::class)]
 #[ORM\Table(name: 'synapse_message')]
 class SynapseMessage extends BaseMessage
 {
     #[ORM\ManyToOne(targetEntity: SynapseConversation::class, inversedBy: 'messages')]
     #[ORM\JoinColumn(name: 'conversation_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
-    private SynapseConversation $conversation;
+    protected SynapseConversation $conversation;
 
-    public function getConversation(): BaseBaseConversation
+    public function getConversation(): BaseConversation
     {
         return $this->conversation;
     }
 
-    public function setConversation(BaseBaseConversation $conversation): self
+    public function setConversation(BaseConversation $conversation): static
     {
         if (!$conversation instanceof SynapseConversation) {
-            throw new \InvalidArgumentException('Must be instance of App\Entity\SynapseConversation');
+            throw new \InvalidArgumentException('conversation must be App\Entity\SynapseConversation');
         }
         $this->conversation = $conversation;
         return $this;
     }
 }
-PHP;
-        $this->filesystem->dumpFile($path, $content);
-        $io->success('Entité App\Entity\SynapseMessage créée.');
+PHP);
+        $io->writeln('  -> Created src/Entity/SynapseMessage.php');
     }
 
-    private function checkEnvironment(SymfonyStyle $io): bool
+    // ── Summary ───────────────────────────────────────────────────────────────
+
+    private function printSummary(array $checks, SymfonyStyle $io): void
     {
-        $isValid = true;
+        $io->section('Summary');
+        $io->writeln(sprintf(
+            'Bundles: Core [OK]%s%s',
+            $this->hasAdmin ? ' · Admin [OK]' : '',
+            $this->hasChat ? ' · Chat [OK]' : ''
+        ));
+        $io->writeln('');
 
-        // PHP Version
-        if (version_compare(PHP_VERSION, '8.2.0', '<')) {
-            $io->error(sprintf('Version PHP insuffisante : %s. PHP 8.2+ est requis.', PHP_VERSION));
-            $isValid = false;
-        } else {
-            $io->writeln(sprintf('✅ PHP : version %s détectée.', PHP_VERSION));
+        foreach ($checks as $label => $status) {
+            $tag = $status ? '<info>[OK]</info> ' : '<error>[FAIL]</error>';
+            $io->writeln(sprintf('  %s %s', $tag, $label));
         }
-
-        // Sodium extension
-        if (!extension_loaded('sodium')) {
-            $io->warning('Extension "sodium" non détectée. Le chiffrement AES-256 ne sera pas disponible.');
-        } else {
-            $io->writeln('✅ Environnement : Extension sodium détectée.');
-        }
-
-        return $isValid;
     }
 
-    private function checkSecurity(SymfonyStyle $io): bool
+    private function getDefaultCoreConfig(): string
     {
-        $isValid = true;
-
-        // Permission Checker
-        $checkerClass = get_class($this->permissionChecker);
-        if (str_contains($checkerClass, 'DefaultPermissionChecker')) {
-            $io->note('Sécurité : PermissionChecker par défaut utilisé.');
-
-            // Check if Symfony Security is active
-            if (!$this->parameterBag->has('security.token_storage')) {
-                $io->warning('Sécurité : Symfony Security n\'est pas configuré. L\'accès admin est BLOQUÉ par défaut (Secure by Default).');
-            }
-        } else {
-            $io->writeln(sprintf('✅ Sécurité : PermissionChecker personnalisé détecté (%s).', $checkerClass));
-        }
-
-        // CSRF
-        if ($this->csrfTokenManager === null) {
-            $io->warning('Sécurité : Protection CSRF non disponible (composant security-csrf manquant).');
-        } else {
-            $io->writeln('✅ Sécurité : Protection CSRF active.');
-        }
-
-        // Encryption Key
-        $encryptionEnabled = $this->parameterBag->get('synapse.encryption.enabled') ?? false;
-        if ($encryptionEnabled) {
-            $key = $this->parameterBag->get('synapse.encryption.key');
-            if (empty($key) || $key === 'CHANGE_ME' || $key === '%env(SYNAPSE_ENCRYPTION_KEY)%') {
-                $io->error('Sécurité : Le chiffrement est activé mais la clé semble non configurée.');
-                $isValid = false;
-            }
-        }
-
-        return $isValid;
+        return file_get_contents(__DIR__ . '/../Resources/skeleton/synapse.yaml');
     }
 }

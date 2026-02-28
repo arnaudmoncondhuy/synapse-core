@@ -59,10 +59,16 @@ class SynapseModel
     private ?float $pricingInput = null;
 
     /**
-     * Coût de sortie en $/1M tokens (null = non renseigné).
+     * Coût de sortie en /1M tokens (null = non renseigné). Unité : voir currency.
      */
     #[ORM\Column(type: Types::FLOAT, nullable: true)]
     private ?float $pricingOutput = null;
+
+    /**
+     * Devise des tarifs (ex. USD, EUR). Par défaut USD pour rétrocompatibilité.
+     */
+    #[ORM\Column(type: Types::STRING, length: 3, options: ['default' => 'USD'])]
+    private string $currency = 'USD';
 
     /**
      * Ordre d'affichage dans l'admin (plus petit = en premier).
@@ -140,6 +146,17 @@ class SynapseModel
     public function setPricingOutput(?float $pricingOutput): self
     {
         $this->pricingOutput = $pricingOutput;
+        return $this;
+    }
+
+    public function getCurrency(): string
+    {
+        return $this->currency;
+    }
+
+    public function setCurrency(string $currency): self
+    {
+        $this->currency = $currency;
         return $this;
     }
 

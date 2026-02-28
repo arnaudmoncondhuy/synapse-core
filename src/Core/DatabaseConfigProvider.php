@@ -37,6 +37,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private SynapsePresetRepository $presetRepo,
         private SynapseConfigRepository $globalConfigRepo,
         private SynapseProviderRepository $providerRepo,
+        private PresetValidator $presetValidator,
         private ?CacheInterface $cache = null,
         private ?EncryptionServiceInterface $encryptionService = null,
     ) {
@@ -85,6 +86,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     public function getConfigForPreset(SynapsePreset $preset): array
     {
         $config = $preset->toArray();
+        $config['preset_id'] = $preset->getId();
 
         // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
@@ -141,7 +143,18 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     {
         // Load active preset (LLM configuration)
         $preset = $this->presetRepo->findActive();
+
+        // 🛡️ DÉFENSE CRITIQUE : Vérifier l'intégrité du preset actif
+        // Si le preset actif est devenu invalide (provider désactivé, etc.),
+        // le désactiver automatiquement et chercher un autre
+        try {
+            $this->presetValidator->ensureActivePresetIsValid($preset);
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Pas de preset valide disponible : ' . $e->getMessage());
+        }
+
         $config = $preset->toArray();
+        $config['preset_id'] = $preset->getId();
 
         // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();

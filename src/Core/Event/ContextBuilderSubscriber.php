@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry;
+use ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -25,6 +26,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private PromptBuilder $promptBuilder,
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
+        private MissionRegistry $missionRegistry,
     ) {}
 
     /**
@@ -55,8 +57,24 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         if (isset($options['system_prompt']) && is_string($options['system_prompt'])) {
             $systemMessage = ['role' => 'system', 'content' => $options['system_prompt']];
         } else {
-            $personaKey = $options['persona'] ?? null;
-            $systemMessage = $this->promptBuilder->buildSystemMessage($personaKey);
+            $toneKey = $options['tone'] ?? null;
+            $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
+        }
+
+        // Support mission override (combine mission prompt + optional tone)
+        if (isset($options['mission']) && is_string($options['mission'])) {
+            $mission = $this->missionRegistry->get($options['mission']);
+            if ($mission !== null && $mission->isActive()) {
+                $systemContent = $mission->getSystemPrompt();
+                // Fusionner le tone de la mission si défini
+                if ($mission->getTone() !== null && $mission->getTone()->isActive()) {
+                    $tonePrompt = $mission->getTone()->getSystemPrompt();
+                    if (!empty($tonePrompt)) {
+                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n" . $tonePrompt;
+                    }
+                }
+                $systemMessage = ['role' => 'system', 'content' => $systemContent];
+            }
         }
 
         // ── Load history ──
@@ -84,9 +102,25 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // Get config
         $config = $this->configProvider->getConfig();
 
-        // Support preset override (for testing or AgentBuilder)
+        // Support preset override via mission (if mission has a preset)
+        if (isset($options['mission']) && is_string($options['mission'])) {
+            $mission = $this->missionRegistry->get($options['mission']);
+            if ($mission !== null && $mission->getPreset() !== null) {
+                $config = $this->configProvider->getConfigForPreset($mission->getPreset());
+            }
+        }
+
+        // Support preset override (for testing or AgentBuilder) - takes precedence over mission preset
         if (isset($options['preset'])) {
             $config = $this->configProvider->getConfigForPreset($options['preset']);
+        }
+
+        // Expose mission_id in config for spending limits and token accounting
+        if (isset($options['mission']) && is_string($options['mission'])) {
+            $mission = $this->missionRegistry->get($options['mission']);
+            if ($mission !== null) {
+                $config['mission_id'] = $mission->getId();
+            }
         }
 
         // ── Build complete prompt (system message + history) ──

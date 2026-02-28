@@ -330,15 +330,15 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $finishReason = $choice['finish_reason'] ?? null;
 
         // Text content
-        if (isset($delta['content']) && $delta['content'] !== null && $delta['content'] !== '') {
+        if (isset($delta['content']) && $delta['content'] !== '') {
             $normalized['text'] = $delta['content'];
         }
 
         // Reasoning/Thinking content (OpenAI compatible format)
         // OVH may return reasoning in 'reasoning' or 'reasoning_content' fields
-        if (isset($delta['reasoning']) && $delta['reasoning'] !== null && $delta['reasoning'] !== '') {
+        if (isset($delta['reasoning']) && $delta['reasoning'] !== '') {
             $normalized['thinking'] = $delta['reasoning'];
-        } elseif (isset($delta['reasoning_content']) && $delta['reasoning_content'] !== null && $delta['reasoning_content'] !== '') {
+        } elseif (isset($delta['reasoning_content']) && $delta['reasoning_content'] !== '') {
             $normalized['thinking'] = $delta['reasoning_content'];
         }
 

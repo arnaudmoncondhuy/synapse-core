@@ -59,7 +59,6 @@ class TestPresetMessageHandler
                         1 => 33,
                         2 => 66,
                         3 => 100,
-                        default => 0
                     },
                     'report' => $report,
                 ];
@@ -73,14 +72,5 @@ class TestPresetMessageHandler
                 $this->cache->delete($lockKey);
             }
         }
-    }
-
-    private function saveProgress(string $cacheKey, int $progress): void
-    {
-        $this->cache->delete($cacheKey);
-        $this->cache->get($cacheKey, function (ItemInterface $item) use ($progress) {
-            $item->expiresAfter(7200);
-            return ['status' => 'processing', 'progress' => $progress, 'report' => null];
-        });
     }
 }

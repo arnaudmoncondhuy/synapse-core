@@ -114,8 +114,7 @@ class DoctrineVectorStore implements VectorStoreInterface
                 ORDER BY embedding <=> :vector 
                 LIMIT :limit";
 
-        $stmt = $this->em->getConnection()->prepare($sql);
-        $result = $stmt->executeQuery($params)->fetchAllAssociative();
+        $result = $this->em->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
 
         return array_map(fn($row) => [
             'payload' => json_decode($row['payload'], true),

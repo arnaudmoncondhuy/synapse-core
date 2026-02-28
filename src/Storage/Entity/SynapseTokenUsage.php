@@ -22,6 +22,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'synapse_token_usage')]
 #[ORM\Index(name: 'idx_created_at', columns: ['created_at'])]
 #[ORM\Index(name: 'idx_module_model', columns: ['module', 'model'])]
+#[ORM\Index(name: 'idx_preset_created', columns: ['preset_id', 'created_at'])]
+#[ORM\Index(name: 'idx_user_created', columns: ['user_id', 'created_at'])]
+#[ORM\Index(name: 'idx_mission_created', columns: ['mission_id', 'created_at'])]
 #[ORM\HasLifecycleCallbacks]
 class SynapseTokenUsage
 {
@@ -91,6 +94,18 @@ class SynapseTokenUsage
      */
     #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
     private ?string $conversationId = null;
+
+    /**
+     * ID du preset LLM utilisé (si applicable, pour plafonds par preset)
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $presetId = null;
+
+    /**
+     * ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission)
+     */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $missionId = null;
 
     /**
      * Date de création
@@ -224,6 +239,28 @@ class SynapseTokenUsage
     public function setConversationId(?string $conversationId): self
     {
         $this->conversationId = $conversationId;
+        return $this;
+    }
+
+    public function getPresetId(): ?int
+    {
+        return $this->presetId;
+    }
+
+    public function setPresetId(?int $presetId): self
+    {
+        $this->presetId = $presetId;
+        return $this;
+    }
+
+    public function getMissionId(): ?int
+    {
+        return $this->missionId;
+    }
+
+    public function setMissionId(?int $missionId): self
+    {
+        $this->missionId = $missionId;
         return $this;
     }
 

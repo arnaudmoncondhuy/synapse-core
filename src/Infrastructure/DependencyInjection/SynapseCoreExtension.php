@@ -9,6 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConversationRepositor
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository;
 use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
 use ArnaudMoncondhuy\SynapseCore\Security\LibsodiumEncryptionService;
+use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Config\FileLocator;
@@ -100,14 +101,6 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        // ── Personas ──────────────────────────────────────────────────────────
-        $personasPath = $config['personas_path'] ?? (dirname(__DIR__) . '/Infrastructure/Resources/config/personas.json');
-        // Fallback for vendor install
-        if (!is_file($personasPath)) {
-            $personasPath = dirname(__DIR__) . '/Resources/config/personas.json';
-        }
-        $container->setParameter('synapse.personas_path', $personasPath);
-
         // ── Persistence ───────────────────────────────────────────────────────
         $container->setParameter('synapse.persistence.enabled', $config['persistence']['enabled'] ?? false);
         $container->setParameter('synapse.persistence.conversation_class', $config['persistence']['conversation_class'] ?? null);
@@ -117,38 +110,23 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.encryption.enabled', $config['encryption']['enabled'] ?? false);
         $container->setParameter('synapse.encryption.key', $config['encryption']['key'] ?? null);
 
-        // ── Token Tracking ────────────────────────────────────────────────────
-        $container->setParameter('synapse.token_tracking.enabled', $config['token_tracking']['enabled'] ?? false);
-        $container->setParameter('synapse.token_tracking.pricing', $config['token_tracking']['pricing'] ?? []);
-
-
-        // ── Retention ─────────────────────────────────────────────────────────
-        $container->setParameter('synapse.retention.days', $config['retention']['days'] ?? 30);
-
         // ── Security ──────────────────────────────────────────────────────────
-        $container->setParameter('synapse.security.permission_checker', $config['security']['permission_checker'] ?? 'default');
         $container->setParameter('synapse.security.admin_role', $config['security']['admin_role'] ?? 'ROLE_ADMIN');
+        $container->setParameter('synapse.security.chat_role', $config['security']['chat_role'] ?? 'ROLE_USER');
         $container->setParameter('synapse.security.api_csrf_enabled', $config['security']['api_csrf_enabled'] ?? true);
 
         // ── Context ───────────────────────────────────────────────────────────
-        $container->setParameter('synapse.context.provider', $config['context']['provider'] ?? 'default');
         $container->setParameter('synapse.context.language', $config['context']['language'] ?? 'fr');
-        $container->setParameter('synapse.context.base_identity', $config['context']['base_identity'] ?? null);
 
-        // ── Admin ─────────────────────────────────────────────────────────────
-        $container->setParameter('synapse.admin.enabled', $config['admin']['enabled'] ?? false);
-        $container->setParameter('synapse.admin.route_prefix', $config['admin']['route_prefix'] ?? '/synapse/admin');
-        $container->setParameter('synapse.admin.default_color', $config['admin']['default_color'] ?? '#8b5cf6');
-        $container->setParameter('synapse.admin.default_icon', $config['admin']['default_icon'] ?? 'robot');
+        // ── Token tracking ────────────────────────────────────────────────────
+        $container->setParameter('synapse.token_tracking.enabled', $config['token_tracking']['enabled'] ?? false);
+        $container->setParameter('synapse.token_tracking.reference_currency', $config['token_tracking']['reference_currency'] ?? 'EUR');
+        $container->setParameter('synapse.token_tracking.currency_rates', $config['token_tracking']['currency_rates'] ?? []);
 
         // ── Version ──────────────────────────────────────────────────────────
         $versionFile = __DIR__ . '/../../../VERSION';
         $version = is_file($versionFile) ? trim(file_get_contents($versionFile)) : 'dev';
         $container->setParameter('synapse.version', $version);
-
-        // ── UI ────────────────────────────────────────────────────────────────
-        $container->setParameter('synapse.ui.sidebar_enabled', $config['ui']['sidebar_enabled'] ?? true);
-        $container->setParameter('synapse.ui.layout_mode', $config['ui']['layout_mode'] ?? 'standalone');
 
         // ── Encryption Service ────────────────────────────────────────────────
         if ($config['encryption']['enabled']) {

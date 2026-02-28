@@ -102,12 +102,22 @@ class MessageFormatter implements MessageFormatterInterface
             }
 
             // Déterminer la classe SynapseMessage concrète depuis la conversation
-            $messageClass = get_class($conversation->getMessages()->first() ?: new SynapseMessage());
+            $messageClass = null;
+            $firstMessage = $conversation->getMessages()->first();
+            if ($firstMessage) {
+                $messageClass = get_class($firstMessage);
+            }
+
+            if (!$messageClass) {
+                // Si aucune classe n'est trouvée, on ne peut pas créer d'entité générique
+                // PHPStan signale que SynapseMessage est abstrait.
+                continue;
+            }
 
             $entity = new $messageClass();
             $entity->setConversation($conversation);
             $entity->setRole($this->mapRoleFromOpenAi($msg['role']));
-            $entity->setContent($msg['content'] ?? '');
+            $entity->setContent($msg['content']);
 
             $entities[] = $entity;
         }

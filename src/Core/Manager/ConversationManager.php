@@ -52,7 +52,9 @@ class ConversationManager
         }
 
         if ($this->resolvedConversationRepo === null) {
-            $this->resolvedConversationRepo = $this->em->getRepository($this->getConversationClass());
+            /** @var SynapseConversationRepository $repo */
+            $repo = $this->em->getRepository($this->getConversationClass());
+            $this->resolvedConversationRepo = $repo;
         }
 
         return $this->resolvedConversationRepo;
@@ -111,6 +113,7 @@ class ConversationManager
      *     safety_ratings?: array,
      *     blocked?: bool,
      *     model?: string,
+     *     preset_id?: int|null,
      *     metadata?: array
      * } $metadata Données techniques de l'échange.
      *
@@ -154,23 +157,31 @@ class ConversationManager
             }
         }
 
+        // Preset utilisé (pour plafonds et analytics)
+        if (array_key_exists('preset_id', $metadata)) {
+            $message->setMetadataValue('preset_id', $metadata['preset_id']);
+        }
+
         // Enregistrer le modèle et calculer le coût
         $model = $metadata['model'] ?? null;
         if ($model) {
             $message->setMetadataValue('model', $model);
 
-            // Calculer le coût si le service est disponible
+            // Calculer le coût et la devise si le service est disponible
             if ($this->accountingService && $this->modelRepo) {
                 $pricingMap = $this->modelRepo->findAllPricingMap();
-                $modelPricing = $pricingMap[$model] ?? ['input' => 0.0, 'output' => 0.0];
+                $modelPricing = $pricingMap[$model] ?? ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
                 $usage = [
                     'prompt_tokens'     => $message->getPromptTokens() ?? 0,
                     'completion_tokens' => $message->getCompletionTokens() ?? 0,
                     'thinking_tokens'   => $message->getThinkingTokens() ?? 0,
                 ];
                 $cost = $this->accountingService->calculateCost($usage, $modelPricing);
+                $currency = $modelPricing['currency'] ?? 'USD';
                 $message->setMetadataValue('cost', $cost);
+                $message->setMetadataValue('currency', $currency);
                 $message->setMetadataValue('pricing', $modelPricing);
+                $message->setMetadataValue('cost_reference', $this->accountingService->convertToReferenceCurrency($cost, $currency));
             }
         }
 
@@ -291,11 +302,12 @@ class ConversationManager
         $this->checkPermission($conversation, 'view');
 
         $messageClass = $this->getMessageClass();
+        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository $messageRepo */
         $messageRepo = $this->em->getRepository($messageClass);
         $messages = $messageRepo->findByConversation($conversation, $limit);
 
-        // FIX: Convert Doctrine Collection to plain array to avoid serialization issues with reset()
-        if (is_object($messages)) {
+        // FIX: Convert potential Doctrine Collection or iterable to plain array
+        if (!is_array($messages)) {
             $messages = array_values($messages instanceof \Traversable ? iterator_to_array($messages) : (array)$messages);
         }
 
@@ -359,23 +371,13 @@ class ConversationManager
         $messages = $this->getMessages($conversation);
 
         foreach ($messages as $msg) {
-            if (is_array($msg)) {
-                $role = strtolower($msg['role'] ?? 'model');
-                if (!in_array($role, ['user', 'model', 'assistant'], true)) {
-                    continue;
-                }
-                $content  = $msg['content'] ?? ($msg['parts'][0]['text'] ?? '');
-                $parts    = $msg['parts'] ?? [['text' => $content]];
-                $metadata = $msg['metadata'] ?? [];
-            } else {
-                if (!$msg->isDisplayable()) {
-                    continue;
-                }
-                $role     = $msg->getRole()->value;
-                $content  = $msg->getDecryptedContent() ?? $msg->getContent();
-                $metadata = $msg->getMetadata() ?? [];
-                $parts    = [['text' => $content]];
+            if (!$msg->isDisplayable()) {
+                continue;
             }
+            $role     = $msg->getRole()->value;
+            $content  = $msg->getDecryptedContent() ?? $msg->getContent();
+            $metadata = $msg->getMetadata() ?? [];
+            $parts    = [['text' => $content]];
 
             $history[] = [
                 'role'     => $role,

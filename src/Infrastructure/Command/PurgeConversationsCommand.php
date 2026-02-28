@@ -129,6 +129,7 @@ class PurgeConversationsCommand extends Command
         if (!$dryRun) {
             $io->section('🗑️  Suppression en cours...');
             $io->progressStart($count);
+            $deleted = 0;
 
             foreach ($conversations as $conversation) {
                 try {

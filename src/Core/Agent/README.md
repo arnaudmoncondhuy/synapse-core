@@ -46,7 +46,7 @@ Dans `config/services.yaml` :
 
 ```yaml
 # ── Agents ────────────────────────────────────────────────────────────────
-ArnaudMoncondhuy\SynapseBundle\Agent\PresetValidator\PresetValidatorAgent:
+ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent:
     autowire: true
     autoconfigure: true
 ```
@@ -61,10 +61,10 @@ ArnaudMoncondhuy\SynapseBundle\Agent\PresetValidator\PresetValidatorAgent:
 
 ```php
 // src/Agent/MyFeature/MyFeatureAgent.php
-namespace ArnaudMoncondhuy\SynapseBundle\Agent\MyFeature;
+namespace ArnaudMoncondhuy\SynapseCore\Agent\MyFeature;
 
-use ArnaudMoncondhuy\SynapseBundle\Contract\AgentInterface;
-use ArnaudMoncondhuy\SynapseBundle\Service\ChatService;
+use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
+use ArnaudMoncondhuy\SynapseCore\Service\ChatService;
 
 class MyFeatureAgent implements AgentInterface
 {
@@ -100,7 +100,7 @@ class MyFeatureAgent implements AgentInterface
 ### Étape 2 : Enregistrer dans services.yaml
 
 ```yaml
-ArnaudMoncondhuy\SynapseBundle\Agent\MyFeature\MyFeatureAgent:
+ArnaudMoncondhuy\SynapseCore\Agent\MyFeature\MyFeatureAgent:
     autowire: true
     autoconfigure: true
 ```

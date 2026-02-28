@@ -95,6 +95,13 @@ class SynapseConfig
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 200])]
     private int $chunkOverlap = 200;
 
+    /**
+     * Activer l'application des plafonds de dépense (coûts LLM).
+     * Si désactivé, les limites ne bloquent plus les requêtes mais le comptage des tokens reste actif pour les stats.
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $spendingLimitsEnabled = true;
+
     // Getters et Setters
 
     public function getId(): ?int
@@ -223,6 +230,17 @@ class SynapseConfig
         return $this;
     }
 
+    public function isSpendingLimitsEnabled(): bool
+    {
+        return $this->spendingLimitsEnabled;
+    }
+
+    public function setSpendingLimitsEnabled(bool $spendingLimitsEnabled): self
+    {
+        $this->spendingLimitsEnabled = $spendingLimitsEnabled;
+        return $this;
+    }
+
     /**
      * Convertit la config globale en tableau
      *
@@ -239,6 +257,7 @@ class SynapseConfig
             ],
             'system_prompt' => $this->systemPrompt,
             'debug_mode' => $this->debugMode,
+            'spending_limits_enabled' => $this->spendingLimitsEnabled,
         ];
     }
 }

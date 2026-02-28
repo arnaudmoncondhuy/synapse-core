@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Chat;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
-use ArnaudMoncondhuy\SynapseCore\Core\PersonaRegistry;
+use ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry;
 
 /**
  * Constructeur de Prompts Systèmes.
  *
  * Ce service assemble les différentes couches d'instructions pour former le
- * "System Instruction" final envoyé à Gemini.
+ * "System Instruction" final envoyé au LLM.
  * Il combine :
- * 1. Le Prompt Technique (interne, thinking natif).
+ * 1. Le Prompt Technique (interne).
  * 2. Le Prompt Système de l'application (via ContextProvider).
- * 3. Le Prompt de la Personnalité sélectionnée (optionnel).
+ * 3. Les instructions de ton sélectionnées (optionnel).
  */
 class PromptBuilder
 {
@@ -41,7 +41,7 @@ PROMPT;
 
     public function __construct(
         private ContextProviderInterface $contextProvider,
-        private PersonaRegistry $personaRegistry,
+        private ToneRegistry $toneRegistry,
         private \ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface $configProvider,
     ) {
     }
@@ -51,12 +51,12 @@ PROMPT;
      *
      * Retourne un tableau avec role et content, prêt à être utilisé dans le tableau contents.
      *
-     * @param string|null $personaKey Clé optionnelle de la personnalité
-     * @return array{role: 'system', content: string} SynapseMessage système au format OpenAI
+     * @param string|null $toneKey Clé optionnelle du ton de réponse
+     * @return array{role: 'system', content: string} Message système au format OpenAI
      */
-    public function buildSystemMessage(?string $personaKey = null): array
+    public function buildSystemMessage(?string $toneKey = null): array
     {
-        $systemContent = $this->buildSystemInstruction($personaKey);
+        $systemContent = $this->buildSystemInstruction($toneKey);
 
         return [
             'role'    => 'system',
@@ -67,10 +67,10 @@ PROMPT;
     /**
      * Construit l'instruction système brute (texte pur).
      *
-     * @param string|null $personaKey Clé optionnelle de la personnalité
-     * @return string Le texte complet du système (techniques + contexte + persona)
+     * @param string|null $toneKey Clé optionnelle du ton de réponse
+     * @return string Le texte complet du système (technique + contexte + ton)
      */
-    public function buildSystemInstruction(?string $personaKey = null): string
+    public function buildSystemInstruction(?string $toneKey = null): string
     {
         $config = $this->configProvider->getConfig();
         $systemPrompt = $config['system_prompt'] ?? null;
@@ -86,14 +86,13 @@ PROMPT;
         // Ajout d'un séparateur horizontal pour couper la hiérarchie Markdown
         $finalPrompt = self::TECHNICAL_PROMPT."\n\n---\n\n".$basePrompt;
 
-        if ($personaKey) {
-            $personaPrompt = $this->personaRegistry->getSystemPrompt($personaKey);
-            if ($personaPrompt) {
-                // On ajoute une section claire pour la personnalité pour éviter les conflits de ROLE
-                $finalPrompt .= "\n\n---\n\n### 🎭 PERSONALITY INSTRUCTIONS\n";
-                $finalPrompt .= "IMPORTANT : La personnalité suivante s'applique UNIQUEMENT à ton TON et ton STYLE d'expression.\n";
-                $finalPrompt .= "Elle n'affecte PAS tes capacités de raisonnement, ta logique ou le respect strict des contraintes techniques.\n\n";
-                $finalPrompt .= $personaPrompt;
+        if ($toneKey) {
+            $tonePrompt = $this->toneRegistry->getSystemPrompt($toneKey);
+            if ($tonePrompt) {
+                $finalPrompt .= "\n\n---\n\n### 🎭 TONE INSTRUCTIONS\n";
+                $finalPrompt .= "IMPORTANT : Les instructions suivantes s'appliquent UNIQUEMENT à ton TON et ton STYLE d'expression.\n";
+                $finalPrompt .= "Elles n'affectent PAS tes capacités de raisonnement, ta logique ou le respect strict des contraintes techniques.\n\n";
+                $finalPrompt .= $tonePrompt;
             }
         }
 

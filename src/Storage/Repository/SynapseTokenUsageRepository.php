@@ -109,7 +109,10 @@ class SynapseTokenUsageRepository extends ServiceEntityRepository
             $stats['total_tokens'] += (int) $row['total_tokens'];
 
             $metadata = json_decode($row['metadata'] ?? '{}', true);
-            if (isset($metadata['cost'])) {
+            // Préférer cost_reference (devise de référence) pour les agrégats / plafonds
+            if (isset($metadata['cost_reference'])) {
+                $stats['cost'] += (float) $metadata['cost_reference'];
+            } elseif (isset($metadata['cost'])) {
                 $stats['cost'] += (float) $metadata['cost'];
             } else {
                 // Fallback: calcul basé sur pricing fourni ou défaut
@@ -357,6 +360,153 @@ class SynapseTokenUsageRepository extends ServiceEntityRepository
         }
 
         return $usage;
+    }
+
+    /**
+     * Usage agrégé par utilisateur (tokens + coût) sur une période.
+     * Source : synapse_token_usage uniquement (user_id renseigné).
+     *
+     * @return list<array{user_id: string, count: int, total_tokens: int, cost: float}>
+     */
+    public function getUsageByUser(\DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $isPg = str_contains($conn->getDatabasePlatform()::class, 'PostgreSQL');
+        $costRefExpr = $isPg
+            ? "COALESCE((metadata->>'cost_reference')::numeric, (metadata->>'cost')::numeric, 0)"
+            : "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost_reference')) AS DECIMAL(12,6)), CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost')) AS DECIMAL(12,6)), 0)";
+
+        $sql = "SELECT user_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM($costRefExpr), 0) AS cost
+                FROM synapse_token_usage
+                WHERE user_id IS NOT NULL AND created_at >= :start AND created_at <= :end
+                GROUP BY user_id
+                ORDER BY cost DESC, total_tokens DESC";
+
+        $results = $conn->executeQuery($sql, [
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ])->fetchAllAssociative();
+
+        $list = [];
+        foreach ($results as $row) {
+            $list[] = [
+                'user_id' => (string) $row['user_id'],
+                'count' => (int) $row['cnt'],
+                'total_tokens' => (int) $row['total_tokens'],
+                'cost' => (float) $row['cost'],
+            ];
+        }
+        return $list;
+    }
+
+    /**
+     * Usage agrégé par preset (tokens + coût) sur une période.
+     * Source : synapse_token_usage uniquement (preset_id renseigné).
+     *
+     * @return list<array{preset_id: int, count: int, total_tokens: int, cost: float}>
+     */
+    public function getUsageByPreset(\DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $isPg = str_contains($conn->getDatabasePlatform()::class, 'PostgreSQL');
+        $costRefExpr = $isPg
+            ? "COALESCE((metadata->>'cost_reference')::numeric, (metadata->>'cost')::numeric, 0)"
+            : "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost_reference')) AS DECIMAL(12,6)), CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost')) AS DECIMAL(12,6)), 0)";
+
+        $sql = "SELECT preset_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM($costRefExpr), 0) AS cost
+                FROM synapse_token_usage
+                WHERE preset_id IS NOT NULL AND created_at >= :start AND created_at <= :end
+                GROUP BY preset_id
+                ORDER BY cost DESC, total_tokens DESC";
+
+        $results = $conn->executeQuery($sql, [
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ])->fetchAllAssociative();
+
+        $list = [];
+        foreach ($results as $row) {
+            $list[] = [
+                'preset_id' => (int) $row['preset_id'],
+                'count' => (int) $row['cnt'],
+                'total_tokens' => (int) $row['total_tokens'],
+                'cost' => (float) $row['cost'],
+            ];
+        }
+        return $list;
+    }
+
+    /**
+     * Usage agrégé par mission (tokens + coût) sur une période.
+     * Source : synapse_token_usage uniquement (mission_id renseigné).
+     *
+     * @return list<array{mission_id: int, count: int, total_tokens: int, cost: float}>
+     */
+    public function getUsageByMission(\DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $isPg = str_contains($conn->getDatabasePlatform()::class, 'PostgreSQL');
+        $costRefExpr = $isPg
+            ? "COALESCE((metadata->>'cost_reference')::numeric, (metadata->>'cost')::numeric, 0)"
+            : "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost_reference')) AS DECIMAL(12,6)), CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost')) AS DECIMAL(12,6)), 0)";
+
+        $sql = "SELECT mission_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM($costRefExpr), 0) AS cost
+                FROM synapse_token_usage
+                WHERE mission_id IS NOT NULL AND created_at >= :start AND created_at <= :end
+                GROUP BY mission_id
+                ORDER BY cost DESC, total_tokens DESC";
+
+        $results = $conn->executeQuery($sql, [
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ])->fetchAllAssociative();
+
+        $list = [];
+        foreach ($results as $row) {
+            $list[] = [
+                'mission_id' => (int) $row['mission_id'],
+                'count' => (int) $row['cnt'],
+                'total_tokens' => (int) $row['total_tokens'],
+                'cost' => (float) $row['cost'],
+            ];
+        }
+        return $list;
+    }
+
+    /**
+     * Consommation (coût en devise de référence) sur une fenêtre pour un scope user ou preset.
+     *
+     * Utilisé par SpendingLimitChecker. Ne prend en compte que synapse_token_usage
+     * (les conversations doivent être loguées via TokenAccountingService::logUsage pour le module chat).
+     *
+     * @param 'user'|'preset' $scope   Type de plafond
+     * @param string          $scopeId user_id (string) ou preset_id (string)
+     */
+    public function getConsumptionForWindow(string $scope, string $scopeId, \DateTimeInterface $start, \DateTimeInterface $end): float
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $isPg = str_contains($conn->getDatabasePlatform()::class, 'PostgreSQL');
+        if ($isPg) {
+            $costRefExpr = "COALESCE((metadata->>'cost_reference')::numeric, (metadata->>'cost')::numeric, 0)";
+        } else {
+            $costRefExpr = "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost_reference')) AS DECIMAL(12,6)), CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost')) AS DECIMAL(12,6)), 0)";
+        }
+
+        if ($scope === 'user') {
+            $sql = "SELECT COALESCE(SUM($costRefExpr), 0) AS total FROM synapse_token_usage WHERE user_id = :scopeId AND created_at >= :start AND created_at <= :end";
+        } elseif ($scope === 'mission') {
+            $sql = "SELECT COALESCE(SUM($costRefExpr), 0) AS total FROM synapse_token_usage WHERE mission_id = :scopeId AND created_at >= :start AND created_at <= :end";
+        } else {
+            $sql = "SELECT COALESCE(SUM($costRefExpr), 0) AS total FROM synapse_token_usage WHERE preset_id = :scopeId AND created_at >= :start AND created_at <= :end";
+        }
+
+        $result = $conn->executeQuery($sql, [
+            'scopeId' => $scopeId,
+            'start' => $start->format('Y-m-d H:i:s'),
+            'end' => $end->format('Y-m-d H:i:s'),
+        ])->fetchAssociative();
+
+        return (float) ($result['total'] ?? 0);
     }
 
     /**

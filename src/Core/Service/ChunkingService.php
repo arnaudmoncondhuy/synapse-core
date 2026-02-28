@@ -30,11 +30,11 @@ class ChunkingService
     {
         $config = $this->configRepository->getGlobalConfig();
 
-        $resolvedStrategy = $strategy ?? $config->getChunkingStrategy() ?? 'recursive';
+        $resolvedStrategy = $strategy ?? $config->getChunkingStrategy();
         $splitter = $this->splitterRegistry->getSplitter($resolvedStrategy);
 
-        $resolvedSize = $size ?? $config->getChunkSize() ?? 1000;
-        $resolvedOverlap = $overlap ?? $config->getChunkOverlap() ?? 200;
+        $resolvedSize = $size ?? $config->getChunkSize();
+        $resolvedOverlap = $overlap ?? $config->getChunkOverlap();
 
         return $splitter->splitText($text, $resolvedSize, $resolvedOverlap);
     }

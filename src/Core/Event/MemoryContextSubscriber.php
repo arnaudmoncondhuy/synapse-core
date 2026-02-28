@@ -75,8 +75,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         ];
 
         // Injecter après le system prompt de base et avant le premier message utilisateur
-        $prompt = $event->getPrompt();
-        $contents = $prompt['contents'] ?? [];
+        $contents = $event->getPrompt();
 
         // Trouver la position après le(s) message(s) system
         $insertAt = 0;
@@ -89,8 +88,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         }
 
         array_splice($contents, $insertAt, 0, [$systemMemoryMessage]);
-        $prompt['contents'] = $contents;
-        $event->setPrompt($prompt);
+        $event->setPrompt($contents);
     }
 
     private function getCurrentUserId(): ?string

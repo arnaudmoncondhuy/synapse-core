@@ -9,7 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Event\SynapseEmbeddingCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
-use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -22,7 +22,7 @@ class EmbeddingService
     private array $clients = [];
 
     public function __construct(
-        #[TaggedIterator('synapse.llm_client')] iterable $clients,
+        #[AutowireIterator('synapse.llm_client')] iterable $clients,
         private SynapseProviderRepository $providerRepository,
         private ModelCapabilityRegistry $capabilityRegistry,
         private EventDispatcherInterface $eventDispatcher,
@@ -76,15 +76,13 @@ class EmbeddingService
         $result = $client->generateEmbeddings($input, $resolvedModel, $options);
 
         // 4. Token Accounting (Emission d'événement)
-        if (isset($result['usage'])) {
-            $event = new SynapseEmbeddingCompletedEvent(
-                $resolvedModel,
-                $providerName,
-                $result['usage']['prompt_tokens'] ?? 0,
-                $result['usage']['total_tokens'] ?? 0
-            );
-            $this->eventDispatcher->dispatch($event, SynapseEmbeddingCompletedEvent::NAME);
-        }
+        $event = new SynapseEmbeddingCompletedEvent(
+            $resolvedModel,
+            $providerName,
+            $result['usage']['prompt_tokens'],
+            $result['usage']['total_tokens']
+        );
+        $this->eventDispatcher->dispatch($event, SynapseEmbeddingCompletedEvent::NAME);
 
         return $result;
     }
