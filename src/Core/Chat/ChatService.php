@@ -109,6 +109,8 @@ class ChatService
             $this->configProvider->setOverride($config);
         }
 
+        try {
+
         // Vérification des plafonds de dépense (avant appel LLM)
         $userId = $options['user_id'] ?? null;
         $presetId = $config['preset_id'] ?? null;
@@ -124,7 +126,8 @@ class ChatService
 
         // Get LLM client and config
         $activeClient = $this->llmRegistry->getClient();
-        $streamingEnabled = $config['streaming_enabled'] ?? true;
+        // $options['streaming'] permet de forcer le mode sync (false) ou streaming (true) indépendamment du preset
+        $streamingEnabled = isset($options['streaming']) ? (bool) $options['streaming'] : ($config['streaming_enabled'] ?? true);
 
         // Accumulators (usage is accumulated across all turns for correct multi-turn counting)
         $fullTextAccumulator = '';
@@ -316,11 +319,6 @@ class ChatService
             ));
         }
 
-        // Reset preset override if applicable
-        if ($presetOverride !== null) {
-            $this->configProvider->setOverride(null);
-        }
-
         // ── DISPATCH GENERATION COMPLETED EVENT ──
         $this->dispatcher->dispatch(new SynapseGenerationCompletedEvent(
             $fullTextAccumulator,
@@ -337,6 +335,14 @@ class ChatService
             'preset_id'  => $config['preset_id'] ?? null,
             'mission_id' => $config['mission_id'] ?? null,
         ];
+
+        } finally {
+            // Garantit la réinitialisation de l'override même en cas d'exception
+            // Critique en mode FrankenPHP worker : les services sont partagés entre requêtes
+            if ($presetOverride !== null) {
+                $this->configProvider->setOverride(null);
+            }
+        }
     }
 
     /**

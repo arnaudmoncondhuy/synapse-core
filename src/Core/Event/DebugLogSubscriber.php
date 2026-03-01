@@ -48,8 +48,10 @@ class DebugLogSubscriber implements EventSubscriberInterface
         // Extract system instruction from contents (first message with role: 'system')
         $systemInstruction = null;
         $contents = $event->getPrompt();
-        if (!empty($contents) && ($contents[0]['role'] ?? '') === 'system') {
-            $systemInstruction = $contents[0]['content'] ?? null;
+        // getPrompt() returns either ['contents' => [...], 'toolDefinitions' => [...]] or just [...]
+        $messages = is_array($contents) && isset($contents['contents']) ? $contents['contents'] : $contents;
+        if (!empty($messages) && ($messages[0]['role'] ?? '') === 'system') {
+            $systemInstruction = $messages[0]['content'] ?? null;
         }
 
         // Extract preset config parameters for display
@@ -77,8 +79,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'system_prompt'       => $systemInstruction,
             'config'              => $config,
             'preset_config'       => $presetConfig,
-            'history'             => $contents,
-            'history_size'        => count($contents),
+            'history'             => $messages,
+            'history_size'        => count($messages),
             'turns'               => [],
             'tool_executions'     => [],
             'tool_definitions'    => $toolDefinitions,
@@ -217,7 +219,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         // Build a map of tool_call_id => tool call info
         $toolCallMap = [];
         foreach ($history as $msg) {
-            if ($msg['role'] === 'assistant' && !empty($msg['tool_calls'])) {
+            if (($msg['role'] ?? null) === 'assistant' && !empty($msg['tool_calls'])) {
                 foreach ($msg['tool_calls'] as $tc) {
                     $toolCallId = $tc['id'] ?? null;
                     if ($toolCallId) {
@@ -232,7 +234,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
 
         // Now find tool results paired with these calls
         foreach ($history as $msg) {
-            if ($msg['role'] === 'tool' && !empty($msg['tool_call_id'])) {
+            if (($msg['role'] ?? null) === 'tool' && !empty($msg['tool_call_id'])) {
                 $toolCallId = $msg['tool_call_id'];
                 if (isset($toolCallMap[$toolCallId])) {
                     $toolUsage[] = [

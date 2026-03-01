@@ -9,7 +9,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Enum;
  */
 enum SpendingLimitPeriod: string
 {
-    /** Dernières 24 heures (glissante) */
+    /** Fenêtre glissante en heures (durée configurable via synapse.token_tracking.sliding_day_hours, défaut 4h) */
     case SLIDING_DAY = 'sliding_day';
 
     /** Derniers 30 jours (glissante) */

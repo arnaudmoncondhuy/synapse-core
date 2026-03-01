@@ -16,7 +16,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  * Builds the complete prompt (system instruction + history) for the LLM.
  *
  * Listens to SynapsePrePromptEvent and populates:
- * - System instruction (persona-based)
+ * - System instruction (tone-based)
  * - SynapseMessage history (from options or loaded via handler)
  * - Generation config (from active preset)
  */

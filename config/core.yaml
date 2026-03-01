@@ -217,6 +217,7 @@ services:
         arguments:
             $configRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $referenceCurrency: '%synapse.token_tracking.reference_currency%'
+            $slidingDayHours: '%synapse.token_tracking.sliding_day_hours%'
 
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository:
         arguments:

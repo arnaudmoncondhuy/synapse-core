@@ -123,6 +123,11 @@ class Configuration implements ConfigurationInterface
             ->example(['USD' => 0.92, 'GBP' => 1.17])
             ->scalarPrototype()->end()
             ->end()
+            ->integerNode('sliding_day_hours')
+            ->defaultValue(4)
+            ->min(1)->max(8760)
+            ->info('Durée en heures de la fenêtre glissante "sliding_day" (défaut : 4h)')
+            ->end()
             ->end()
             ->end()
 

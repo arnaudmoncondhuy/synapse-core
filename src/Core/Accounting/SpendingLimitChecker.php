@@ -29,6 +29,7 @@ class SpendingLimitChecker
         private SynapseSpendingLimitRepository $spendingLimitRepo,
         private SynapseConfigRepository $configRepo,
         private string $referenceCurrency = 'EUR',
+        private int $slidingDayHours = 4,
         private ?\DateTimeZone $timezone = null,
         private ?CacheInterface $cache = null,
     ) {
@@ -103,7 +104,7 @@ class SpendingLimitChecker
         if ($this->cache !== null) {
             $item = $this->cache->getItem($key);
             $item->set($consumption);
-            $item->expiresAfter($period === SpendingLimitPeriod::SLIDING_DAY ? 90000 : ($period === SpendingLimitPeriod::SLIDING_MONTH ? 2678400 : 3600));
+            $item->expiresAfter($period === SpendingLimitPeriod::SLIDING_DAY ? ($this->slidingDayHours * 3600) : ($period === SpendingLimitPeriod::SLIDING_MONTH ? 2678400 : 3600));
             $this->cache->save($item);
         }
 
@@ -131,7 +132,7 @@ class SpendingLimitChecker
 
         return match ($period) {
             SpendingLimitPeriod::SLIDING_DAY => [
-                $now->modify('-24 hours'),
+                $now->modify('-' . $this->slidingDayHours . ' hours'),
                 $now,
             ],
             SpendingLimitPeriod::SLIDING_MONTH => [

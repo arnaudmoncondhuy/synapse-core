@@ -122,6 +122,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.token_tracking.enabled', $config['token_tracking']['enabled'] ?? false);
         $container->setParameter('synapse.token_tracking.reference_currency', $config['token_tracking']['reference_currency'] ?? 'EUR');
         $container->setParameter('synapse.token_tracking.currency_rates', $config['token_tracking']['currency_rates'] ?? []);
+        $container->setParameter('synapse.token_tracking.sliding_day_hours', $config['token_tracking']['sliding_day_hours'] ?? 4);
 
         // ── Version ──────────────────────────────────────────────────────────
         $versionFile = __DIR__ . '/../../../VERSION';

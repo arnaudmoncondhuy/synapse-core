@@ -55,3 +55,9 @@ synapse:
     #                     # "doctrine" = stockage PostgreSQL + pgvector (persistant)
     #                     # ou service ID implémentant VectorStoreInterface
 
+    # ── Token tracking — Limites de dépense (optionnel) ───────────────────────
+    # token_tracking:
+    #     enabled: true
+    #     reference_currency: EUR
+    #     sliding_day_hours: 4   # Durée de la fenêtre glissante "sliding_day" (défaut : 4h)
+
