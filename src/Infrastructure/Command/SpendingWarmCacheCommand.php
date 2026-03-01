@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Infrastructure\Command;
 
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,7 +26,7 @@ final class SpendingWarmCacheCommand extends Command
 {
     public function __construct(
         private SynapseSpendingLimitRepository $spendingLimitRepo,
-        private SynapseTokenUsageRepository $tokenUsageRepo,
+        private SynapseLlmCallRepository $tokenUsageRepo,
         private ?CacheInterface $cache = null,
     ) {
         parent::__construct();

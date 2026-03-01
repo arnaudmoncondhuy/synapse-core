@@ -10,7 +10,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseSpendingLimit;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
 use Symfony\Contracts\Cache\CacheInterface;
 
 /**
@@ -25,7 +25,7 @@ class SpendingLimitChecker
     private const CACHE_PREFIX = 'synapse:spending:';
 
     public function __construct(
-        private SynapseTokenUsageRepository $tokenUsageRepo,
+        private SynapseLlmCallRepository $tokenUsageRepo,
         private SynapseSpendingLimitRepository $spendingLimitRepo,
         private SynapseConfigRepository $configRepo,
         private string $referenceCurrency = 'EUR',

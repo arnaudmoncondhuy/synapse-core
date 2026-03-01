@@ -21,7 +21,7 @@ use Symfony\Component\Routing\RouteCollection;
  * Le loader détecte automatiquement quels bundles sont installés
  * (Admin, Chat) et charge leurs routes en conséquence.
  *
- * Les routes Admin sont exposées sous /synapse/admin* et /synapse/admin-v2*.
+ * Les routes Admin sont exposées sous /synapse/admin*.
  * Les routes Chat UI sont sous /synapse/chat et les API sous /synapse/api/*.
  *
  * Pour ajouter un préfixe global (ex: /myapp), utiliser l'option `prefix`
@@ -49,8 +49,7 @@ class SynapseRoutesLoader extends Loader
         $collection = new RouteCollection();
         $bundles = $this->kernel->getBundles();
 
-        // Routes Admin — controllers already define /synapse/admin* paths
-        // No extra prefix added here: use `prefix:` in routes.yaml if needed
+        // Routes Admin
         if (isset($bundles['SynapseAdminBundle'])) {
             /** @var RouteCollection $adminRoutes */
             $adminRoutes = $this->import('@SynapseAdminBundle/config/routes.yaml');

@@ -38,8 +38,6 @@ class ConversationManager
         private ?PermissionCheckerInterface $permissionChecker = null,
         private ?string $conversationClass = null,
         private ?string $messageClass = null,
-        private ?\ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenAccountingService $accountingService = null,
-        private ?\ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo = null,
     ) {}
 
     /**
@@ -101,7 +99,11 @@ class ConversationManager
      * Enregistre un nouveau message dans une conversation.
      *
      * Si le chiffrement est activé, le contenu et les métadonnées sensibles sont chiffrés
-     * avant la persistance. Le coût en tokens est calculé si possible.
+     * avant la persistance.
+     *
+     * Le coût en tokens n'est plus calculé ici — il est dans SynapseLlmCall (via TokenAccountingService::logUsage()).
+     * Pour les messages MODEL, passer le callId retourné par logUsage() afin de relier
+     * le message à son enregistrement LLM exact.
      *
      * @param SynapseConversation $conversation La conversation concernée.
      * @param MessageRole         $role         Rôle de l'émetteur (USER, MODEL, etc.).
@@ -116,6 +118,7 @@ class ConversationManager
      *     preset_id?: int|null,
      *     metadata?: array
      * } $metadata Données techniques de l'échange.
+     * @param string|null $callId UUID de l'appel LLM (SynapseLlmCall.callId) — pour les messages MODEL.
      *
      * @return SynapseMessage L'entité message créée.
      */
@@ -123,14 +126,20 @@ class ConversationManager
         SynapseConversation $conversation,
         MessageRole $role,
         string $content,
-        array $metadata = []
+        array $metadata = [],
+        ?string $callId = null,
     ): SynapseMessage {
         $message = $this->instantiateMessage();
         $message->setConversation($conversation);
         $message->setRole($role);
         $this->setMessageContent($message, $content);
 
-        // Métadonnées
+        // Lier le message à son appel LLM (pour les messages MODEL)
+        if ($callId !== null) {
+            $message->setLlmCallId($callId);
+        }
+
+        // Tokens
         if (isset($metadata['prompt_tokens'])) {
             $message->setPromptTokens($metadata['prompt_tokens']);
         }
@@ -149,7 +158,6 @@ class ConversationManager
         if (isset($metadata['metadata'])) {
             $metaDataToSave = $metadata['metadata'];
             if ($this->encryptionService !== null) {
-                // On chiffre tout le tableau de metadata pour masquer les données sensibles
                 $encryptedMeta = $this->encryptionService->encrypt(json_encode($metaDataToSave, JSON_THROW_ON_ERROR));
                 $message->setMetadata(['_encrypted' => $encryptedMeta]);
             } else {
@@ -157,39 +165,20 @@ class ConversationManager
             }
         }
 
-        // Preset utilisé (pour plafonds et analytics)
+        // Preset utilisé (pour analytics)
         if (array_key_exists('preset_id', $metadata)) {
             $message->setMetadataValue('preset_id', $metadata['preset_id']);
         }
 
-        // Enregistrer le modèle et calculer le coût
-        $model = $metadata['model'] ?? null;
-        if ($model) {
-            $message->setMetadataValue('model', $model);
-
-            // Calculer le coût et la devise si le service est disponible
-            if ($this->accountingService && $this->modelRepo) {
-                $pricingMap = $this->modelRepo->findAllPricingMap();
-                $modelPricing = $pricingMap[$model] ?? ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
-                $usage = [
-                    'prompt_tokens'     => $message->getPromptTokens() ?? 0,
-                    'completion_tokens' => $message->getCompletionTokens() ?? 0,
-                    'thinking_tokens'   => $message->getThinkingTokens() ?? 0,
-                ];
-                $cost = $this->accountingService->calculateCost($usage, $modelPricing);
-                $currency = $modelPricing['currency'] ?? 'USD';
-                $message->setMetadataValue('cost', $cost);
-                $message->setMetadataValue('currency', $currency);
-                $message->setMetadataValue('pricing', $modelPricing);
-                $message->setMetadataValue('cost_reference', $this->accountingService->convertToReferenceCurrency($cost, $currency));
-            }
+        // Modèle utilisé (pour affichage)
+        if (isset($metadata['model'])) {
+            $message->setMetadataValue('model', $metadata['model']);
         }
 
         // Calculer total tokens
         $message->calculateTotalTokens();
 
-        // Éviter les doublons si l'objet est déjà dans la collection 
-        // (cas où on sauve un message qui a déjà été ajouté manuellement avant persist)
+        // Éviter les doublons si l'objet est déjà dans la collection
         if (!$conversation->getMessages()->contains($message)) {
             $conversation->addMessage($message);
         }

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Core\Accounting;
 
+use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseUsageRecordedEvent;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseTokenUsage;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -21,7 +22,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 class TokenAccountingService
 {
-    private const CACHE_PREFIX = 'synapse:spending:';
+    private const CACHE_PREFIX = 'synapse_spending_';
 
     public function __construct(
         private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
@@ -30,6 +31,7 @@ class TokenAccountingService
         private array $currencyRates = [],
         private ?CacheInterface $cache = null,
         private ?EventDispatcherInterface $dispatcher = null,
+        private ?ModelCapabilityRegistry $capabilityRegistry = null,
     ) {}
 
     /**
@@ -43,7 +45,8 @@ class TokenAccountingService
      * @param string|null $conversationId ID de la conversation concernée (si applicable)
      * @param int|null $presetId ID du preset LLM utilisé (si applicable, pour plafonds par preset)
      * @param int|null $missionId ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission)
-     * @param array|null $metadata Métadonnées additionnelles (coût, durée, etc.)
+     * @param array|null $metadata Métadonnées additionnelles (durée, debug_id, etc.)
+     * @return SynapseLlmCall L'entité créée — permet au caller de récupérer le callId pour le lier à un SynapseMessage
      */
     public function logUsage(
         string $module,
@@ -55,15 +58,15 @@ class TokenAccountingService
         ?int $presetId = null,
         ?int $missionId = null,
         ?array $metadata = null
-    ): void {
-        $tokenUsage = new SynapseTokenUsage();
+    ): SynapseLlmCall {
+        $tokenUsage = new SynapseLlmCall();
         $tokenUsage->setModule($module);
         $tokenUsage->setAction($action);
         $tokenUsage->setModel($model);
 
         // Récupérer le tarif actuel pour ce modèle (input, output, currency)
-        $pricingMap = $this->modelRepo->findAllPricingMap();
-        $modelPricing = $pricingMap[$model] ?? ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
+        // Hiérarchie: synapse_model (BDD) surcharge ModelCapabilityRegistry (YAML)
+        $modelPricing = $this->getPricingForModel($model);
 
         // Tokens (format normalisé Synapse)
         $promptTokens     = $usage['prompt_tokens']     ?? 0;
@@ -95,12 +98,7 @@ class TokenAccountingService
             $tokenUsage->setMissionId($missionId);
         }
 
-        // Métadonnées
-        if ($metadata === null) {
-            $metadata = [];
-        }
-
-        // Calculer et stocker le coût (dans la devise du modèle)
+        // Calculer et stocker le coût en colonnes dédiées (snapshot immuable au tarif du moment)
         $currentUsage = [
             'prompt_tokens'     => $promptTokens,
             'completion_tokens' => $completionTokens,
@@ -108,17 +106,20 @@ class TokenAccountingService
         ];
         $costInModelCurrency = $this->calculateCost($currentUsage, $modelPricing);
         $currency = $modelPricing['currency'] ?? 'USD';
-        $metadata['cost'] = $costInModelCurrency;
-        $metadata['currency'] = $currency;
-        $metadata['pricing'] = $modelPricing;
-        $metadata['cost_reference'] = $this->convertToReferenceCurrency($costInModelCurrency, $currency);
+        $costRef = $this->convertToReferenceCurrency($costInModelCurrency, $currency);
 
-        $tokenUsage->setMetadata($metadata);
+        $tokenUsage->setCostModelCurrency($costInModelCurrency);
+        $tokenUsage->setCostReference($costRef);
+        $tokenUsage->setPricingInput($modelPricing['input'] ?? null);
+        $tokenUsage->setPricingOutput($modelPricing['output'] ?? null);
+        $tokenUsage->setPricingCurrency($currency);
+
+        // Métadonnées libres (sans coût — géré par les colonnes dédiées)
+        $tokenUsage->setMetadata($metadata ?: null);
 
         $this->em->persist($tokenUsage);
         $this->em->flush();
 
-        $costRef = $metadata['cost_reference'] ?? 0.0;
         if ($this->cache !== null && $costRef > 0) {
             $this->incrementSpendingCache($userId !== null ? (string) $userId : null, $presetId, (float) $costRef);
         }
@@ -131,12 +132,14 @@ class TokenAccountingService
                 $promptTokens,
                 $completionTokens,
                 $thinkingTokens,
-                (float) $costRef,
+                $costRef,
                 $userId !== null ? (string) $userId : null,
                 $conversationId,
                 $presetId,
             ));
         }
+
+        return $tokenUsage;
     }
 
     /**
@@ -167,16 +170,16 @@ class TokenAccountingService
         $date = $at->format('Y-m-d');
         $month = $at->format('Y-m');
         if ($userId !== null) {
-            $keys[self::CACHE_PREFIX . 'user:' . $userId . ':sliding_day'] = 90000;   // 25h
-            $keys[self::CACHE_PREFIX . 'user:' . $userId . ':sliding_month'] = 2678400; // 31d
-            $keys[self::CACHE_PREFIX . 'user:' . $userId . ':calendar_day:' . $date] = 172800;   // 2d
-            $keys[self::CACHE_PREFIX . 'user:' . $userId . ':calendar_month:' . $month] = 5184000; // 60d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_day'] = 90000;   // 25h
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_month'] = 2678400; // 31d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_day_' . $date] = 172800;   // 2d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_month_' . $month] = 5184000; // 60d
         }
         if ($presetId !== null) {
-            $keys[self::CACHE_PREFIX . 'preset:' . $presetId . ':sliding_day'] = 90000;
-            $keys[self::CACHE_PREFIX . 'preset:' . $presetId . ':sliding_month'] = 2678400;
-            $keys[self::CACHE_PREFIX . 'preset:' . $presetId . ':calendar_day:' . $date] = 172800;
-            $keys[self::CACHE_PREFIX . 'preset:' . $presetId . ':calendar_month:' . $month] = 5184000;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_day'] = 90000;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_month'] = 2678400;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_day_' . $date] = 172800;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_month_' . $month] = 5184000;
         }
         return $keys;
     }
@@ -218,5 +221,50 @@ class TokenAccountingService
     public function getReferenceCurrency(): string
     {
         return $this->referenceCurrency;
+    }
+
+    /**
+     * Récupère les tarifs pour un modèle avec fallback hiérarchique.
+     *
+     * Hiérarchie:
+     * 1. synapse_model (BDD override) — toute info manquante est complétée par YAML/provider
+     * 2. ModelCapabilityRegistry (YAML config) — source de tarifs par défaut
+     * 3. Defaults (0.0 USD)
+     *
+     * @return array{input: float, output: float, currency: string}
+     */
+    private function getPricingForModel(string $model): array
+    {
+        // 1. Chercher dans synapse_model (BDD)
+        $pricingMap = $this->modelRepo->findAllPricingMap();
+        if (isset($pricingMap[$model])) {
+            return $pricingMap[$model];
+        }
+
+        // 2. Fallback sur ModelCapabilityRegistry (YAML)
+        if ($this->capabilityRegistry !== null) {
+            try {
+                $capabilities = $this->capabilityRegistry->getCapabilities($model);
+                if ($capabilities->pricingInput !== null || $capabilities->pricingOutput !== null) {
+                    // Déduire la devise basée sur le provider
+                    $currency = match($capabilities->provider) {
+                        'ovh' => 'EUR',
+                        'gemini' => 'USD',
+                        default => 'USD',
+                    };
+
+                    return [
+                        'input' => $capabilities->pricingInput ?? 0.0,
+                        'output' => $capabilities->pricingOutput ?? 0.0,
+                        'currency' => $currency,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                // Silently fallthrough to defaults
+            }
+        }
+
+        // 3. Defaults
+        return ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
     }
 }

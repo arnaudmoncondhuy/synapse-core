@@ -130,8 +130,18 @@ abstract class SynapseMessage
     protected ?array $metadata = null;
 
     /**
+     * Référence à l'appel LLM qui a produit ce message (synapse_llm_call.call_id).
+     *
+     * Renseigné uniquement pour les messages MODEL (réponse assistant) :
+     * permet de relier le message à son enregistrement de tokens/coût exact.
+     * NULL pour les messages USER (pas d'appel LLM associé directement).
+     */
+    #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
+    protected ?string $llmCallId = null;
+
+    /**
      * Contenu déchiffré (non persistant)
-     * Utilisé pour éviter que Doctrine ne sauvegarde le texte en clair 
+     * Utilisé pour éviter que Doctrine ne sauvegarde le texte en clair
      * lors d'un flush accidentel.
      */
     protected ?string $decryptedContent = null;
@@ -293,6 +303,17 @@ abstract class SynapseMessage
             $this->metadata = [];
         }
         $this->metadata[$key] = $value;
+        return $this;
+    }
+
+    public function getLlmCallId(): ?string
+    {
+        return $this->llmCallId;
+    }
+
+    public function setLlmCallId(?string $llmCallId): self
+    {
+        $this->llmCallId = $llmCallId;
         return $this;
     }
 

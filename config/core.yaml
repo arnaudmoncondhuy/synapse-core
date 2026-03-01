@@ -203,7 +203,7 @@ services:
     ArnaudMoncondhuy\SynapseCore\Core\Service\ChunkingService: ~
 
     # ── Repositories (required by core services) ──────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository:
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository:
         arguments:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']

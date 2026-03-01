@@ -72,6 +72,10 @@ class SynapseDoctorCommand extends Command
         $checks['Database connection'] = $this->checkDatabase($io);
         $checks['Database tables'] = $this->checkDatabaseTables($io);
 
+        if ($this->hasChat) {
+            $checks['Conversation owner (User entity)'] = $this->checkConversationOwner($io);
+        }
+
         if ($init) {
             $this->runInit($projectDir, $io);
         }
@@ -201,9 +205,11 @@ class SynapseDoctorCommand extends Command
                     }
                     if ($this->filesystem->exists($subFile)) {
                         $sub = file_get_contents($subFile);
-                        if (str_contains($sub, 'SynapseAdminBundle')
+                        if (
+                            str_contains($sub, 'SynapseAdminBundle')
                             || str_contains($sub, 'SynapseChatBundle')
-                            || str_contains($sub, 'type: synapse')) {
+                            || str_contains($sub, 'type: synapse')
+                        ) {
                             $hasRoutes = true;
                             break;
                         }
@@ -341,13 +347,36 @@ class SynapseDoctorCommand extends Command
                 $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
                     . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
                     . "    ],\n";
-                $this->filesystem->dumpFile($importmapFile, str_replace('];', $entry . '];', $content));
-                $io->writeln('  -> importmap.php updated.');
+                $content = str_replace('];', $entry . '];', $content);
+                $this->filesystem->dumpFile($importmapFile, $content);
+                $io->writeln('  -> importmap.php updated with synapse_chat_controller.');
+                $hasError = true;
+            } else {
+                return false;
             }
+        }
+
+        if (!str_contains($content, 'synapse_sidebar_controller')) {
+            $io->error('[Importmap] Synapse sidebar Stimulus controller missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/controllers/synapse_sidebar_controller.js' => ['path' => 'synapse-chat/controllers/synapse_sidebar_controller.js']");
+            if ($fix) {
+                $entry = "\n    'synapse-chat/controllers/synapse_sidebar_controller.js' => [\n"
+                    . "        'path' => 'synapse-chat/controllers/synapse_sidebar_controller.js',\n"
+                    . "    ],\n";
+                $content = str_replace('];', $entry . '];', $content);
+                $this->filesystem->dumpFile($importmapFile, $content);
+                $io->writeln('  -> importmap.php updated with synapse_sidebar_controller.');
+                $hasError = true;
+            } else {
+                return false;
+            }
+        }
+
+        if (isset($hasError) && $hasError) {
             return false;
         }
 
-        $io->writeln('  <info>[OK]</info> Importmap (Stimulus controller)');
+        $io->writeln('  <info>[OK]</info> Importmap (Stimulus controllers)');
         return true;
     }
 
@@ -390,6 +419,46 @@ class SynapseDoctorCommand extends Command
             return true;
         } catch (\Exception $e) {
             $io->writeln('  <comment>[WARN]</comment> Could not verify tables: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function checkConversationOwner(SymfonyStyle $io): bool
+    {
+        try {
+            $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
+
+            // Try to find the User/Owner table (check common table names)
+            $userTables = ['users', 'app_user', 'user'];
+            $existing = $connection->createSchemaManager()->listTableNames();
+            $userTableFound = null;
+
+            foreach ($userTables as $table) {
+                if (in_array($table, $existing, true)) {
+                    $userTableFound = $table;
+                    break;
+                }
+            }
+
+            if (!$userTableFound) {
+                $io->error('[Chat] No user table found (checked: ' . implode(', ', $userTables) . ')');
+                $io->writeln('         Create an entity implementing ConversationOwnerInterface with a "users" table.');
+                return false;
+            }
+
+            // Check if there are any users
+            $userCount = (int) $connection->executeQuery("SELECT COUNT(*) FROM $userTableFound")->fetchOne();
+
+            if ($userCount === 0) {
+                $io->writeln(sprintf('  <comment>[WARN]</comment> No users found in %s table', $userTableFound));
+                $io->writeln('         Run: bin/console doctrine:fixtures:load --append');
+                return false;
+            }
+
+            $io->writeln(sprintf('  <info>[OK]</info> Chat owner (%s users)', $userCount));
+            return true;
+        } catch (\Exception $e) {
+            $io->writeln('  <comment>[WARN]</comment> Could not verify chat owner: ' . $e->getMessage());
             return false;
         }
     }
@@ -449,9 +518,11 @@ class SynapseDoctorCommand extends Command
         }
 
         $content = file_get_contents($routesFile);
-        if (str_contains($content, 'type: synapse')
+        if (
+            str_contains($content, 'type: synapse')
             || str_contains($content, 'SynapseAdminBundle')
-            || str_contains($content, 'SynapseChatBundle')) {
+            || str_contains($content, 'SynapseChatBundle')
+        ) {
             return;
         }
 
