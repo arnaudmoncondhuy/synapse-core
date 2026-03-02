@@ -29,8 +29,10 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $mockRegistry = $this->createMock(ManagerRegistry::class);
         $mockRegistry->method('getManagerForClass')->willReturn($mockEm);
 
-        // Create a mock ClassMetadata
+        // Create a properly configured mock ClassMetadata
         $mockMetadata = $this->createMock(\Doctrine\ORM\Mapping\ClassMetadata::class);
+        $mockMetadata->name = \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::class;
+        $mockMetadata->rootEntityName = \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::class;
 
         return new SynapseLlmCallRepository($mockRegistry, $mockMetadata);
     }
