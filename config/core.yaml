@@ -168,17 +168,9 @@ services:
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
 
     # ── DataFixtures (optionnel — requiert doctrine/doctrine-fixtures-bundle) ───
-    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapsePresetFixture:
-        autoconfigure: true
-        autowire: true
-
-    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapseToneFixture:
-        autoconfigure: true
-        autowire: true
-
-    ArnaudMoncondhuy\SynapseCore\DataFixtures\SynapseMissionFixture:
-        autoconfigure: true
-        autowire: true
+    # Note: Les fixtures sont découvertes automatiquement par Doctrine Fixtures
+    # Pas besoin de les enregistrer comme services pour éviter les erreurs de compilation
+    # dans les environnements prod sans DataFixtures installées.
 
     # ── Main service ──────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService:
