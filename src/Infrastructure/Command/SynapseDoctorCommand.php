@@ -317,13 +317,16 @@ class SynapseDoctorCommand extends Command
             ? $this->parameterBag->get('synapse.security.chat_role')
             : null) ?: 'ROLE_USER';
 
-        $hasAdminControl = str_contains($content, '/synapse/admin');
-        $hasChatControl = str_contains($content, '/synapse');
+        $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
+        $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
+
+        $hasAdminControl = str_contains($content, (string) $adminPrefix);
+        $hasChatControl = str_contains($content, (string) $chatPrefix);
 
         if ($this->hasAdmin && !$hasAdminControl) {
-            $io->writeln('  <comment>[WARN]</comment> No access_control for /synapse/admin in security.yaml');
-            $io->writeln(sprintf('         Add: - { path: ^/synapse/admin, roles: %s }', $adminRole));
-            $io->writeln(sprintf('              - { path: ^/synapse, roles: %s }', $chatRole));
+            $io->writeln(sprintf('  <comment>[WARN]</comment> No access_control for %s in security.yaml', $adminPrefix));
+            $io->writeln(sprintf('         Add: - { path: ^%s, roles: %s }', $adminPrefix, $adminRole));
+            $io->writeln(sprintf('              - { path: ^%s, roles: %s }', $chatPrefix, $chatRole));
         } else {
             $io->writeln(sprintf('  <info>[OK]</info> Security (admin: %s, chat: %s)', $adminRole, $chatRole));
         }
@@ -544,6 +547,9 @@ class SynapseDoctorCommand extends Command
             ? $this->parameterBag->get('synapse.security.chat_role')
             : null) ?: 'ROLE_USER';
 
+        $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
+        $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
+
         $this->filesystem->dumpFile(
             $projectDir . '/config/packages/security.yaml',
             <<<YAML
@@ -573,8 +579,8 @@ security:
                 path: app_logout
 
     access_control:
-        - { path: ^/synapse/admin, roles: $adminRole }
-        - { path: ^/synapse, roles: $chatRole }
+        - { path: ^$adminPrefix, roles: $adminRole }
+        - { path: ^$chatPrefix, roles: $chatRole }
 YAML
         );
 

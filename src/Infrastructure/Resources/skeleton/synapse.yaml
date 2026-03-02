@@ -60,4 +60,10 @@ synapse:
     #     enabled: true
     #     reference_currency: EUR
     #     sliding_day_hours: 4   # Durée de la fenêtre glissante "sliding_day" (défaut : 4h)
+    
+    # ── Routing — Personnalisation des URLs (optionnel) ──────────────────────
+    # routing:
+    #     admin_prefix:   '/synapse/admin' # Préfixe de l'interface d'administration
+    #     chat_ui_prefix:  '/synapse/chat'  # Préfixe de la page de chat
+    #     chat_api_prefix: '/synapse/api'   # Préfixe des endpoints API (CSRF, chat, etc.)
 

@@ -131,6 +131,25 @@ class Configuration implements ConfigurationInterface
             ->end()
             ->end()
 
+            // ── Routing ───────────────────────────────────────────────────────
+            ->arrayNode('routing')
+            ->addDefaultsIfNotSet()
+            ->children()
+            ->scalarNode('admin_prefix')
+            ->defaultValue('/synapse/admin')
+            ->info('Préfixe des routes d\'administration')
+            ->end()
+            ->scalarNode('chat_ui_prefix')
+            ->defaultValue('/synapse/chat')
+            ->info('Préfixe de la page de chat (Interface Utilisateur)')
+            ->end()
+            ->scalarNode('chat_api_prefix')
+            ->defaultValue('/synapse/api')
+            ->info('Préfixe des points de terminaison API du chat')
+            ->end()
+            ->end()
+            ->end()
+
             ->end();
 
         return $treeBuilder;

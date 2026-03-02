@@ -124,6 +124,11 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.token_tracking.currency_rates', $config['token_tracking']['currency_rates'] ?? []);
         $container->setParameter('synapse.token_tracking.sliding_day_hours', $config['token_tracking']['sliding_day_hours'] ?? 4);
 
+        // ── Routing ───────────────────────────────────────────────────────────
+        $container->setParameter('synapse.admin_prefix', $config['routing']['admin_prefix'] ?? '/synapse/admin');
+        $container->setParameter('synapse.chat_ui_prefix', $config['routing']['chat_ui_prefix'] ?? '/synapse/chat');
+        $container->setParameter('synapse.chat_api_prefix', $config['routing']['chat_api_prefix'] ?? '/synapse/api');
+
         // ── Version ──────────────────────────────────────────────────────────
         $versionFile = __DIR__ . '/../../../VERSION';
         $version = is_file($versionFile) ? trim(file_get_contents($versionFile)) : 'dev';

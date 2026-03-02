@@ -21,8 +21,18 @@ Gère les accès à l'administration et au chat.
 | Option | Type | Défaut | Description |
 |---|---|---|---|
 | `permission_checker` | string | `default` | Service de sécurité. Par défaut, bloque l'admin si la sécurité Symfony est absente. |
-| `admin_role` | string | `ROLE_ADMIN` | Le rôle requis pour accéder à `/synapse/admin`. |
-| `chat_role` | string | `ROLE_USER` | Le rôle requis pour le chat (si restreint). |
+| `admin_role` | string | `ROLE_ADMIN` | Le rôle requis pour accéder à l'administration (défaut: `/synapse/admin`). |
+| `chat_role` | string | `ROLE_USER` | Le rôle requis pour le chat (défaut: `/synapse/chat`). |
+
+### Routage (`routing`)
+
+Permet de personnaliser les préfixes d'URL du bundle.
+
+| Option | Type | Défaut | Description |
+|---|---|---|---|
+| `admin_prefix` | string | `/synapse/admin` | Préfixe pour toutes les routes d'administration. |
+| `chat_ui_prefix` | string | `/synapse/chat` | Préfixe pour l'interface de chat principale. |
+| `chat_api_prefix` | string | `/synapse/api` | Préfixe pour les endpoints API (chat complet, CSRF, etc.). |
 
 ### Plafonds & Coûts (`spending_limits` & `accounting`)
 
@@ -37,12 +47,12 @@ Synapse permet de suivre l'usage et de brider la consommation.
 
 Le bundle implémente une protection CSRF automatique sur tous ses formulaires et endpoints d'API (POST/PUT/DELETE) si le composant `symfony/security-csrf` est installé et activé dans votre application.
 
-- **Chat API** (`/synapse/api/chat`, reset, memory) : jeton `synapse_api`. Le template du chat fournit déjà une meta et le composant un `data-csrf-token` ; le front envoie le header `X-CSRF-Token`.
+- **Chat API** (chat, reset, memory) : jeton `synapse_api`. Le template du chat fournit déjà une meta et le composant un `data-csrf-token` ; le front envoie le header `X-CSRF-Token`.
 - **Admin** : jeton `synapse_admin`. Dans le layout : `<meta name="csrf-token" content="{{ csrf_token('synapse_admin') }}">`.
 
 En AJAX, envoyez le header `X-CSRF-Token` (ou le champ `_csrf_token` dans le body).
 
-**Le bundle gère le CSRF sans configuration :** le front récupère le jeton via GET `/synapse/api/csrf-token` si la meta ou le `data-csrf-token` est absent (page surchargée, cache). Aucune action requise normalement.
+**Le bundle gère le CSRF sans configuration :** le front récupère le jeton via l'API si le `data-csrf-token` est absent (page surchargée, cache). Aucune action requise normalement.
 
 **En dernier recours** (403 persistant) : désactiver la vérification CSRF sur l’API dans `config/packages/synapse.yaml` :
 
