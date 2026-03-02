@@ -20,6 +20,10 @@ services:
     ArnaudMoncondhuy\SynapseCore\Infrastructure\Command\:
         resource: '../src/Infrastructure/Command/'
 
+    # ── Compatibility alias : TokenUsageRepository → LlmCallRepository ───────
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository:
+        alias: ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository
+
     # ── Route Loader ─────────────────────────────────────────────────────────
     # Permet: resource: . / type: synapse dans routes.yaml (charge Admin + Chat auto)
     ArnaudMoncondhuy\SynapseCore\Infrastructure\Routing\SynapseRoutesLoader:
