@@ -40,14 +40,8 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         // Note: Core is 100% headless, no Twig namespace registration needed
         // Twig namespaces are registered by Admin and Chat bundles only
 
-        // 2. Enregistrement des assets pour AssetMapper (Stimulus controllers)
-        $frameworkConfig = [
-            'asset_mapper' => [
-                'paths' => [
-                    realpath(dirname(__DIR__, 3) . '/assets') => 'synapse',
-                ],
-            ],
-        ];
+        // Note: Core has no assets directory - all assets are in Admin and Chat bundles
+        $frameworkConfig = [];
 
         // Only prepend messenger config if the component is installed
         if (interface_exists(\Symfony\Component\Messenger\MessageBusInterface::class)) {
@@ -61,7 +55,9 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
             ];
         }
 
-        $container->prependExtensionConfig('framework', $frameworkConfig);
+        if (!empty($frameworkConfig)) {
+            $container->prependExtensionConfig('framework', $frameworkConfig);
+        }
 
         // 3. Auto-configuration du mapping Doctrine pour les entités du bundle.
         if ($container->hasExtension('doctrine')) {
