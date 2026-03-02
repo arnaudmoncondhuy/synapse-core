@@ -138,11 +138,20 @@ class DatabaseConfigProvider implements ConfigProviderInterface
 
     /**
      * Charge et fusionne la configuration depuis la BDD.
+     *
+     * Si aucun preset valide n'existe, retourne une configuration par défaut
+     * (pour permettre la création du premier preset).
      */
     private function loadConfig(): array
     {
         // Load active preset (LLM configuration)
         $preset = $this->presetRepo->findActive();
+
+        // ⚠️ Si aucun preset n'existe, retourner une config par défaut safe
+        // (permet création du premier preset sans erreur)
+        if ($preset === null) {
+            return $this->getDefaultConfig();
+        }
 
         // 🛡️ DÉFENSE CRITIQUE : Vérifier l'intégrité du preset actif
         // Si le preset actif est devenu invalide (provider désactivé, etc.),
@@ -150,7 +159,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         try {
             $this->presetValidator->ensureActivePresetIsValid($preset);
         } catch (\Exception $e) {
-            throw new \RuntimeException('Pas de preset valide disponible : ' . $e->getMessage());
+            // Fallback : retourner config par défaut au lieu de lever exception
+            return $this->getDefaultConfig();
         }
 
         $config = $preset->toArray();
@@ -168,6 +178,32 @@ class DatabaseConfigProvider implements ConfigProviderInterface
             $config['provider_credentials'] = $this->decryptCredentials($provider->getCredentials());
         } else {
             $config['provider_credentials'] = [];
+        }
+
+        return $config;
+    }
+
+    /**
+     * Configuration par défaut safe quand aucun preset valide n'existe.
+     * Permet la création du premier preset sans erreur.
+     */
+    private function getDefaultConfig(): array
+    {
+        // Config minimale safe — utilise Gemini comme provider par défaut
+        $config = [
+            'provider' => 'gemini',
+            'model' => 'gemini-2.5-flash',
+            'provider_name' => 'gemini',
+            'provider_credentials' => [],
+            'preset_id' => null,
+        ];
+
+        // Ajouter la config globale si elle existe
+        try {
+            $globalConfig = $this->globalConfigRepo->getGlobalConfig();
+            $config = array_merge($config, $globalConfig->toArray());
+        } catch (\Exception) {
+            // Si pas de global config, utiliser les valeurs par défaut
         }
 
         return $config;
