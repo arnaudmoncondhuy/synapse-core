@@ -111,6 +111,18 @@ abstract class SynapseConversation
         $this->messages = new ArrayCollection();
     }
 
+    /**
+     * Hydratation Doctrine — initialiser $messages si absent
+     * (Doctrine n'appelle pas le constructeur lors du chargement depuis la BDD)
+     */
+    #[ORM\PostLoad]
+    public function ensureMessagesInitialized(): void
+    {
+        if (!isset($this->messages)) {
+            $this->messages = new ArrayCollection();
+        }
+    }
+
     // Getters et Setters
 
     public function getId(): string
