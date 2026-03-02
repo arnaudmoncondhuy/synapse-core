@@ -19,32 +19,11 @@ use ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry;
  */
 class PromptBuilder
 {
-    /**
-     * Instructions techniques pour le mode thinking natif de Gemini.
-     * Le système capture automatiquement la réflexion via thinkingConfig.
-     */
-    private const TECHNICAL_PROMPT = <<<PROMPT
-### CADRE TECHNIQUE DE RÉPONSE
-
-Ta réponse à l'utilisateur doit impérativement respecter ce format :
-- Format Markdown propre.
-- URLs au format [Texte](url) uniquement.
-
-### MÉMORISATION D'INFORMATIONS UTILISATEUR
-
-Quand l'utilisateur partage une information personnelle utile à retenir (nom, préférence, contrainte, etc.), TU DOIS :
-1. Appeler l'outil `propose_to_remember` avec le fait à mémoriser.
-2. Puis, continuer avec ta réponse conversationnelle normale.
-
-Ne demande pas la permission : utilise directement l'outil si le contexte l'indique.
-PROMPT;
-
     public function __construct(
         private ContextProviderInterface $contextProvider,
         private ToneRegistry $toneRegistry,
         private \ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface $configProvider,
-    ) {
-    }
+    ) {}
 
     /**
      * Construit un message système au format OpenAI canonical.
@@ -68,7 +47,7 @@ PROMPT;
      * Construit l'instruction système brute (texte pur).
      *
      * @param string|null $toneKey Clé optionnelle du ton de réponse
-     * @return string Le texte complet du système (technique + contexte + ton)
+     * @return string Le texte complet du système (contexte + ton)
      */
     public function buildSystemInstruction(?string $toneKey = null): string
     {
@@ -78,13 +57,10 @@ PROMPT;
         // Si un prompt système est défini en base de données, on l'interpole avec les variables du ContextProvider
         if ($systemPrompt) {
             $context = $this->contextProvider->getInitialContext();
-            $basePrompt = $this->interpolateVariables($systemPrompt, $context);
+            $finalPrompt = $this->interpolateVariables($systemPrompt, $context);
         } else {
-            $basePrompt = $this->contextProvider->getSystemPrompt();
+            $finalPrompt = $this->contextProvider->getSystemPrompt();
         }
-
-        // Ajout d'un séparateur horizontal pour couper la hiérarchie Markdown
-        $finalPrompt = self::TECHNICAL_PROMPT."\n\n---\n\n".$basePrompt;
 
         if ($toneKey) {
             $tonePrompt = $this->toneRegistry->getSystemPrompt($toneKey);
@@ -117,12 +93,12 @@ PROMPT;
         foreach ($context as $key => $value) {
             if (is_scalar($value)) {
                 // Variables de premier niveau : date, time, etc.
-                $replacements['{'.strtoupper($key).'}'] = (string) $value;
+                $replacements['{' . strtoupper($key) . '}'] = (string) $value;
             } elseif (is_array($value) && $key === 'user') {
                 // Variables utilisateur : email, nom, prenom, role, groups, etc.
                 foreach ($value as $userKey => $userValue) {
                     if (is_scalar($userValue)) {
-                        $replacements['{'.strtoupper($userKey).'}'] = (string) $userValue;
+                        $replacements['{' . strtoupper($userKey) . '}'] = (string) $userValue;
                     }
                 }
             }

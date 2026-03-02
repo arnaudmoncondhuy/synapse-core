@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Infrastructure\Command;
 
+use ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor\AssetMapperValidator;
+use ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor\ComposerPathValidator;
+use ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor\DoctrineMappingValidator;
+use ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor\RepositoryValidator;
+use ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor\TypedPropertyValidator;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation as BaseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage as BaseMessage;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -63,11 +68,17 @@ class SynapseDoctorCommand extends Command
         $checks['Core config (synapse.yaml)'] = $this->checkCoreConfig($projectDir, $fix, $io);
         $checks['Routes'] = $this->checkRoutes($projectDir, $fix, $io);
         $checks['Entities'] = $this->checkEntities($projectDir, $fix, $io);
+        $checks['Repository classes'] = $this->checkRepositories($projectDir, $fix, $io);
+        $checks['Doctrine mappings'] = $this->checkDoctrineMappings($projectDir, $fix, $io);
         $checks['Security'] = $this->checkSecurity($projectDir, $fix, $io);
 
         if ($this->hasChat) {
             $checks['Importmap (Stimulus)'] = $this->checkImportmap($projectDir, $fix, $io);
         }
+
+        $checks['AssetMapper'] = $this->checkAssetMapper($projectDir, $fix, $io);
+        $checks['Typed properties'] = $this->checkTypedProperties($projectDir, $fix, $io);
+        $checks['Composer configuration'] = $this->checkComposerConfig($projectDir, $fix, $io);
 
         $checks['Database connection'] = $this->checkDatabase($io);
         $checks['Database tables'] = $this->checkDatabaseTables($io);
@@ -464,6 +475,36 @@ class SynapseDoctorCommand extends Command
             $io->writeln('  <comment>[WARN]</comment> Could not verify chat owner: ' . $e->getMessage());
             return false;
         }
+    }
+
+    private function checkRepositories(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $validator = new RepositoryValidator($this->filesystem);
+        return $validator->validate($projectDir, $fix, $io);
+    }
+
+    private function checkDoctrineMappings(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $validator = new DoctrineMappingValidator($this->filesystem);
+        return $validator->validate($projectDir, $fix, $io);
+    }
+
+    private function checkComposerConfig(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $validator = new ComposerPathValidator($this->filesystem);
+        return $validator->validate($projectDir, $fix, $io);
+    }
+
+    private function checkTypedProperties(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $validator = new TypedPropertyValidator($this->filesystem);
+        return $validator->validate($projectDir, $fix, $io);
+    }
+
+    private function checkAssetMapper(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $validator = new AssetMapperValidator($this->filesystem, $this->kernel, $this->parameterBag);
+        return $validator->validate($projectDir, $fix, $io);
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
