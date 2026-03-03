@@ -21,7 +21,6 @@ synapse:
     # Entités concrètes à créer dans votre application (étendent les bases du bundle).
     # Générées automatiquement par : bin/console synapse:doctor --init
     persistence:
-        enabled: true
         conversation_class: 'App\Entity\SynapseConversation'
         message_class: 'App\Entity\SynapseMessage'
 

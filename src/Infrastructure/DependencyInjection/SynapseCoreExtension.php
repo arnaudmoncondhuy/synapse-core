@@ -98,9 +98,8 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $config = $this->processConfiguration($configuration, $configs);
 
         // ── Persistence ───────────────────────────────────────────────────────
-        $container->setParameter('synapse.persistence.enabled', $config['persistence']['enabled'] ?? false);
-        $container->setParameter('synapse.persistence.conversation_class', $config['persistence']['conversation_class'] ?? null);
-        $container->setParameter('synapse.persistence.message_class', $config['persistence']['message_class'] ?? null);
+        $container->setParameter('synapse.persistence.conversation_class', $config['persistence']['conversation_class']);
+        $container->setParameter('synapse.persistence.message_class', $config['persistence']['message_class']);
 
         // ── Encryption ────────────────────────────────────────────────────────
         $container->setParameter('synapse.encryption.enabled', $config['encryption']['enabled'] ?? false);
@@ -159,7 +158,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         if ($container->hasDefinition(ConversationManager::class)) {
             $managerDef = $container->getDefinition(ConversationManager::class);
 
-            if ($config['persistence']['enabled'] && !empty($config['persistence']['conversation_class'])) {
+            if (!empty($config['persistence']['conversation_class'])) {
                 $managerDef->setArgument('$conversationClass', $config['persistence']['conversation_class']);
                 $managerDef->setArgument('$messageClass', $config['persistence']['message_class'] ?? null);
             }

@@ -247,11 +247,6 @@ class SynapseDoctorCommand extends Command
 
     private function checkEntities(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        if (!$this->parameterBag->get('synapse.persistence.enabled')) {
-            $io->writeln('  <comment>[SKIP]</comment> Persistence disabled');
-            return true;
-        }
-
         $convClass = $this->parameterBag->get('synapse.persistence.conversation_class');
         $msgClass = $this->parameterBag->get('synapse.persistence.message_class');
 
