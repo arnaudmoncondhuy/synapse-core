@@ -40,6 +40,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $conversationId = $options['conversation_id'] ?? null;
         $error = null;
         $memories = [];
 
@@ -47,7 +48,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             $error = "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
         } else {
             try {
-                $memories = $this->memoryManager->recall($message, $userId, $this->maxMemories);
+                $memories = $this->memoryManager->recall($message, $userId, $conversationId, $this->maxMemories);
             } catch (\Throwable $e) {
                 $error = $e->getMessage();
             }

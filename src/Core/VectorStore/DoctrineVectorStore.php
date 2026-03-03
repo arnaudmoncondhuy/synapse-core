@@ -89,29 +89,45 @@ class DoctrineVectorStore implements VectorStoreInterface
     {
         $vectorString = '[' . implode(',', $vector) . ']';
 
-        // Construction des filtres SQL — le user_id est imposé au niveau de la requête (Data Sealing)
         $whereClauses = [];
         $params = ['vector' => $vectorString, 'limit' => $limit];
 
+        // Règle de sécurité fondamentale : toujours filtrer par user_id
         if (!empty($filters['user_id'])) {
             $whereClauses[] = 'user_id = :user_id';
             $params['user_id'] = $filters['user_id'];
         }
+
+        // Stratégie de scope :
+        // Soit un scope spécifique est demandé (ex: pour l'API manual)
+        // Soit on est en recherche contextuelle pour le LLM (sans scope spécifié) :
+        // -> On veut les souvenirs 'user' (globaux) + les souvenirs 'conversation' uniquement s'ils lient à la conversation courante
         if (!empty($filters['scope'])) {
             $whereClauses[] = 'scope = :scope';
             $params['scope'] = $filters['scope'];
-        }
-        if (!empty($filters['conversation_id'])) {
-            $whereClauses[] = 'conversation_id = :conversation_id';
-            $params['conversation_id'] = $filters['conversation_id'];
+            if (!empty($filters['conversation_id'])) {
+                $whereClauses[] = 'conversation_id = :conversation_id';
+                $params['conversation_id'] = $filters['conversation_id'];
+            }
+        } else {
+            // Lors du recall LLM normal
+            $conversationId = $filters['conversation_id'] ?? null;
+            if ($conversationId) {
+                // (scope = 'user') OR (scope = 'conversation' AND conversation_id = 'X')
+                $whereClauses[] = "(scope = 'user' OR (scope = 'conversation' AND conversation_id = :conversation_id))";
+                $params['conversation_id'] = $conversationId;
+            } else {
+                // Sans conversation contextuelle, on ne remonte QUE les globaux
+                $whereClauses[] = "scope = 'user'";
+            }
         }
 
         $where = !empty($whereClauses) ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
 
-        $sql = "SELECT payload, (1 - (embedding <=> :vector)) as score 
+        $sql = "SELECT payload, (1 - (embedding::text::vector <=> :vector::text::vector)) as score 
                 FROM synapse_vector_memory 
                 {$where}
-                ORDER BY embedding <=> :vector 
+                ORDER BY embedding::text::vector <=> :vector::text::vector 
                 LIMIT :limit";
 
         $result = $this->em->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
@@ -127,22 +143,36 @@ class DoctrineVectorStore implements VectorStoreInterface
      */
     private function searchWithPhpFallback(array $vector, int $limit, array $filters): array
     {
-        // Appliquer les filtres en base pour limiter le fetch (Data Sealing)
+        // Appliquer les filtres restrictifs stricts d'abord
         $criteria = [];
         if (!empty($filters['user_id'])) {
             $criteria['userId'] = $filters['user_id'];
         }
-        if (!empty($filters['scope'])) {
-            $criteria['scope'] = $filters['scope'];
-        }
-        if (!empty($filters['conversation_id'])) {
-            $criteria['conversationId'] = $filters['conversation_id'];
-        }
 
-        $all = empty($criteria) ? $this->repository->findAll() : $this->repository->findBy($criteria);
+        // Pour le fallback, comme le OR array/Doctrine est complexe sans QueryBuilder, 
+        // on ramène un scope large et on filtre en PHP pour respecter la logique du VectorStore
+        $all = $this->repository->findBy($criteria);
 
         $results = [];
+        $conversationId = $filters['conversation_id'] ?? null;
+        $requestedScope = $filters['scope'] ?? null;
+
         foreach ($all as $item) {
+
+            // Logique de filtrage des Scopes en mémoire (PHP)
+            if ($requestedScope !== null) {
+                if ($item->getScope() !== $requestedScope) continue;
+                if ($conversationId && $item->getConversationId() !== $conversationId) continue;
+            } else {
+                // Recall LLM normal : 'user' autorisé PARTOUT. 'conversation' autorisé UNIQUEMENT si match.
+                if ($item->getScope() === 'conversation' && $item->getConversationId() !== $conversationId) {
+                    continue; // Skip les souvenirs des autres conversations
+                }
+                if ($item->getScope() !== 'user' && $item->getScope() !== 'conversation') {
+                    continue; // Skip any unknown scope
+                }
+            }
+
             $score = $this->calculateCosineSimilarity($vector, $item->getEmbedding());
             $results[] = [
                 'payload' => $item->getPayload(),

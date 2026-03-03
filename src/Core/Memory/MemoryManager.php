@@ -60,7 +60,7 @@ class MemoryManager
      *
      * @return array<int, array{content: string, score: float, metadata: array}>
      */
-    public function recall(string $query, ?string $userId = null, int $limit = 5): array
+    public function recall(string $query, ?string $userId = null, ?string $conversationId = null, int $limit = 5): array
     {
         $result = $this->embeddingService->generateEmbeddings($query);
 
@@ -73,6 +73,9 @@ class MemoryManager
         $filters = [];
         if ($userId) {
             $filters['user_id'] = $userId;
+        }
+        if ($conversationId) {
+            $filters['conversation_id'] = $conversationId;
         }
 
         $memories = $this->vectorStore->searchSimilar($vector, $limit, $filters);
