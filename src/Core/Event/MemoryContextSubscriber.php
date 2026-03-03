@@ -69,26 +69,31 @@ class MemoryContextSubscriber implements EventSubscriberInterface
 
         $memoryBlock = implode("\n", $memoryLines);
 
-        $systemMemoryMessage = [
-            'role'    => 'system',
-            'content' => "Informations connues sur l'utilisateur (mémorisées lors des conversations précédentes) :\n{$memoryBlock}\n\nUtilise ces informations si elles sont pertinentes pour répondre, sans les mentionner explicitement à moins que l'utilisateur ne le demande."
-        ];
+        $memoryString = "\n\n---\n\n### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR\n";
+        $memoryString .= "Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :\n{$memoryBlock}\n";
+        $memoryString .= "Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.";
 
-        // Injecter après le system prompt de base et avant le premier message utilisateur
         $prompt = $event->getPrompt();
         $messages = $prompt['contents'] ?? [];
 
-        // Trouver la position après le(s) message(s) system
-        $insertAt = 0;
+        // Chercher le premier message 'system' pour y concaténer la mémoire
+        $systemFound = false;
         foreach ($messages as $i => $entry) {
             if (($entry['role'] ?? '') === 'system') {
-                $insertAt = $i + 1;
-            } else {
+                $messages[$i]['content'] .= $memoryString;
+                $systemFound = true;
                 break;
             }
         }
 
-        array_splice($messages, $insertAt, 0, [$systemMemoryMessage]);
+        // Cas de fallback (anormal mais géré) où aucun message système n'existerait
+        if (!$systemFound) {
+            array_unshift($messages, [
+                'role' => 'system',
+                'content' => ltrim($memoryString)
+            ]);
+        }
+
         $prompt['contents'] = $messages;
         $event->setPrompt($prompt);
     }

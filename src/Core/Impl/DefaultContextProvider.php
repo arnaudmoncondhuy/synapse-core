@@ -20,11 +20,7 @@ class DefaultContextProvider implements ContextProviderInterface
         $dateStr = $now->format('d/m/Y H:i');
 
         return <<<PROMPT
-Tu es un assistant IA utile et compétent.
-Date et heure actuelles : {$dateStr}.
-
-Sois concis et utile dans ta réponse finale. Si tu ne sais pas quelque chose, dis-le simplement.
-Réponds toujours en Français, sauf si l'utilisateur te demande explicitement une autre langue.
+Date et heure actuelles : {$dateStr}
 PROMPT;
     }
 
