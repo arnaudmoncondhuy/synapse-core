@@ -349,35 +349,45 @@ class SynapseDoctorCommand extends Command
         }
 
         $content = file_get_contents($importmapFile);
-        if (!str_contains($content, 'synapse_chat_controller')) {
-            $io->error('[Importmap] Synapse chat Stimulus controller missing from importmap.php.');
-            $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_controller.js']");
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
+            $io->writeln('  <comment>[INFO]</comment> Legacy synapse_chat_controller missing from importmap.php (Optional if using V2)');
+        }
+
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_sidebar_controller.js')) {
+            $io->writeln('  <comment>[INFO]</comment> Legacy synapse_sidebar_controller missing from importmap.php (Optional if using V2)');
+        }
+
+        // --- NEW V2 ASSETS ---
+
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_new_controller.js')) {
+            $io->error('[Importmap] Consolidated V2 controller (synapse_chat_new_controller.js) missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_new_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_new_controller.js']");
             if ($fix) {
-                $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
-                    . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
+                $entry = "\n    'synapse-chat/controllers/synapse_chat_new_controller.js' => [\n"
+                    . "        'path' => 'synapse-chat/controllers/synapse_chat_new_controller.js',\n"
                     . "    ],\n";
                 $content = str_replace('];', $entry . '];', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
-                $io->writeln('  -> importmap.php updated with synapse_chat_controller.');
+                $io->writeln('  -> importmap.php updated with synapse_chat_new_controller.');
                 $hasError = true;
             } else {
-                return false;
+                $hasError = true;
             }
         }
 
-        if (!str_contains($content, 'synapse_sidebar_controller')) {
-            $io->error('[Importmap] Synapse sidebar Stimulus controller missing from importmap.php.');
-            $io->writeln("         Add: 'synapse-chat/controllers/synapse_sidebar_controller.js' => ['path' => 'synapse-chat/controllers/synapse_sidebar_controller.js']");
+        if (!str_contains($content, 'synapse-chat/styles/synapse_chat_new.css')) {
+            $io->error('[Importmap] Consolidated V2 CSS (synapse_chat_new.css) missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/styles/synapse_chat_new.css' => ['path' => 'synapse-chat/styles/synapse_chat_new.css']");
             if ($fix) {
-                $entry = "\n    'synapse-chat/controllers/synapse_sidebar_controller.js' => [\n"
-                    . "        'path' => 'synapse-chat/controllers/synapse_sidebar_controller.js',\n"
+                $entry = "\n    'synapse-chat/styles/synapse_chat_new.css' => [\n"
+                    . "        'path' => 'synapse-chat/styles/synapse_chat_new.css',\n"
                     . "    ],\n";
                 $content = str_replace('];', $entry . '];', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
-                $io->writeln('  -> importmap.php updated with synapse_sidebar_controller.');
+                $io->writeln('  -> importmap.php updated with synapse_chat_new.css.');
                 $hasError = true;
             } else {
-                return false;
+                $hasError = true;
             }
         }
 
