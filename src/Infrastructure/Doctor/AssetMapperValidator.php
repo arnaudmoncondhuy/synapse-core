@@ -56,7 +56,8 @@ class AssetMapperValidator
                 $io->error(sprintf('[AssetMapper] Missing symlink: assets/%s → %s', $assetPath, $bundleAssets));
 
                 if ($fix) {
-                    $this->filesystem->symlink($bundleAssets, $symlinkPath);
+                    $relativeTarget = rtrim($this->filesystem->makePathRelative($bundleAssets, $assetsDir), '/\\');
+                    $this->filesystem->symlink($relativeTarget, $symlinkPath);
                     $io->writeln(sprintf('  -> Created symlink assets/%s', $assetPath));
                 } else {
                     $isValid = false;
@@ -71,7 +72,8 @@ class AssetMapperValidator
 
                     if ($fix) {
                         $this->filesystem->remove($symlinkPath);
-                        $this->filesystem->symlink($bundleAssets, $symlinkPath);
+                        $relativeTarget = rtrim($this->filesystem->makePathRelative($bundleAssets, $assetsDir), '/\\');
+                        $this->filesystem->symlink($relativeTarget, $symlinkPath);
                         $io->writeln(sprintf('  -> Fixed symlink assets/%s', $assetPath));
                     } else {
                         $isValid = false;

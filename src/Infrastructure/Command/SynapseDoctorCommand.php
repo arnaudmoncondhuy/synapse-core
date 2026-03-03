@@ -349,6 +349,7 @@ class SynapseDoctorCommand extends Command
         }
 
         $content = file_get_contents($importmapFile);
+        $hasError = false;
         if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
             $io->writeln('  <comment>[INFO]</comment> Legacy synapse_chat_controller missing from importmap.php (Optional if using V2)');
         }
