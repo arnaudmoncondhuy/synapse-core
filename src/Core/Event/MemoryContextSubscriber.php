@@ -75,11 +75,12 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         ];
 
         // Injecter après le system prompt de base et avant le premier message utilisateur
-        $contents = $event->getPrompt();
+        $prompt = $event->getPrompt();
+        $messages = $prompt['contents'] ?? [];
 
         // Trouver la position après le(s) message(s) system
         $insertAt = 0;
-        foreach ($contents as $i => $entry) {
+        foreach ($messages as $i => $entry) {
             if (($entry['role'] ?? '') === 'system') {
                 $insertAt = $i + 1;
             } else {
@@ -87,8 +88,9 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             }
         }
 
-        array_splice($contents, $insertAt, 0, [$systemMemoryMessage]);
-        $event->setPrompt($contents);
+        array_splice($messages, $insertAt, 0, [$systemMemoryMessage]);
+        $prompt['contents'] = $messages;
+        $event->setPrompt($prompt);
     }
 
     private function getCurrentUserId(): ?string
