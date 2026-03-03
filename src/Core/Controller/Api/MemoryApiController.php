@@ -119,6 +119,71 @@ class MemoryApiController extends AbstractController
     }
 
     /**
+     * Crée manuellement un nouveau souvenir (saisi par l'utilisateur).
+     */
+    #[Route('/manual', name: 'synapse_api_memory_create_manual', methods: ['POST'])]
+    public function createManual(Request $request): JsonResponse
+    {
+        $this->checkCsrf($request);
+
+        if (!$this->permissionChecker->canCreateConversation()) {
+            return $this->json(['error' => 'Access denied.'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+        $fact = trim($data['fact'] ?? '');
+
+        if (empty($fact)) {
+            return $this->json(['error' => 'Le texte du souvenir est requis.'], 400);
+        }
+
+        $userId = $this->getUserId();
+
+        // On force le scope 'user' et 'manual' comme source
+        $this->memoryManager->remember(
+            $fact,
+            MemoryScope::USER,
+            $userId,
+            null,
+            'manual'
+        );
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Souvenir créé avec succès.',
+        ]);
+    }
+
+    /**
+     * Met à jour le texte d'un souvenir spécifique.
+     */
+    #[Route('/{id}', name: 'synapse_api_memory_update', methods: ['PUT', 'PATCH'])]
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $this->checkCsrf($request);
+
+        if (!$this->permissionChecker->canCreateConversation()) {
+            return $this->json(['error' => 'Access denied.'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+        $newText = trim($data['fact'] ?? '');
+
+        if (empty($newText)) {
+            return $this->json(['error' => 'Le nouveau texte est requis.'], 400);
+        }
+
+        $userId = $this->getUserId();
+
+        try {
+            $this->memoryManager->update($id, $newText, $userId);
+            return $this->json(['success' => true, 'message' => 'Souvenir mis à jour.']);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 403);
+        }
+    }
+
+    /**
      * Supprime un souvenir spécifique (RGPD / Privacy Dashboard).
      */
     #[Route('/{id}', name: 'synapse_api_memory_delete', methods: ['DELETE'])]
