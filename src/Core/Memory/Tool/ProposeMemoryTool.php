@@ -33,7 +33,7 @@ class ProposeMemoryTool implements AiToolInterface
             'properties' => [
                 'fact' => [
                     'type' => 'string',
-                    'description' => 'Le fait ou la préférence à retenir, formulé de manière concise et claire.'
+                    'description' => "Le fait ou la préférence à retenir. Important : formulez une phrase complète et explicite qui inclut le sujet et le contexte pour éviter toute ambiguïté (ex: 'L'utilisateur s'appelle Arnaud' au lieu de 'Prénom : Arnaud')."
                 ],
                 'category' => [
                     'type' => 'string',
