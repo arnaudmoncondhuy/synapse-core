@@ -74,6 +74,7 @@ class SynapseDoctorCommand extends Command
 
         if ($this->hasChat) {
             $checks['Importmap (Stimulus)'] = $this->checkImportmap($projectDir, $fix, $io);
+            $checks['Stimulus Bootstrap'] = $this->checkStimulusBootstrap($projectDir, $fix, $io);
         }
 
         $checks['AssetMapper'] = $this->checkAssetMapper($projectDir, $fix, $io);
@@ -397,6 +398,78 @@ class SynapseDoctorCommand extends Command
         }
 
         $io->writeln('  <info>[OK]</info> Importmap (Stimulus controllers)');
+        return true;
+    }
+
+    private function checkStimulusBootstrap(string $projectDir, bool $fix, SymfonyStyle $io): bool
+    {
+        $importmapFile = $projectDir . '/importmap.php';
+        $bootstrapFile = $projectDir . '/assets/stimulus_bootstrap.js'; // Default
+
+        if ($this->filesystem->exists($importmapFile)) {
+            $map = include $importmapFile;
+            if (isset($map['app']['path'])) {
+                $bootstrapFile = $projectDir . '/assets/' . $map['app']['path'];
+            }
+        }
+
+        if (!$this->filesystem->exists($bootstrapFile)) {
+            // Fallback to bootstrap.js if stimulus_bootstrap.js not found and not in importmap
+            if (!str_contains($bootstrapFile, 'stimulus_bootstrap.js')) {
+                $io->writeln(sprintf('  <comment>[SKIP]</comment> Stimulus entrypoint %s not found', $bootstrapFile));
+                return true;
+            }
+            $bootstrapFile = $projectDir . '/assets/bootstrap.js';
+        }
+
+        if (!$this->filesystem->exists($bootstrapFile)) {
+            $io->writeln('  <comment>[SKIP]</comment> stimulus_bootstrap.js not found');
+            return true;
+        }
+
+        $content = file_get_contents($bootstrapFile);
+        $hasError = false;
+
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_new_controller.js')) {
+            $io->error('[Stimulus] V2 controller (synapse_chat_new_controller.js) not registered in stimulus_bootstrap.js.');
+            $io->writeln("         Add: import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';");
+            $io->writeln("              app.register('synapse-chat-new', SynapseChatNewController);");
+
+            if ($fix) {
+                // Try to insert before startStimulusApp or at the end
+                if (str_contains($content, "import { startStimulusApp }")) {
+                    $content = str_replace(
+                        "import { startStimulusApp }",
+                        "import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';\nimport { startStimulusApp }",
+                        $content
+                    );
+                } else {
+                    $content = "import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';\n" . $content;
+                }
+
+                if (str_contains($content, 'const app = startStimulusApp();')) {
+                    $content = str_replace(
+                        'const app = startStimulusApp();',
+                        "const app = startStimulusApp();\napp.register('synapse-chat-new', SynapseChatNewController);",
+                        $content
+                    );
+                } else {
+                    $content .= "\napp.register('synapse-chat-new', SynapseChatNewController);\n";
+                }
+
+                $this->filesystem->dumpFile($bootstrapFile, $content);
+                $io->writeln('  -> stimulus_bootstrap.js updated.');
+                $hasError = true;
+            } else {
+                $hasError = true;
+            }
+        }
+
+        if ($hasError) {
+            return false;
+        }
+
+        $io->writeln('  <info>[OK]</info> Stimulus Bootstrap');
         return true;
     }
 
