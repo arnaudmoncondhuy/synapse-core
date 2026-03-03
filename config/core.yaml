@@ -24,6 +24,9 @@ services:
     ArnaudMoncondhuy\SynapseCore\Infrastructure\Command\:
         resource: '../src/Infrastructure/Command/'
 
+    ArnaudMoncondhuy\SynapseCore\Core\Timing\:
+        resource: '../src/Core/Timing/'
+
     # ── Compatibility alias : TokenUsageRepository → LlmCallRepository ───────
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository:
         alias: ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository

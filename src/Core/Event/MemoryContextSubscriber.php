@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
+use ArnaudMoncondhuy\SynapseCore\Core\Timing\SynapseProfiler;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
@@ -20,7 +21,8 @@ class MemoryContextSubscriber implements EventSubscriberInterface
     public function __construct(
         private MemoryManager $memoryManager,
         private ?TokenStorageInterface $tokenStorage = null,
-        private int $maxMemories = 5
+        private int $maxMemories = 5,
+        private ?SynapseProfiler $profiler = null,
     ) {}
 
     public static function getSubscribedEvents(): array
@@ -48,8 +50,19 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             $error = "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
         } else {
             try {
+                if ($this->profiler) {
+                    $this->profiler->start('Memory', 'PgVector Memory Search', 'Calcul d\'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL.');
+                }
+
                 $memories = $this->memoryManager->recall($message, $userId, $conversationId, $this->maxMemories);
+
+                if ($this->profiler) {
+                    $this->profiler->stop('Memory', 'PgVector Memory Search', 0);
+                }
             } catch (\Throwable $e) {
+                if ($this->profiler) {
+                    $this->profiler->stop('Memory', 'PgVector Memory Search', 0);
+                }
                 $error = $e->getMessage();
             }
         }

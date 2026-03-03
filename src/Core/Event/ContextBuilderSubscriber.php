@@ -9,6 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry;
+use ArnaudMoncondhuy\SynapseCore\Core\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -27,6 +28,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
         private MissionRegistry $missionRegistry,
+        private SynapseProfiler $profiler,
     ) {}
 
     /**
@@ -50,6 +52,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
      */
     public function onPrePrompt(SynapsePrePromptEvent $event): void
     {
+        $this->profiler->start('Context', 'Context Builder CPU', 'Temps de préparation des informations système, recherche des instructions et formatage.');
+
         $message = $event->getMessage();
         $options = $event->getOptions();
 
@@ -138,6 +142,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // Set on event
         $event->setPrompt($prompt);
         $event->setConfig($config);
+        $this->profiler->stop('Context', 'Context Builder CPU', 0);
     }
 
     /**

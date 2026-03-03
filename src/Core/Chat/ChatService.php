@@ -14,8 +14,11 @@ use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseGenerationStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseToolCallRequestedEvent;
+use ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry;
+use ArnaudMoncondhuy\SynapseCore\Core\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -41,6 +44,8 @@ class ChatService
         private LlmClientRegistry $llmRegistry,
         private ConfigProviderInterface $configProvider,
         private EventDispatcherInterface $dispatcher,
+        private MissionRegistry $missionRegistry,
+        private SynapseProfiler $profiler,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager $conversationManager = null,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
     ) {}
@@ -140,19 +145,6 @@ class ChatService
             $finalSafetyRatings = [];
             $debugId = null;
 
-            // Timings Accumulator
-            $timings = [];
-            $timeGlobalStart = microtime(true);
-            $timings['total_ms'] = 0; // Computed at the end
-            $timings['steps'] = [];
-
-            // Track context building time (events pre-prompt)
-            $tContext = microtime(true);
-            $timings['steps'][] = [
-                'name' => 'Context & Memory Building',
-                'duration_ms' => round(($tContext - $timeGlobalStart) * 1000, 2),
-                'turn' => 0,
-            ];
             $firstTurnRawData = []; // Capture raw API data from first turn
 
             // Multi-turn loop
@@ -165,7 +157,7 @@ class ChatService
                 $hasToolCalls = false;
 
                 // ── LLM CALL (Streaming or Sync) ──
-                $tLlmStart = microtime(true);
+                $this->profiler->start('LLM', 'LLM Network Call & Streaming', "Durée totale de l'échange réseau avec l'API du fournisseur (attente + réception des chunks).");
                 if ($streamingEnabled) {
                     $chunks = $activeClient->streamGenerateContent(
                         $prompt['contents'],
@@ -183,11 +175,6 @@ class ChatService
                     );
                     $chunks = [$response];
                 }
-                $timings['steps'][] = [
-                    'name' => 'LLM Network Call',
-                    'duration_ms' => round((microtime(true) - $tLlmStart) * 1000, 2),
-                    'turn' => $turn,
-                ];
 
                 $modelText = '';
                 $modelToolCalls = [];
@@ -256,6 +243,10 @@ class ChatService
                     }
                 }
 
+                // ── RESOLVE TIMING ──
+                // Compute actual time only after the generator is fully consumed (all chunks received)
+                $this->profiler->stop('LLM', 'LLM Network Call & Streaming', $turn);
+
                 // ── CAPTURE RAW DATA FROM FIRST TURN ──
                 // Must be done AFTER the loop because $debugOut is populated by the generator during/after iteration
                 if ($turn === 0 && !empty($debugOut)) {
@@ -285,8 +276,9 @@ class ChatService
 
                     // Add tool responses to prompt for next iteration (one message per tool)
                     foreach ($modelToolCalls as $tc) {
-                        $tToolStart = microtime(true);
                         $toolName = $tc['function']['name'];
+                        $this->profiler->start('Tool', 'Tool Execution: ' . $toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
+
                         $toolResult = $toolResults[$toolName] ?? null;
 
                         if ($onStatusUpdate) {
@@ -306,11 +298,7 @@ class ChatService
                             }
                         }
 
-                        $timings['steps'][] = [
-                            'name' => 'Tool Execution: ' . $toolName,
-                            'duration_ms' => round((microtime(true) - $tToolStart) * 1000, 2),
-                            'turn' => $turn,
-                        ];
+                        $this->profiler->stop('Tool', 'Tool Execution: ' . $toolName, $turn);
                     }
 
                     // Continuer la boucle : le LLM reçoit le résultat de l'outil et peut enchaîner avec sa réponse (ex. "Bonjour Arnaud, comment puis-je vous aider ?")
@@ -330,10 +318,12 @@ class ChatService
             $finalUsageMetadata = $cumulativeUsage;
 
             // ── FINALIZE AND LOG ──
-            $timings['total_ms'] = round((microtime(true) - $timeGlobalStart) * 1000, 2);
+            // $timings['total_ms'] = round((microtime(true) - $timeGlobalStart) * 1000, 2); // Removed, now handled by profiler
 
             if ($debugMode) {
                 $debugId = uniqid('dbg_', true);
+
+                $timings = $this->profiler->getTimings();
 
                 // Dispatch completion event for debug logging
                 // DebugLogSubscriber will handle cache storage and DB persistence
@@ -348,6 +338,9 @@ class ChatService
                     $timings
                 ));
             }
+
+            // Purge the current timers for next call
+            $this->profiler->reset();
 
             // ── DISPATCH GENERATION COMPLETED EVENT ──
             $this->dispatcher->dispatch(new SynapseGenerationCompletedEvent(

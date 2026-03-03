@@ -35,6 +35,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         return [
             SynapsePrePromptEvent::class         => ['onPrePrompt', 0],   // Lower priority to capture prompt AFTER MemoryContextSubscriber (50)
             SynapseChunkReceivedEvent::class     => ['onChunkReceived', 0],
+            SynapseToolCallCompletedEvent::class => ['onToolCallCompleted', 0],
             SynapseExchangeCompletedEvent::class => ['onExchangeCompleted', -100], // Low priority, let others finish first
         ];
     }
@@ -155,6 +156,21 @@ class DebugLogSubscriber implements EventSubscriberInterface
         }
     }
 
+    public function onToolCallCompleted(SynapseToolCallCompletedEvent $event): void
+    {
+        $toolCallData = $event->getToolCallData();
+        $this->debugAccumulator['tool_executions'][] = [
+            'tool_call_id'   => $toolCallData['id'] ?? null,
+            'tool_name'      => $event->getToolName(),
+            'tool_args'      => is_string($toolCallData['function']['arguments'] ?? null)
+                ? $toolCallData['function']['arguments']
+                : json_encode($toolCallData['function']['arguments'] ?? [], JSON_UNESCAPED_UNICODE),
+            'tool_result'    => is_string($event->getResult())
+                ? $event->getResult()
+                : json_encode($event->getResult(), JSON_UNESCAPED_UNICODE),
+        ];
+    }
+
     public function onExchangeCompleted(SynapseExchangeCompletedEvent $event): void
     {
         // Only log if debug mode is enabled
@@ -177,8 +193,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
             }
         }
 
-        // Extract tool usage from history (which tool calls were made and their results)
-        $this->debugAccumulator['tool_usage'] = $this->extractToolUsage();
+        // Use captured tool executions
+        $this->debugAccumulator['tool_usage'] = $this->debugAccumulator['tool_executions'] ?? [];
 
         // Complete the debug accumulator with final metadata
         $this->debugAccumulator['model']    = $event->getModel();

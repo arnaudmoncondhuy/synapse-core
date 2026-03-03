@@ -7,6 +7,8 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Controller\Api;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
 use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
+use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
+use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,6 +27,7 @@ class MemoryApiController extends AbstractController
     public function __construct(
         private MemoryManager $memoryManager,
         private PermissionCheckerInterface $permissionChecker,
+        private ?ConversationManager $conversationManager = null,
         private ?CsrfTokenManagerInterface $csrfTokenManager = null,
     ) {}
 
@@ -65,9 +68,28 @@ class MemoryApiController extends AbstractController
             'fact'
         );
 
+        // Loopback : Ajouter un message à la conversation si ID présent
+        $feedbackMessage = null;
+        if ($conversationId && $this->conversationManager) {
+            $user = $this->getUser();
+            if ($user instanceof ConversationOwnerInterface) {
+                $conversation = $this->conversationManager->getConversation($conversationId, $user);
+                if ($conversation) {
+                    $feedbackMessage = sprintf("✅ J'ai validé la mémorisation de l'information : %s", $fact);
+                    $this->conversationManager->saveMessage(
+                        $conversation,
+                        MessageRole::USER,
+                        $feedbackMessage,
+                        ['metadata' => ['subtype' => 'system_action', 'action' => 'memory_confirmed']]
+                    );
+                }
+            }
+        }
+
         return $this->json([
             'success' => true,
             'message' => 'Souvenir enregistré avec succès.',
+            'feedback_message' => $feedbackMessage,
         ]);
     }
 
@@ -83,8 +105,33 @@ class MemoryApiController extends AbstractController
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
-        // Rien à faire côté serveur, on laisse le frontend gérer l'affichage
-        return $this->json(['success' => true, 'message' => 'Proposition ignorée.']);
+        $data = json_decode($request->getContent(), true) ?? [];
+        $conversationId = $data['conversation_id'] ?? null;
+        $fact = $data['fact'] ?? 'une information';
+
+        // Loopback : Ajouter un message de rejet à la conversation
+        $feedbackMessage = null;
+        if ($conversationId && $this->conversationManager) {
+            $user = $this->getUser();
+            if ($user instanceof ConversationOwnerInterface) {
+                $conversation = $this->conversationManager->getConversation($conversationId, $user);
+                if ($conversation) {
+                    $feedbackMessage = sprintf("❌ Je refuse la mémorisation de l'information : %s", $fact);
+                    $this->conversationManager->saveMessage(
+                        $conversation,
+                        MessageRole::USER,
+                        $feedbackMessage,
+                        ['metadata' => ['subtype' => 'system_action', 'action' => 'memory_rejected']]
+                    );
+                }
+            }
+        }
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Proposition ignorée.',
+            'feedback_message' => $feedbackMessage
+        ]);
     }
 
     /**
