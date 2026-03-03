@@ -54,10 +54,28 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Filtrer les résultats trop peu pertinents (seuil de similarité : 0.7)
-        $relevant = array_filter($memories, fn($m) => $m['score'] >= 0.7);
+        // Filtrer les résultats trop peu pertinents (seuil de similarité abaissé pour tolérance)
+        $relevant = array_filter($memories, fn($m) => $m['score'] >= 0.4);
+
+        $prompt = $event->getPrompt();
+
+        // Ajout des informations de matching dans les metadata du prompt pour le Debug
+        if (!isset($prompt['metadata'])) {
+            $prompt['metadata'] = [];
+        }
+
+        $prompt['metadata']['memory_matching'] = [
+            'found' => count($memories),
+            'relevant' => count($relevant),
+            'threshold' => 0.4,
+            'details' => array_map(fn($m) => [
+                'score' => $m['score'],
+                'content' => substr($m['content'], 0, 50) . '...'
+            ], $memories)
+        ];
 
         if (empty($relevant)) {
+            $event->setPrompt($prompt);
             return;
         }
 
@@ -73,7 +91,6 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $memoryString .= "Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :\n{$memoryBlock}\n";
         $memoryString .= "Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.";
 
-        $prompt = $event->getPrompt();
         $messages = $prompt['contents'] ?? [];
 
         // Chercher le premier message 'system' pour y concaténer la mémoire
