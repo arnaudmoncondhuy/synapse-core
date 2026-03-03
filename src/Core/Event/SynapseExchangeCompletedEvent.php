@@ -25,6 +25,7 @@ class SynapseExchangeCompletedEvent extends Event
      * @param array  $safety    Évaluations de sécurité.
      * @param bool   $debugMode Indique si le mode debug était activé par l'utilisateur.
      * @param array  $rawData   Données brutes de la requête et de la réponse (payloads).
+     * @param array  $timings   Données chronométriques des étapes d'exécution (en millisecondes).
      */
     public function __construct(
         private string $debugId,
@@ -34,6 +35,7 @@ class SynapseExchangeCompletedEvent extends Event
         private array $safety = [],
         private bool $debugMode = false,
         private array $rawData = [],
+        private array $timings = [],
     ) {}
 
     public function getDebugId(): string
@@ -72,5 +74,13 @@ class SynapseExchangeCompletedEvent extends Event
     public function getRawData(): array
     {
         return $this->rawData;
+    }
+
+    /**
+     * Retourne les étapes temporelles du cycle d'exécution (ms).
+     */
+    public function getTimings(): array
+    {
+        return $this->timings;
     }
 }

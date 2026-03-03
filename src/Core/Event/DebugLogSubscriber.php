@@ -185,6 +185,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $this->debugAccumulator['provider'] = $event->getProvider();
         $this->debugAccumulator['usage']    = $event->getUsage();
         $this->debugAccumulator['safety']   = $event->getSafety();
+        $this->debugAccumulator['timings']  = $event->getTimings();
         $this->debugAccumulator['created_at'] = new DateTimeImmutable();
 
         // Prepare lightweight metadata for DB storage
@@ -193,6 +194,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'provider'           => $event->getProvider(),
             'token_usage'        => $event->getUsage(),
             'safety_ratings'     => $event->getSafety(),
+            'timings'            => $event->getTimings(),
             'thinking_enabled'   => $this->debugAccumulator['config']['thinking_enabled'] ?? false,
         ];
 

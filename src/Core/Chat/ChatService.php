@@ -111,231 +111,260 @@ class ChatService
 
         try {
 
-        // Vérification des plafonds de dépense (avant appel LLM)
-        $userId = $options['user_id'] ?? null;
-        $presetId = $config['preset_id'] ?? null;
-        $missionId = isset($config['mission_id']) ? (int) $config['mission_id'] : null;
-        if ($this->spendingLimitChecker !== null && is_string($userId)) {
-            $estimatedCostRef = $options['estimated_cost_reference'] ?? 0.0;
-            $this->spendingLimitChecker->assertCanSpend($userId, $presetId !== null ? (int) $presetId : null, (float) $estimatedCostRef, $missionId);
-        }
-
-        // Check debug mode
-        $globalDebugMode = $config['debug_mode'] ?? false;
-        $debugMode = ($options['debug'] ?? false) || ($globalDebugMode && ($options['debug'] ?? true) !== false);
-
-        // Get LLM client and config
-        $activeClient = $this->llmRegistry->getClient();
-        // $options['streaming'] permet de forcer le mode sync (false) ou streaming (true) indépendamment du preset
-        $streamingEnabled = isset($options['streaming']) ? (bool) $options['streaming'] : ($config['streaming_enabled'] ?? true);
-
-        // Accumulators (usage is accumulated across all turns for correct multi-turn counting)
-        $fullTextAccumulator = '';
-        $cumulativeUsage = [
-            'prompt_tokens'     => 0,
-            'completion_tokens' => 0,
-            'thinking_tokens'   => 0,
-            'total_tokens'      => 0,
-        ];
-        $finalSafetyRatings = [];
-        $debugId = null;
-        $firstTurnRawData = []; // Capture raw API data from first turn
-
-        // Multi-turn loop
-        for ($turn = 0; $turn < self::MAX_TURNS; ++$turn) {
-            if ($onStatusUpdate && $turn > 0) {
-                $onStatusUpdate('Réflexion supplémentaire...', 'thinking');
+            // Vérification des plafonds de dépense (avant appel LLM)
+            $userId = $options['user_id'] ?? null;
+            $presetId = $config['preset_id'] ?? null;
+            $missionId = isset($config['mission_id']) ? (int) $config['mission_id'] : null;
+            if ($this->spendingLimitChecker !== null && is_string($userId)) {
+                $estimatedCostRef = $options['estimated_cost_reference'] ?? 0.0;
+                $this->spendingLimitChecker->assertCanSpend($userId, $presetId !== null ? (int) $presetId : null, (float) $estimatedCostRef, $missionId);
             }
 
-            $debugOut = [];
-            $hasToolCalls = false;
+            // Check debug mode
+            $globalDebugMode = $config['debug_mode'] ?? false;
+            $debugMode = ($options['debug'] ?? false) || ($globalDebugMode && ($options['debug'] ?? true) !== false);
 
-            // ── LLM CALL (Streaming or Sync) ──
-            if ($streamingEnabled) {
-                $chunks = $activeClient->streamGenerateContent(
-                    $prompt['contents'],
-                    $prompt['toolDefinitions'] ?? [],
-                    null,
-                    $debugOut,
-                );
-            } else {
-                $response = $activeClient->generateContent(
-                    $prompt['contents'],
-                    $prompt['toolDefinitions'] ?? [],
-                    null,
-                    [],
-                    $debugOut,
-                );
-                $chunks = [$response];
-            }
+            // Get LLM client and config
+            $activeClient = $this->llmRegistry->getClient();
+            // $options['streaming'] permet de forcer le mode sync (false) ou streaming (true) indépendamment du preset
+            $streamingEnabled = isset($options['streaming']) ? (bool) $options['streaming'] : ($config['streaming_enabled'] ?? true);
 
-            $modelText = '';
-            $modelToolCalls = [];
+            // Ensure multi-turn usage is accumulated correctly
+            $fullTextAccumulator = '';
+            $cumulativeUsage = [
+                'prompt_tokens'     => 0,
+                'completion_tokens' => 0,
+                'thinking_tokens'   => 0,
+                'total_tokens'      => 0,
+            ];
+            $finalSafetyRatings = [];
+            $debugId = null;
 
-            // ── PROCESS CHUNKS ──
-            foreach ($chunks as $chunk) {
-                // Dispatch ChunkReceivedEvent (for debug logging and streaming)
-                $this->dispatcher->dispatch(new SynapseChunkReceivedEvent($chunk, $turn));
+            // Timings Accumulator
+            $timings = [];
+            $timeGlobalStart = microtime(true);
+            $timings['total_ms'] = 0; // Computed at the end
+            $timings['steps'] = [];
 
-                // Accumulate text
-                if (!empty($chunk['text'])) {
-                    $fullTextAccumulator .= $chunk['text'];
-                    $modelText .= $chunk['text'];
-                    if ($onToken) {
-                        $onToken($chunk['text']);
-                    }
+            // Track context building time (events pre-prompt)
+            $tContext = microtime(true);
+            $timings['steps'][] = [
+                'name' => 'Context & Memory Building',
+                'duration_ms' => round(($tContext - $timeGlobalStart) * 1000, 2),
+                'turn' => 0,
+            ];
+            $firstTurnRawData = []; // Capture raw API data from first turn
+
+            // Multi-turn loop
+            for ($turn = 0; $turn < self::MAX_TURNS; ++$turn) {
+                if ($onStatusUpdate && $turn > 0) {
+                    $onStatusUpdate('Réflexion supplémentaire...', 'thinking');
                 }
 
-                // Handle thinking (add to model parts for history)
-                if (!empty($chunk['thinking'])) {
-                    // Note: thinking is handled by native LLM thinking, not stored separately in history
-                }
+                $debugOut = [];
+                $hasToolCalls = false;
 
-                // Accumulate usage across all turns (multi-turn = multiple LLM calls)
-                if (!empty($chunk['usage'])) {
-                    $u = $chunk['usage'];
-                    $cumulativeUsage['prompt_tokens']     += (int) ($u['prompt_tokens'] ?? 0);
-                    $cumulativeUsage['completion_tokens'] += (int) ($u['completion_tokens'] ?? 0);
-                    $cumulativeUsage['thinking_tokens']   += (int) ($u['thinking_tokens'] ?? 0);
-                    $cumulativeUsage['total_tokens']      += (int) ($u['total_tokens'] ?? 0);
+                // ── LLM CALL (Streaming or Sync) ──
+                $tLlmStart = microtime(true);
+                if ($streamingEnabled) {
+                    $chunks = $activeClient->streamGenerateContent(
+                        $prompt['contents'],
+                        $prompt['toolDefinitions'] ?? [],
+                        null,
+                        $debugOut,
+                    );
+                } else {
+                    $response = $activeClient->generateContent(
+                        $prompt['contents'],
+                        $prompt['toolDefinitions'] ?? [],
+                        null,
+                        [],
+                        $debugOut,
+                    );
+                    $chunks = [$response];
                 }
-                if (!empty($chunk['safety_ratings'])) {
-                    $finalSafetyRatings = $chunk['safety_ratings'];
-                }
+                $timings['steps'][] = [
+                    'name' => 'LLM Network Call',
+                    'duration_ms' => round((microtime(true) - $tLlmStart) * 1000, 2),
+                    'turn' => $turn,
+                ];
 
-                // Handle blocked responses
-                if ($chunk['blocked'] ?? false) {
-                    $reason = $chunk['blocked_reason'] ?? 'contenu bloqué par les filtres de sécurité';
-                    $blockedMsg = "⚠️ Ma réponse a été bloquée ({$reason}). Veuillez reformuler votre demande.";
-                    $fullTextAccumulator .= $blockedMsg;
-                    $modelText .= $blockedMsg;
-                    if ($onToken) {
-                        $onToken($blockedMsg);
-                    }
-                }
+                $modelText = '';
+                $modelToolCalls = [];
 
-                // Collect function calls in OpenAI format
-                if (!empty($chunk['function_calls'])) {
-                    $hasToolCalls = true;
-                    foreach ($chunk['function_calls'] as $fc) {
-                        $name = $fc['name'] ?? $fc['function']['name'] ?? null;
-                        if ($name === null || $name === '') {
-                            continue;
+                // ── PROCESS CHUNKS ──
+                foreach ($chunks as $chunk) {
+                    // Dispatch ChunkReceivedEvent (for debug logging and streaming)
+                    $this->dispatcher->dispatch(new SynapseChunkReceivedEvent($chunk, $turn));
+
+                    // Accumulate text
+                    if (!empty($chunk['text'])) {
+                        $fullTextAccumulator .= $chunk['text'];
+                        $modelText .= $chunk['text'];
+                        if ($onToken) {
+                            $onToken($chunk['text']);
                         }
-                        $rawArgs = $fc['args'] ?? $fc['function']['arguments'] ?? [];
-                        $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
-                        $modelToolCalls[] = [
-                            'id'       => $fc['id'] ?? 'call_' . bin2hex(random_bytes(6)),
-                            'type'     => 'function',
-                            'function' => [
-                                'name'      => $name,
-                                'arguments' => $argsJson,
-                            ],
-                        ];
-                    }
-                }
-            }
-
-            // ── CAPTURE RAW DATA FROM FIRST TURN ──
-            // Must be done AFTER the loop because $debugOut is populated by the generator during/after iteration
-            if ($turn === 0 && !empty($debugOut)) {
-                $firstTurnRawData = $debugOut;
-            }
-
-            // ── ADD MODEL RESPONSE TO HISTORY (OpenAI format) ──
-            if ($modelText !== '' || !empty($modelToolCalls)) {
-                $entry = ['role' => 'assistant', 'content' => $modelText ?: null];
-                if (!empty($modelToolCalls)) {
-                    $entry['tool_calls'] = $modelToolCalls;
-                }
-                $prompt['contents'][] = $entry;
-            }
-
-            // ── PROCESS TOOL CALLS ──
-            if ($hasToolCalls && !empty($modelToolCalls)) {
-                // Dispatch ToolCallRequestedEvent - Normalise modelToolCalls to Event format
-                $eventToolCalls = array_map(fn($tc) => [
-                    'id'   => $tc['id'],
-                    'name' => $tc['function']['name'],
-                    'args' => (array) (json_decode($tc['function']['arguments'], true) ?: [])
-                ], $modelToolCalls);
-
-                $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($eventToolCalls));
-                $toolResults = $toolEvent->getResults();
-
-                // Add tool responses to prompt for next iteration (one message per tool)
-                foreach ($modelToolCalls as $tc) {
-                    $toolName = $tc['function']['name'];
-                    $toolResult = $toolResults[$toolName] ?? null;
-
-                    if ($onStatusUpdate) {
-                        $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:' . $toolName);
                     }
 
-                    if (null !== $toolResult) {
-                        $this->dispatcher->dispatch(new SynapseToolCallCompletedEvent($toolName, $toolResult, $tc));
-                        $prompt['contents'][] = [
-                            'role'         => 'tool',
-                            'tool_call_id' => $tc['id'],
-                            'content'      => is_string($toolResult) ? $toolResult : json_encode($toolResult, JSON_UNESCAPED_UNICODE),
-                        ];
-                        // Callback pour notifier le contrôleur (permet de streamer l'événement immédiatement au frontend)
-                        if ($onToolExecuted) {
-                            $onToolExecuted($toolName, $toolResult);
+                    // Handle thinking (add to model parts for history)
+                    if (!empty($chunk['thinking'])) {
+                        // Note: thinking is handled by native LLM thinking, not stored separately in history
+                    }
+
+                    // Accumulate usage across all turns (multi-turn = multiple LLM calls)
+                    if (!empty($chunk['usage'])) {
+                        $u = $chunk['usage'];
+                        $cumulativeUsage['prompt_tokens']     += (int) ($u['prompt_tokens'] ?? 0);
+                        $cumulativeUsage['completion_tokens'] += (int) ($u['completion_tokens'] ?? 0);
+                        $cumulativeUsage['thinking_tokens']   += (int) ($u['thinking_tokens'] ?? 0);
+                        $cumulativeUsage['total_tokens']      += (int) ($u['total_tokens'] ?? 0);
+                    }
+                    if (!empty($chunk['safety_ratings'])) {
+                        $finalSafetyRatings = $chunk['safety_ratings'];
+                    }
+
+                    // Handle blocked responses
+                    if ($chunk['blocked'] ?? false) {
+                        $reason = $chunk['blocked_reason'] ?? 'contenu bloqué par les filtres de sécurité';
+                        $blockedMsg = "⚠️ Ma réponse a été bloquée ({$reason}). Veuillez reformuler votre demande.";
+                        $fullTextAccumulator .= $blockedMsg;
+                        $modelText .= $blockedMsg;
+                        if ($onToken) {
+                            $onToken($blockedMsg);
+                        }
+                    }
+
+                    // Collect function calls in OpenAI format
+                    if (!empty($chunk['function_calls'])) {
+                        $hasToolCalls = true;
+                        foreach ($chunk['function_calls'] as $fc) {
+                            $name = $fc['name'] ?? $fc['function']['name'] ?? null;
+                            if ($name === null || $name === '') {
+                                continue;
+                            }
+                            $rawArgs = $fc['args'] ?? $fc['function']['arguments'] ?? [];
+                            $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
+                            $modelToolCalls[] = [
+                                'id'       => $fc['id'] ?? 'call_' . bin2hex(random_bytes(6)),
+                                'type'     => 'function',
+                                'function' => [
+                                    'name'      => $name,
+                                    'arguments' => $argsJson,
+                                ],
+                            ];
                         }
                     }
                 }
 
-                // Continuer la boucle : le LLM reçoit le résultat de l'outil et peut enchaîner avec sa réponse (ex. "Bonjour Arnaud, comment puis-je vous aider ?")
-                continue;
+                // ── CAPTURE RAW DATA FROM FIRST TURN ──
+                // Must be done AFTER the loop because $debugOut is populated by the generator during/after iteration
+                if ($turn === 0 && !empty($debugOut)) {
+                    $firstTurnRawData = $debugOut;
+                }
+
+                // ── ADD MODEL RESPONSE TO HISTORY (OpenAI format) ──
+                if ($modelText !== '' || !empty($modelToolCalls)) {
+                    $entry = ['role' => 'assistant', 'content' => $modelText ?: null];
+                    if (!empty($modelToolCalls)) {
+                        $entry['tool_calls'] = $modelToolCalls;
+                    }
+                    $prompt['contents'][] = $entry;
+                }
+
+                // ── PROCESS TOOL CALLS ──
+                if ($hasToolCalls && !empty($modelToolCalls)) {
+                    // Dispatch ToolCallRequestedEvent - Normalise modelToolCalls to Event format
+                    $eventToolCalls = array_map(fn($tc) => [
+                        'id'   => $tc['id'],
+                        'name' => $tc['function']['name'],
+                        'args' => (array) (json_decode($tc['function']['arguments'], true) ?: [])
+                    ], $modelToolCalls);
+
+                    $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($eventToolCalls));
+                    $toolResults = $toolEvent->getResults();
+
+                    // Add tool responses to prompt for next iteration (one message per tool)
+                    foreach ($modelToolCalls as $tc) {
+                        $tToolStart = microtime(true);
+                        $toolName = $tc['function']['name'];
+                        $toolResult = $toolResults[$toolName] ?? null;
+
+                        if ($onStatusUpdate) {
+                            $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:' . $toolName);
+                        }
+
+                        if (null !== $toolResult) {
+                            $this->dispatcher->dispatch(new SynapseToolCallCompletedEvent($toolName, $toolResult, $tc));
+                            $prompt['contents'][] = [
+                                'role'         => 'tool',
+                                'tool_call_id' => $tc['id'],
+                                'content'      => is_string($toolResult) ? $toolResult : json_encode($toolResult, JSON_UNESCAPED_UNICODE),
+                            ];
+                            // Callback pour notifier le contrôleur (permet de streamer l'événement immédiatement au frontend)
+                            if ($onToolExecuted) {
+                                $onToolExecuted($toolName, $toolResult);
+                            }
+                        }
+
+                        $timings['steps'][] = [
+                            'name' => 'Tool Execution: ' . $toolName,
+                            'duration_ms' => round((microtime(true) - $tToolStart) * 1000, 2),
+                            'turn' => $turn,
+                        ];
+                    }
+
+                    // Continuer la boucle : le LLM reçoit le résultat de l'outil et peut enchaîner avec sa réponse (ex. "Bonjour Arnaud, comment puis-je vous aider ?")
+                    continue;
+                }
+
+                // No tool calls → end of exchange
+                break;
             }
 
-            // No tool calls → end of exchange
-            break;
-        }
+            // Ensure total_tokens is set (sum if not provided by API)
+            if ($cumulativeUsage['total_tokens'] === 0) {
+                $cumulativeUsage['total_tokens'] = $cumulativeUsage['prompt_tokens']
+                    + $cumulativeUsage['completion_tokens']
+                    + $cumulativeUsage['thinking_tokens'];
+            }
+            $finalUsageMetadata = $cumulativeUsage;
 
-        // Ensure total_tokens is set (sum if not provided by API)
-        if ($cumulativeUsage['total_tokens'] === 0) {
-            $cumulativeUsage['total_tokens'] = $cumulativeUsage['prompt_tokens']
-                + $cumulativeUsage['completion_tokens']
-                + $cumulativeUsage['thinking_tokens'];
-        }
-        $finalUsageMetadata = $cumulativeUsage;
+            // ── FINALIZE AND LOG ──
+            $timings['total_ms'] = round((microtime(true) - $timeGlobalStart) * 1000, 2);
 
-        // ── FINALIZE AND LOG ──
-        if ($debugMode) {
-            $debugId = uniqid('dbg_', true);
+            if ($debugMode) {
+                $debugId = uniqid('dbg_', true);
 
-            // Dispatch completion event for debug logging
-            // DebugLogSubscriber will handle cache storage and DB persistence
-            $this->dispatcher->dispatch(new SynapseExchangeCompletedEvent(
-                $debugId,
-                $config['model'] ?? 'unknown',
-                $activeClient->getProviderName(),
+                // Dispatch completion event for debug logging
+                // DebugLogSubscriber will handle cache storage and DB persistence
+                $this->dispatcher->dispatch(new SynapseExchangeCompletedEvent(
+                    $debugId,
+                    $config['model'] ?? 'unknown',
+                    $activeClient->getProviderName(),
+                    $finalUsageMetadata,
+                    $finalSafetyRatings,
+                    $debugMode,
+                    $firstTurnRawData,
+                    $timings
+                ));
+            }
+
+            // ── DISPATCH GENERATION COMPLETED EVENT ──
+            $this->dispatcher->dispatch(new SynapseGenerationCompletedEvent(
+                $fullTextAccumulator,
                 $finalUsageMetadata,
-                $finalSafetyRatings,
-                $debugMode,
-                $firstTurnRawData
+                $debugId
             ));
-        }
 
-        // ── DISPATCH GENERATION COMPLETED EVENT ──
-        $this->dispatcher->dispatch(new SynapseGenerationCompletedEvent(
-            $fullTextAccumulator,
-            $finalUsageMetadata,
-            $debugId
-        ));
-
-        return [
-            'answer'     => $fullTextAccumulator,
-            'debug_id'   => $debugId,
-            'usage'      => $finalUsageMetadata,
-            'safety'     => $finalSafetyRatings,
-            'model'      => $config['model'] ?? ($config['provider'] ?? 'unknown'),
-            'preset_id'  => $config['preset_id'] ?? null,
-            'mission_id' => $config['mission_id'] ?? null,
-        ];
-
+            return [
+                'answer'     => $fullTextAccumulator,
+                'debug_id'   => $debugId,
+                'usage'      => $finalUsageMetadata,
+                'safety'     => $finalSafetyRatings,
+                'model'      => $config['model'] ?? ($config['provider'] ?? 'unknown'),
+                'preset_id'  => $config['preset_id'] ?? null,
+                'mission_id' => $config['mission_id'] ?? null,
+            ];
         } finally {
             // Garantit la réinitialisation de l'override même en cas d'exception
             // Critique en mode FrankenPHP worker : les services sont partagés entre requêtes
