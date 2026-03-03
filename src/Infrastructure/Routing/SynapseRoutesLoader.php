@@ -49,6 +49,11 @@ class SynapseRoutesLoader extends Loader
         $collection = new RouteCollection();
         $bundles = $this->kernel->getBundles();
 
+        // Routes Core
+        /** @var RouteCollection $coreRoutes */
+        $coreRoutes = $this->import('@SynapseCoreBundle/config/routes.yaml');
+        $collection->addCollection($coreRoutes);
+
         // Routes Admin
         if (isset($bundles['SynapseAdminBundle'])) {
             /** @var RouteCollection $adminRoutes */

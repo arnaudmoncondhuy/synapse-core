@@ -1,1 +1,3 @@
-# Core bundle routes are loaded by other bundles
+synapse_core_api:
+    resource: '@SynapseCoreBundle/src/Core/Controller/Api/'
+    type: attribute

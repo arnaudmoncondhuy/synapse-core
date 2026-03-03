@@ -5,6 +5,10 @@ services:
 
     # ── Core Services ───────────────────────────────────────────────────────────
     # Note: Controllers are now in synapse-chat package (configured in synapse-chat/config/chat.yaml)
+    # Exception: MemoryApiController which is part of core
+    ArnaudMoncondhuy\SynapseCore\Core\Controller\Api\:
+        resource: '../src/Core/Controller/Api/'
+        tags: ['controller.service_arguments']
 
     ArnaudMoncondhuy\SynapseCore\Core\Manager\:
         resource: '../src/Core/Manager/'
