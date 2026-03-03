@@ -33,7 +33,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class         => ['onPrePrompt', 50],
+            SynapsePrePromptEvent::class         => ['onPrePrompt', 0],   // Lower priority to capture prompt AFTER MemoryContextSubscriber (50)
             SynapseChunkReceivedEvent::class     => ['onChunkReceived', 0],
             SynapseExchangeCompletedEvent::class => ['onExchangeCompleted', -100], // Low priority, let others finish first
         ];
