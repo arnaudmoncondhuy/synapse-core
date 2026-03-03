@@ -409,7 +409,7 @@ class SynapseDoctorCommand extends Command
         if ($this->filesystem->exists($importmapFile)) {
             $map = include $importmapFile;
             if (isset($map['app']['path'])) {
-                $bootstrapFile = $projectDir . '/assets/' . $map['app']['path'];
+                $bootstrapFile = $projectDir . '/assets/' . ltrim($map['app']['path'], './');
             }
         }
 
