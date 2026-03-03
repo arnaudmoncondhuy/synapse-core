@@ -32,24 +32,25 @@ class MemoryContextSubscriber implements EventSubscriberInterface
 
     public function onPrePrompt(SynapsePrePromptEvent $event): void
     {
-        $userId = $this->getCurrentUserId();
-
-        if (!$userId) {
-            return; // Pas d'utilisateur connecté → pas de mémoire à injecter
-        }
+        $options = $event->getOptions();
+        $userId = $options['user_id'] ?? $this->getCurrentUserId();
 
         $message = $event->getMessage();
-
         if (empty($message)) {
             return;
         }
 
         $error = null;
-        try {
-            $memories = $this->memoryManager->recall($message, $userId, $this->maxMemories);
-        } catch (\Throwable $e) {
-            $memories = [];
-            $error = $e->getMessage();
+        $memories = [];
+
+        if (!$userId) {
+            $error = "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
+        } else {
+            try {
+                $memories = $this->memoryManager->recall($message, $userId, $this->maxMemories);
+            } catch (\Throwable $e) {
+                $error = $e->getMessage();
+            }
         }
 
         $prompt = $event->getPrompt();
