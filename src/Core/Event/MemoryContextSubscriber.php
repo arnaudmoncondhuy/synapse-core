@@ -44,26 +44,35 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $error = null;
         try {
             $memories = $this->memoryManager->recall($message, $userId, $this->maxMemories);
-        } catch (\Throwable) {
-            return; // Fail silencieusement (pas de provider d'embedding configuré, etc.)
+        } catch (\Throwable $e) {
+            $memories = [];
+            $error = $e->getMessage();
+        }
+
+        $prompt = $event->getPrompt();
+        if (!isset($prompt['metadata'])) {
+            $prompt['metadata'] = [];
         }
 
         if (empty($memories)) {
+            $prompt['metadata']['memory_matching'] = [
+                'found' => 0,
+                'relevant' => 0,
+                'threshold' => 0.4,
+                'details' => [],
+                'error' => $error ?? null
+            ];
+            $event->setPrompt($prompt);
             return;
         }
 
         // Filtrer les résultats trop peu pertinents (seuil de similarité abaissé pour tolérance)
         $relevant = array_filter($memories, fn($m) => $m['score'] >= 0.4);
 
-        $prompt = $event->getPrompt();
-
         // Ajout des informations de matching dans les metadata du prompt pour le Debug
-        if (!isset($prompt['metadata'])) {
-            $prompt['metadata'] = [];
-        }
-
         $prompt['metadata']['memory_matching'] = [
             'found' => count($memories),
             'relevant' => count($relevant),
@@ -71,7 +80,8 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             'details' => array_map(fn($m) => [
                 'score' => $m['score'],
                 'content' => substr($m['content'], 0, 50) . '...'
-            ], $memories)
+            ], $memories),
+            'error' => null
         ];
 
         if (empty($relevant)) {
