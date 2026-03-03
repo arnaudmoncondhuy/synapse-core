@@ -75,12 +75,16 @@ class DebugLogSubscriber implements EventSubscriberInterface
         // Capture tool definitions for display
         $toolDefinitions = $prompt['toolDefinitions'] ?? [];
 
+        // Capture global prompt metadata (e.g. Memory matching details)
+        $promptMetadata = $prompt['metadata'] ?? [];
+
         $this->debugAccumulator = [
             'system_prompt'       => $systemInstruction,
             'config'              => $config,
             'preset_config'       => $presetConfig,
             'history'             => $messages,
             'history_size'        => count($messages),
+            'prompt_metadata'     => $promptMetadata,
             'turns'               => [],
             'tool_executions'     => [],
             'tool_definitions'    => $toolDefinitions,
