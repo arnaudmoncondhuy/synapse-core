@@ -11,7 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseSpendingLimit;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
-use Symfony\Contracts\Cache\CacheInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * Vérifie les plafonds de dépense avant une requête LLM.
@@ -31,7 +31,7 @@ class SpendingLimitChecker
         private string $referenceCurrency = 'EUR',
         private int $slidingDayHours = 4,
         private ?\DateTimeZone $timezone = null,
-        private ?CacheInterface $cache = null,
+        private ?CacheItemPoolInterface $cache = null,
     ) {
         $this->timezone ??= new \DateTimeZone('UTC');
     }

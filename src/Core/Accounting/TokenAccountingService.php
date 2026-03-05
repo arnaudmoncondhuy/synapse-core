@@ -8,7 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseUsageRecordedEvent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Contracts\Cache\CacheInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -29,7 +29,7 @@ class TokenAccountingService
         private EntityManagerInterface $em,
         private string $referenceCurrency = 'EUR',
         private array $currencyRates = [],
-        private ?CacheInterface $cache = null,
+        private ?CacheItemPoolInterface $cache = null,
         private ?EventDispatcherInterface $dispatcher = null,
         private ?ModelCapabilityRegistry $capabilityRegistry = null,
     ) {}
@@ -247,7 +247,7 @@ class TokenAccountingService
                 $capabilities = $this->capabilityRegistry->getCapabilities($model);
                 if ($capabilities->pricingInput !== null || $capabilities->pricingOutput !== null) {
                     // Déduire la devise basée sur le provider
-                    $currency = match($capabilities->provider) {
+                    $currency = match ($capabilities->provider) {
                         'ovh' => 'EUR',
                         'gemini' => 'USD',
                         default => 'USD',

@@ -393,7 +393,7 @@ class SynapseDoctorCommand extends Command
             }
         }
 
-        if (isset($hasError) && $hasError) {
+        if ($hasError) {
             return false;
         }
 

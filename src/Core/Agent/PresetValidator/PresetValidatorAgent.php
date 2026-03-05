@@ -49,6 +49,19 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
+     * Exécute une étape spécifique de validation (utilisé pour les Messenger handlers ou polling).
+     */
+    public function runStep(int $step, SynapsePreset $preset, array &$report): void
+    {
+        match ($step) {
+            1 => $this->executeConfigCheckStep($preset, $report),
+            2 => $this->executeLlmCallStep($preset, $report),
+            3 => $this->executeAnalysisStep($preset, $report),
+            default => throw new \InvalidArgumentException("Étape de validation $step inconnue."),
+        };
+    }
+
+    /**
      * Exécute les 3 étapes de validation en séquence et retourne le rapport complet.
      * À appeler depuis le contrôleur dans une seule requête HTTP.
      */
@@ -56,14 +69,9 @@ class PresetValidatorAgent implements AgentInterface
     {
         $report = [];
 
-        // Étape 1 : Vérification config (sans appel LLM — rapide)
-        $this->executeConfigCheckStep($preset, $report);
-
-        // Étape 2 : Appel LLM réel avec debug
-        $this->executeLlmCallStep($preset, $report);
-
-        // Étape 3 : Analyse IA (utilise le preset actif, pas le preset testé)
-        $this->executeAnalysisStep($preset, $report);
+        for ($i = 1; $i <= 3; $i++) {
+            $this->runStep($i, $preset, $report);
+        }
 
         return $report;
     }
@@ -273,7 +281,7 @@ class PresetValidatorAgent implements AgentInterface
         $configErrorsText = '';
         if (!empty($configErrors)) {
             $configErrorsText = "## ⚠️ Erreurs de configuration détectées\n"
-                . implode("\n", array_map(fn ($e) => "- $e", $configErrors))
+                . implode("\n", array_map(fn($e) => "- $e", $configErrors))
                 . "\n\n";
         }
 

@@ -122,7 +122,7 @@ class DoctrineVectorStore implements VectorStoreInterface
             }
         }
 
-        $where = !empty($whereClauses) ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
+        $where = $whereClauses ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
 
         $sql = "SELECT payload, (1 - (embedding::text::vector <=> :vector::text::vector)) as score 
                 FROM synapse_vector_memory 

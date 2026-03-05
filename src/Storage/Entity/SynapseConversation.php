@@ -118,7 +118,7 @@ abstract class SynapseConversation
     #[ORM\PostLoad]
     public function ensureMessagesInitialized(): void
     {
-        if (!isset($this->messages)) {
+        if (!$this->messages instanceof Collection) {
             $this->messages = new ArrayCollection();
         }
     }

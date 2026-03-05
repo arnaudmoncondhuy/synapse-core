@@ -11,7 +11,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Contracts\Cache\CacheInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * Recalcule les compteurs de consommation (plafonds) depuis la DB et repopule le cache.
@@ -27,7 +27,7 @@ final class SpendingWarmCacheCommand extends Command
     public function __construct(
         private SynapseSpendingLimitRepository $spendingLimitRepo,
         private SynapseLlmCallRepository $tokenUsageRepo,
-        private ?CacheInterface $cache = null,
+        private ?CacheItemPoolInterface $cache = null,
     ) {
         parent::__construct();
     }
