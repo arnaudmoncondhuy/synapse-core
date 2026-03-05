@@ -375,7 +375,7 @@ class SynapseDoctorCommand extends Command
                 $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
                     . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
                     . "    ],\n";
-                $content = preg_replace('/(];\s*)$/', $entry . '$1', $content);
+                $content = (string) preg_replace('/(];\s*)$/', $entry . '$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
                 $io->writeln('  -> importmap.php updated with synapse_chat_controller.');
                 $hasError = true;
@@ -391,7 +391,7 @@ class SynapseDoctorCommand extends Command
                 $entry = "\n    'synapse-chat/styles/synapse_chat.css' => [\n"
                     . "        'path' => 'synapse-chat/styles/synapse_chat.css',\n"
                     . "    ],\n";
-                $content = preg_replace('/(];\s*)$/', $entry . '$1', $content);
+                $content = (string) preg_replace('/(];\s*)$/', $entry . '$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
                 $io->writeln('  -> importmap.php updated with synapse_chat.css.');
                 $hasError = true;

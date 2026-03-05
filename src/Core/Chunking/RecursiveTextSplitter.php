@@ -69,7 +69,7 @@ class RecursiveTextSplitter implements TextSplitterInterface
                     // Gérer le chevauchement (overlap)
                     while ($totalLen > $chunkOverlap || ($totalLen + $sLen > $chunkSize && $totalLen > 0)) {
                         $removed = array_shift($currentDoc);
-                        $totalLen -= mb_strlen($removed) + ($separator !== "" ? mb_strlen($separator) : 0);
+                        $totalLen -= mb_strlen((string) $removed) + ($separator !== "" ? mb_strlen($separator) : 0);
                     }
                 }
 

@@ -79,8 +79,8 @@ class GeminiAuthService
 
         $data = $response->toArray();
 
-        $this->cachedToken = $data['access_token'];
-        $this->tokenExpiry = time() + ($data['expires_in'] ?? 3600);
+        $this->cachedToken = (string) $data['access_token'];
+        $this->tokenExpiry = time() + (int) ($data['expires_in'] ?? 3600);
 
         return $this->cachedToken;
     }

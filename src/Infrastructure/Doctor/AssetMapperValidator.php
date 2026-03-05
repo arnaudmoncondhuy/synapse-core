@@ -93,6 +93,6 @@ class AssetMapperValidator
         // SynapseChatBundle → synapse-chat
         $name = str_replace('Bundle', '', $bundleName);
         $name = str_replace('Synapse', 'synapse', $name);
-        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $name));
+        return strtolower((string) preg_replace('/([a-z])([A-Z])/', '$1-$2', (string) $name));
     }
 }

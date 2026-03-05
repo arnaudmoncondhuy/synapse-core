@@ -169,7 +169,8 @@ class PurgeConversationsCommand extends Command
         // Regrouper par propriétaire
         $byOwner = [];
         foreach ($conversations as $conversation) {
-            $owner = $conversation->getOwner()->getIdentifier();
+            $ownerEntity = $conversation->getOwner();
+            $owner = $ownerEntity !== null ? $ownerEntity->getIdentifier() : 'unknown';
             if (!isset($byOwner[$owner])) {
                 $byOwner[$owner] = 0;
             }

@@ -65,7 +65,7 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
     private function executeTool(string $name, array $args): mixed
     {
         // Certains LLM renvoient le nom avec préfixe (ex. "functions.propose_to_remember")
-        $normalizedName = preg_replace('/^functions\./i', '', $name);
+        $normalizedName = (string) preg_replace('/^functions\./i', '', $name);
         $tool = $this->toolRegistry->get($name) ?? $this->toolRegistry->get($normalizedName);
         if ($tool) {
             $result = $tool->execute($args);

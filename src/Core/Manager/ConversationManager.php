@@ -212,7 +212,7 @@ class ConversationManager
         }
 
         // Vérifier ownership si fourni
-        if ($owner !== null && $conversation->getOwner()->getId() !== $owner->getId()) {
+        if ($owner !== null && $conversation->getOwner()?->getId() !== $owner->getId()) {
             throw new AccessDeniedException('Access denied to this conversation');
         }
 
