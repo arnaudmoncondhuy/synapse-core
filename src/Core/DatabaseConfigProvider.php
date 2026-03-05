@@ -40,8 +40,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private PresetValidator $presetValidator,
         private ?CacheInterface $cache = null,
         private ?EncryptionServiceInterface $encryptionService = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupère la configuration fusionnée (preset actif + config globale + credentials provider).
@@ -146,12 +145,6 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     {
         // Load active preset (LLM configuration)
         $preset = $this->presetRepo->findActive();
-
-        // ⚠️ Si aucun preset n'existe, retourner une config par défaut safe
-        // (permet création du premier preset sans erreur)
-        if ($preset === null) {
-            return $this->getDefaultConfig();
-        }
 
         // 🛡️ DÉFENSE CRITIQUE : Vérifier l'intégrité du preset actif
         // Si le preset actif est devenu invalide (provider désactivé, etc.),

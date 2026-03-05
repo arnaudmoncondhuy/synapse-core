@@ -14,7 +14,6 @@ use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseGenerationStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseToolCallRequestedEvent;
-use ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry;
 use ArnaudMoncondhuy\SynapseCore\Core\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use Doctrine\ORM\EntityManagerInterface;
@@ -44,7 +43,6 @@ class ChatService
         private LlmClientRegistry $llmRegistry,
         private ConfigProviderInterface $configProvider,
         private EventDispatcherInterface $dispatcher,
-        private MissionRegistry $missionRegistry,
         private SynapseProfiler $profiler,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager $conversationManager = null,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker $spendingLimitChecker = null,

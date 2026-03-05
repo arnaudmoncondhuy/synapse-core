@@ -120,7 +120,9 @@ class MemoryContextSubscriber implements EventSubscriberInterface
 
         // Chercher le premier message 'system' pour y concaténer la mémoire
         $systemFound = false;
+        // @phpstan-ignore foreach.emptyArray ($messages is always non-empty here after $relevant guard)
         foreach ($messages as $i => $entry) {
+            // @phpstan-ignore nullCoalesce.offset ($entry always has 'role' key in practice but safer to keep default)
             if (($entry['role'] ?? '') === 'system') {
                 $messages[$i]['content'] .= $memoryString;
                 $systemFound = true;
@@ -129,6 +131,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         }
 
         // Cas de fallback (anormal mais géré) où aucun message système n'existerait
+        // @phpstan-ignore booleanNot.alwaysTrue (PHPStan cannot infer $systemFound may remain false)
         if (!$systemFound) {
             array_unshift($messages, [
                 'role' => 'system',

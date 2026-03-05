@@ -50,7 +50,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $systemInstruction = null;
         $contents = $event->getPrompt();
         // getPrompt() returns either ['contents' => [...], 'toolDefinitions' => [...]] or just [...]
-        $messages = is_array($contents) && isset($contents['contents']) ? $contents['contents'] : $contents;
+        $messages = isset($contents['contents']) ? $contents['contents'] : $contents;
         if (!empty($messages) && ($messages[0]['role'] ?? '') === 'system') {
             $systemInstruction = $messages[0]['content'] ?? null;
         }
@@ -226,49 +226,5 @@ class DebugLogSubscriber implements EventSubscriberInterface
 
         // Clean up
         $this->debugAccumulator = [];
-    }
-
-    /**
-     * Extract tool usage from conversation history.
-     * 
-     * Pairs assistant tool_calls with their corresponding tool results.
-     */
-    private function extractToolUsage(): array
-    {
-        $toolUsage = [];
-        $history = $this->debugAccumulator['history'] ?? [];
-
-        // Build a map of tool_call_id => tool call info
-        $toolCallMap = [];
-        foreach ($history as $msg) {
-            if (($msg['role'] ?? null) === 'assistant' && !empty($msg['tool_calls'])) {
-                foreach ($msg['tool_calls'] as $tc) {
-                    $toolCallId = $tc['id'] ?? null;
-                    if ($toolCallId) {
-                        $toolCallMap[$toolCallId] = [
-                            'function_name' => $tc['function']['name'] ?? null,
-                            'function_args' => $tc['function']['arguments'] ?? null,
-                        ];
-                    }
-                }
-            }
-        }
-
-        // Now find tool results paired with these calls
-        foreach ($history as $msg) {
-            if (($msg['role'] ?? null) === 'tool' && !empty($msg['tool_call_id'])) {
-                $toolCallId = $msg['tool_call_id'];
-                if (isset($toolCallMap[$toolCallId])) {
-                    $toolUsage[] = [
-                        'tool_call_id'   => $toolCallId,
-                        'tool_name'      => $toolCallMap[$toolCallId]['function_name'],
-                        'tool_args'      => $toolCallMap[$toolCallId]['function_args'],
-                        'tool_result'    => $msg['content'] ?? null,
-                    ];
-                }
-            }
-        }
-
-        return $toolUsage;
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Infrastructure\Doctor;
 
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -18,7 +17,6 @@ class AssetMapperValidator
     public function __construct(
         private readonly Filesystem $filesystem,
         private readonly KernelInterface $kernel,
-        private readonly ParameterBagInterface $parameterBag,
     ) {}
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool

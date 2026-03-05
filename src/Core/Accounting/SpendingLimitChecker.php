@@ -28,7 +28,6 @@ class SpendingLimitChecker
         private SynapseLlmCallRepository $tokenUsageRepo,
         private SynapseSpendingLimitRepository $spendingLimitRepo,
         private SynapseConfigRepository $configRepo,
-        private string $referenceCurrency = 'EUR',
         private int $slidingDayHours = 4,
         private ?\DateTimeZone $timezone = null,
         private ?CacheItemPoolInterface $cache = null,

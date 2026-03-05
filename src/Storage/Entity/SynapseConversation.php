@@ -118,7 +118,8 @@ abstract class SynapseConversation
     #[ORM\PostLoad]
     public function ensureMessagesInitialized(): void
     {
-        if (!$this->messages instanceof Collection) {
+        // @phpstan-ignore isset.initializedProperty (Doctrine bypasses constructor on hydration, $messages may be uninitialized)
+        if (!isset($this->messages)) {
             $this->messages = new ArrayCollection();
         }
     }

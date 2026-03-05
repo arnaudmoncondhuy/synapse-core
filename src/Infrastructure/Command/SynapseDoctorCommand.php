@@ -582,7 +582,7 @@ class SynapseDoctorCommand extends Command
 
     private function checkAssetMapper(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $validator = new AssetMapperValidator($this->filesystem, $this->kernel, $this->parameterBag);
+        $validator = new AssetMapperValidator($this->filesystem, $this->kernel);
         return $validator->validate($projectDir, $fix, $io);
     }
 
