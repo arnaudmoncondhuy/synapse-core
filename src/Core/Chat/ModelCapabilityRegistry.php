@@ -16,7 +16,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 class ModelCapabilityRegistry
 {
-    /** @var array<string, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities> Cache local des modèles */
+    /** @var array<string, array<string, mixed>> Modèles bruts chargés depuis les fichiers YAML */
     private array $models = [];
 
     public function __construct()
@@ -122,10 +122,13 @@ class ModelCapabilityRegistry
      */
     public function getModelsForProvider(string $provider): array
     {
-        return array_keys(array_filter(
-            $this->models,
-            fn(ModelCapabilities $caps) => $caps->provider === $provider
-        ));
+        $result = [];
+        foreach ($this->models as $modelId => $data) {
+            if (($data['provider'] ?? '') === $provider) {
+                $result[] = $modelId;
+            }
+        }
+        return $result;
     }
 
     public function isKnownModel(string $model): bool
