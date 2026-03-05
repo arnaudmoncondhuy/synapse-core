@@ -361,32 +361,32 @@ class SynapseDoctorCommand extends Command
 
         // --- NEW V2 ASSETS ---
 
-        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_new_controller.js')) {
-            $io->error('[Importmap] Consolidated V2 controller (synapse_chat_new_controller.js) missing from importmap.php.');
-            $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_new_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_new_controller.js']");
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
+            $io->error('[Importmap] Consolidated controller (synapse_chat_controller.js) missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_controller.js']");
             if ($fix) {
-                $entry = "\n    'synapse-chat/controllers/synapse_chat_new_controller.js' => [\n"
-                    . "        'path' => 'synapse-chat/controllers/synapse_chat_new_controller.js',\n"
+                $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
+                    . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
                     . "    ],\n";
-                $content = str_replace('];', $entry . '];', $content);
+                $content = preg_replace('/(];\s*)$/', $entry . '$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
-                $io->writeln('  -> importmap.php updated with synapse_chat_new_controller.');
+                $io->writeln('  -> importmap.php updated with synapse_chat_controller.');
                 $hasError = true;
             } else {
                 $hasError = true;
             }
         }
 
-        if (!str_contains($content, 'synapse-chat/styles/synapse_chat_new.css')) {
-            $io->error('[Importmap] Consolidated V2 CSS (synapse_chat_new.css) missing from importmap.php.');
-            $io->writeln("         Add: 'synapse-chat/styles/synapse_chat_new.css' => ['path' => 'synapse-chat/styles/synapse_chat_new.css']");
+        if (!str_contains($content, 'synapse-chat/styles/synapse_chat.css')) {
+            $io->error('[Importmap] Consolidated CSS (synapse_chat.css) missing from importmap.php.');
+            $io->writeln("         Add: 'synapse-chat/styles/synapse_chat.css' => ['path' => 'synapse-chat/styles/synapse_chat.css']");
             if ($fix) {
-                $entry = "\n    'synapse-chat/styles/synapse_chat_new.css' => [\n"
-                    . "        'path' => 'synapse-chat/styles/synapse_chat_new.css',\n"
+                $entry = "\n    'synapse-chat/styles/synapse_chat.css' => [\n"
+                    . "        'path' => 'synapse-chat/styles/synapse_chat.css',\n"
                     . "    ],\n";
-                $content = str_replace('];', $entry . '];', $content);
+                $content = preg_replace('/(];\s*)$/', $entry . '$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
-                $io->writeln('  -> importmap.php updated with synapse_chat_new.css.');
+                $io->writeln('  -> importmap.php updated with synapse_chat.css.');
                 $hasError = true;
             } else {
                 $hasError = true;
@@ -430,31 +430,31 @@ class SynapseDoctorCommand extends Command
         $content = file_get_contents($bootstrapFile);
         $hasError = false;
 
-        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_new_controller.js')) {
-            $io->error('[Stimulus] V2 controller (synapse_chat_new_controller.js) not registered in stimulus_bootstrap.js.');
-            $io->writeln("         Add: import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';");
-            $io->writeln("              app.register('synapse-chat-new', SynapseChatNewController);");
+        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
+            $io->error('[Stimulus] V2 controller (synapse_chat_controller.js) not registered in stimulus_bootstrap.js.');
+            $io->writeln("         Add: import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';");
+            $io->writeln("              app.register('synapse-chat', SynapseChatController);");
 
             if ($fix) {
                 // Try to insert before startStimulusApp or at the end
                 if (str_contains($content, "import { startStimulusApp }")) {
                     $content = str_replace(
                         "import { startStimulusApp }",
-                        "import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';\nimport { startStimulusApp }",
+                        "import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';\nimport { startStimulusApp }",
                         $content
                     );
                 } else {
-                    $content = "import SynapseChatNewController from 'synapse-chat/controllers/synapse_chat_new_controller.js';\n" . $content;
+                    $content = "import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';\n" . $content;
                 }
 
                 if (str_contains($content, 'const app = startStimulusApp();')) {
                     $content = str_replace(
                         'const app = startStimulusApp();',
-                        "const app = startStimulusApp();\napp.register('synapse-chat-new', SynapseChatNewController);",
+                        "const app = startStimulusApp();\napp.register('synapse-chat', SynapseChatController);",
                         $content
                     );
                 } else {
-                    $content .= "\napp.register('synapse-chat-new', SynapseChatNewController);\n";
+                    $content .= "\napp.register('synapse-chat', SynapseChatController);\n";
                 }
 
                 $this->filesystem->dumpFile($bootstrapFile, $content);
