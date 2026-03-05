@@ -14,9 +14,9 @@ use Doctrine\Persistence\ManagerRegistry;
  * @extends ServiceEntityRepository<SynapseVectorMemory>
  *
  * @method SynapseVectorMemory|null find($id, $lockMode = null, $lockVersion = null)
- * @method SynapseVectorMemory|null findOneBy(array $criteria, array $orderBy = null)
+ * @method SynapseVectorMemory|null findOneBy(array<string, mixed> $criteria, array<string, string> $orderBy = null)
  * @method SynapseVectorMemory[]    findAll()
- * @method SynapseVectorMemory[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method SynapseVectorMemory[]    findBy(array<string, mixed> $criteria, array<string, string> $orderBy = null, $limit = null, $offset = null)
  */
 class SynapseVectorMemoryRepository extends ServiceEntityRepository
 {

@@ -45,16 +45,17 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $messages = $event->getPrompt();
-        // $messages = $prompt['contents'] ?? []; // Ancien accès erroné
+        $prompt = $event->getPrompt();
+        $messages = $prompt['contents'] ?? [];
 
-        if (empty($messages)) {
+        if (empty($messages) || !is_array($messages)) {
             return;
         }
 
         $truncatedMessages = $this->truncationService->truncate($messages, $contextWindow);
 
         // Remplacement des messages dans l'événement
-        $event->setPrompt($truncatedMessages);
+        $prompt['contents'] = $truncatedMessages;
+        $event->setPrompt($prompt);
     }
 }

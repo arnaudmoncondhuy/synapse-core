@@ -68,6 +68,12 @@ class DoctrineVectorStore implements VectorStoreInterface
         $this->em->flush();
     }
 
+    /**
+     * @param float[]              $vector
+     * @param array<string, mixed> $filters
+     *
+     * @return array<int, array{payload: array<string, mixed>, score: float}>
+     */
     public function searchSimilar(array $vector, int $limit = 5, array $filters = []): array
     {
         if ($this->hasPgVector) {
@@ -84,6 +90,11 @@ class DoctrineVectorStore implements VectorStoreInterface
 
     /**
      * Recherche haute performance utilisant l'opérateur <=> (cosine distance) de pgvector.
+     *
+     * @param float[]              $vector
+     * @param array<string, mixed> $filters
+     *
+     * @return array<int, array{payload: array<string, mixed>, score: float}>
      */
     private function searchWithPgVector(array $vector, int $limit, array $filters): array
     {
@@ -140,6 +151,11 @@ class DoctrineVectorStore implements VectorStoreInterface
 
     /**
      * Recherche "Best-Effort" en PHP.
+     *
+     * @param float[]              $vector
+     * @param array<string, mixed> $filters
+     *
+     * @return array<int, array{payload: array<string, mixed>, score: float}>
      */
     private function searchWithPhpFallback(array $vector, int $limit, array $filters): array
     {
@@ -185,6 +201,10 @@ class DoctrineVectorStore implements VectorStoreInterface
         return array_slice($results, 0, $limit);
     }
 
+    /**
+     * @param float[] $vec1
+     * @param float[] $vec2
+     */
     private function calculateCosineSimilarity(array $vec1, array $vec2): float
     {
         $dotProduct = 0.0;

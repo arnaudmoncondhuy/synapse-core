@@ -34,9 +34,9 @@ final class TextUtil
     /**
      * Assainit récursivement toutes les chaînes d'un tableau (multidimensionnel).
      *
-     * @param array $data le tableau à nettoyer
+     * @param array<mixed, mixed> $data le tableau à nettoyer
      *
-     * @return array le tableau propre
+     * @return array<mixed, mixed> le tableau propre
      */
     public static function sanitizeArrayUtf8(array $data): array
     {

@@ -244,7 +244,7 @@ class SynapseConfig
     /**
      * Convertit la config globale en tableau
      *
-     * @return array Configuration formatée pour DatabaseConfigProvider
+     * @return array<string, mixed> Configuration formatée pour DatabaseConfigProvider
      */
     public function toArray(): array
     {

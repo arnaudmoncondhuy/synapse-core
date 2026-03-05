@@ -52,6 +52,9 @@ class SynapsePreset
     /**
      * Options spécifiques au provider (ex: safetySettings, thinkingBudget, reasoningEffort)
      */
+    /**
+     * @var array<string, mixed>|null
+     */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $providerOptions = null;
 
@@ -83,6 +86,9 @@ class SynapsePreset
 
     /**
      * Séquences d'arrêt (JSON array)
+     */
+    /**
+     * @var string[]|null
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $generationStopSequences = null;
@@ -161,11 +167,17 @@ class SynapsePreset
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getProviderOptions(): ?array
     {
         return $this->providerOptions;
     }
 
+    /**
+     * @param array<string, mixed>|null $providerOptions
+     */
     public function setProviderOptions(?array $providerOptions): self
     {
         $this->providerOptions = $providerOptions;
@@ -216,11 +228,17 @@ class SynapsePreset
         return $this;
     }
 
+    /**
+     * @return string[]|null
+     */
     public function getGenerationStopSequences(): ?array
     {
         return $this->generationStopSequences;
     }
 
+    /**
+     * @param string[]|null $generationStopSequences
+     */
     public function setGenerationStopSequences(?array $generationStopSequences): self
     {
         $this->generationStopSequences = $generationStopSequences;
@@ -247,6 +265,9 @@ class SynapsePreset
      * Convertit le preset en tableau pour ChatService / LLM clients
      *
      * @return array Configuration formatée pour les services LLM
+     */
+    /**
+     * @return array<string, mixed> Configuration formatée pour les services LLM
      */
     public function toArray(): array
     {

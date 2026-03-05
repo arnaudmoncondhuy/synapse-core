@@ -25,7 +25,7 @@ class ToneRegistry
     /**
      * Retourne tous les tons actifs, indexés par clé slug.
      *
-     * @return array<string, array> tableau associatif indexé par la clé du ton
+     * @return array<string, array<string, mixed>> tableau associatif indexé par la clé du ton
      */
     public function getAll(): array
     {

@@ -75,6 +75,9 @@ class RepositoryValidator
         return $isValid;
     }
 
+    /**
+     * @param array<string, string> $imports
+     */
     private function resolveClassName(string $className, array $imports, string $namespace): string
     {
         // If already fully qualified
@@ -91,6 +94,9 @@ class RepositoryValidator
         return $namespace . '\\' . $className;
     }
 
+    /**
+     * @return string[]
+     */
     private function suggestRepositoryImports(string $fqn): array
     {
         $basename = substr($fqn, strrpos($fqn, '\\') + 1);

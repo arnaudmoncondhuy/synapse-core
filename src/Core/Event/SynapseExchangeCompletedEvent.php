@@ -18,14 +18,14 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseExchangeCompletedEvent extends Event
 {
     /**
-     * @param string $debugId   Identifiant unique de cet échange précis.
-     * @param string $model     Modèle technique utilisé (ex: 'gemini-1.5-flash').
-     * @param string $provider  Nom du client provider (ex: 'gemini').
-     * @param array  $usage     Détails de consommation.
-     * @param array  $safety    Évaluations de sécurité.
-     * @param bool   $debugMode Indique si le mode debug était activé par l'utilisateur.
-     * @param array  $rawData   Données brutes de la requête et de la réponse (payloads).
-     * @param array  $timings   Données chronométriques des étapes d'exécution (en millisecondes).
+     * @param string               $debugId   Identifiant unique de cet échange précis.
+     * @param string               $model     Modèle technique utilisé (ex: 'gemini-1.5-flash').
+     * @param string               $provider  Nom du client provider (ex: 'gemini').
+     * @param array<string, mixed> $usage     Détails de consommation.
+     * @param array<string, mixed> $safety    Évaluations de sécurité.
+     * @param bool                 $debugMode Indique si le mode debug était activé par l'utilisateur.
+     * @param array<string, mixed> $rawData   Données brutes de la requête et de la réponse (payloads).
+     * @param array<string, mixed> $timings   Données chronométriques des étapes d'exécution (en millisecondes).
      */
     public function __construct(
         private string $debugId,
@@ -53,11 +53,17 @@ class SynapseExchangeCompletedEvent extends Event
         return $this->provider;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getUsage(): array
     {
         return $this->usage;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getSafety(): array
     {
         return $this->safety;
@@ -70,6 +76,8 @@ class SynapseExchangeCompletedEvent extends Event
 
     /**
      * Retourne les données API brutes (Requêtes + Réponses).
+     *
+     * @return array<string, mixed>
      */
     public function getRawData(): array
     {
@@ -78,6 +86,8 @@ class SynapseExchangeCompletedEvent extends Event
 
     /**
      * Retourne les étapes temporelles du cycle d'exécution (ms).
+     *
+     * @return array<string, mixed>
      */
     public function getTimings(): array
     {

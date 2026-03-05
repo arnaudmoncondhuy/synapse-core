@@ -28,6 +28,8 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
 
     /**
      * Récupère les logs de debug récents
+     * 
+     * @return SynapseDebugLog[]
      */
     public function findRecent(int $limit = 50): array
     {

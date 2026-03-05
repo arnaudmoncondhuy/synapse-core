@@ -26,6 +26,8 @@ enum ConversationStatus: string
 
     /**
      * Retourne tous les statuts visibles pour l'utilisateur
+     *
+     * @return self[]
      */
     public static function visibleStatuses(): array
     {

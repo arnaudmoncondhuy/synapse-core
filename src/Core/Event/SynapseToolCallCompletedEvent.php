@@ -15,9 +15,9 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseToolCallCompletedEvent extends Event
 {
     /**
-     * @param string $toolName     Nom de l'outil exécuté.
-     * @param mixed  $result       Donnée retournée par l'outil.
-     * @param array  $toolCallData Payload original de l'appel (ID, arguments).
+     * @param string               $toolName     Nom de l'outil exécuté.
+     * @param mixed                $result       Donnée retournée par l'outil.
+     * @param array<string, mixed> $toolCallData Payload original de l'appel (ID, arguments).
      */
     public function __construct(
         private string $toolName,
@@ -40,6 +40,8 @@ class SynapseToolCallCompletedEvent extends Event
 
     /**
      * Retourne les données techniques de l'appel initial.
+     *
+     * @return array<string, mixed>
      */
     public function getToolCallData(): array
     {

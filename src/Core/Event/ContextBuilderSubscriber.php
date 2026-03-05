@@ -149,6 +149,10 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
      * Sanitize history before sending to LLM.
      *
      * Expects OpenAI canonical format and ensures UTF-8 validity.
+     *
+     * @param array<int, array<string, mixed>> $history
+     *
+     * @return array<int, array{role: string, content: string|null, tool_call_id?: string, tool_calls?: array<mixed>}>
      */
     private function sanitizeHistoryForNewTurn(array $history): array
     {

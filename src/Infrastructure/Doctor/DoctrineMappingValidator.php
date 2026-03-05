@@ -47,7 +47,8 @@ class DoctrineMappingValidator
 
             foreach ($mappings as $namespace => $mapping) {
                 if (($mapping['dir'] ?? null) === '%kernel.project_dir%/src/Entity'
-                    || ($mapping['path'] ?? null) === '%kernel.project_dir%/src/Entity') {
+                    || ($mapping['path'] ?? null) === '%kernel.project_dir%/src/Entity'
+                ) {
                     $entityNamespaceFound = true;
                     break;
                 }
@@ -95,6 +96,9 @@ class DoctrineMappingValidator
         return $isValid;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     */
     private function addDefaultMappings(string $doctrineFile, array $config, SymfonyStyle $io): void
     {
         $config['doctrine']['orm']['mappings'] = $config['doctrine']['orm']['mappings'] ?? [];
@@ -109,6 +113,9 @@ class DoctrineMappingValidator
         $io->writeln('  -> Added default App entity mapping to doctrine.yaml');
     }
 
+    /**
+     * @param array<string, mixed> $config
+     */
     private function addEntityMapping(string $doctrineFile, array $config, SymfonyStyle $io): void
     {
         if (!isset($config['doctrine']['orm']['mappings'])) {

@@ -27,9 +27,9 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseGenerationCompletedEvent extends Event
 {
     /**
-     * @param string      $fullResponse La réponse textuelle complète générée.
-     * @param array       $usage        Consommation finale des tokens (total).
-     * @param string|null $debugId      ID de debug associé si le mode debug était actif.
+     * @param string               $fullResponse La réponse textuelle complète générée.
+     * @param array<string, mixed> $usage        Consommation finale des tokens (total).
+     * @param string|null          $debugId      ID de debug associé si le mode debug était actif.
      */
     public function __construct(
         private string $fullResponse,
@@ -47,6 +47,8 @@ class SynapseGenerationCompletedEvent extends Event
 
     /**
      * Retourne les statistiques d'usage cumulées (input, output, thinking).
+     *
+     * @return array<string, mixed>
      */
     public function getUsage(): array
     {

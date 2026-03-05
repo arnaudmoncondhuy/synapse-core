@@ -23,18 +23,14 @@ class MessageFormatter implements MessageFormatterInterface
     /**
      * Convertit les entités SynapseMessage vers le format OpenAI canonical
      *
-     * Format OpenAI:
-     * [
-     *   { "role": "user", "content": "Hello" },
-     *   { "role": "assistant", "content": "Hi!", "tool_calls": [...] },
-     *   { "role": "tool", "tool_call_id": "...", "content": "..." }
-     * ]
+     * @param iterable<object> $entities
+     * @return array<int, array<string, mixed>>
      */
-    public function entitiesToApiFormat(array $messageEntities): array
+    public function entitiesToApiFormat(iterable $entities): array
     {
         $messages = [];
 
-        foreach ($messageEntities as $entity) {
+        foreach ($entities as $entity) {
             // Handle serialized entities (Doctrine converts to arrays in closure context)
             if (is_array($entity)) {
                 // If it looks like already-formatted message data, try to reconstruct

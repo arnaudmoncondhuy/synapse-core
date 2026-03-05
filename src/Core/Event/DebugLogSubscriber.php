@@ -23,6 +23,7 @@ use DateTimeImmutable;
  */
 class DebugLogSubscriber implements EventSubscriberInterface
 {
+    /** @var array<string, mixed> */
     private array $debugAccumulator = [];
 
     public function __construct(

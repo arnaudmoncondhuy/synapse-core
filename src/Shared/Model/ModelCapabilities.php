@@ -12,6 +12,9 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Model;
  */
 class ModelCapabilities
 {
+    /**
+     * @param int[] $dimensions
+     */
     public function __construct(
         /** Identifiant exact du modèle (tel qu'envoyé à l'API) */
         public readonly string $model,

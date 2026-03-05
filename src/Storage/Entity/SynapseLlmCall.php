@@ -160,6 +160,9 @@ class SynapseLlmCall
      * Métadonnées libres (JSON) — debug_id, durée, etc.
      * Note : les coûts/tarifs sont dans les colonnes dédiées, pas ici.
      */
+    /**
+     * @var array<string, mixed>|null
+     */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $metadata = null;
 
@@ -311,11 +314,17 @@ class SynapseLlmCall
         return $this->createdAt;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getMetadata(): ?array
     {
         return $this->metadata;
     }
 
+    /**
+     * @param array<string, mixed>|null $metadata
+     */
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;

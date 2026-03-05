@@ -202,6 +202,9 @@ class SynapseTone
     /**
      * Représentation tableau pour Twig (compatible avec l'ancienne API PersonaRegistry).
      */
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

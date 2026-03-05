@@ -77,7 +77,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
-     * @return array<string, array> Stats par module/action
+     * @return array<string, array{module: string, action: string, model: string, count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Stats par module/action
      */
     public function getAutomatedTaskStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -155,7 +155,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
-     * @return array<string, array> Usage par jour
+     * @return array<string, array{date: string, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Usage par jour
      */
     public function getDailyUsage(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -193,7 +193,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
-     * @return array<string, array> Usage par module
+     * @return array<string, array{count: int, total_tokens: int}> Usage par module
      */
     public function getUsageByModule(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -279,7 +279,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn ($row) => [
+        return array_map(fn($row) => [
             'user_id'      => (string) $row['user_id'],
             'count'        => (int) $row['cnt'],
             'total_tokens' => (int) $row['total_tokens'],
@@ -305,7 +305,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn ($row) => [
+        return array_map(fn($row) => [
             'preset_id'    => (int) $row['preset_id'],
             'count'        => (int) $row['cnt'],
             'total_tokens' => (int) $row['total_tokens'],
@@ -331,7 +331,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn ($row) => [
+        return array_map(fn($row) => [
             'mission_id'   => (int) $row['mission_id'],
             'count'        => (int) $row['cnt'],
             'total_tokens' => (int) $row['total_tokens'],

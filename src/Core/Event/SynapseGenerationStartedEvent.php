@@ -36,6 +36,8 @@ class SynapseGenerationStartedEvent extends Event
 
     /**
      * Retourne les options de l'échange.
+     *
+     * @return array<string, mixed>
      */
     public function getOptions(): array
     {

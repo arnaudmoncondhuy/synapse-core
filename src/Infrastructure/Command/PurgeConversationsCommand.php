@@ -99,7 +99,7 @@ class PurgeConversationsCommand extends Command
 
         // Récupérer les conversations à supprimer
         $io->section('🔍 Recherche des conversations à purger...');
-        /** @var SynapseConversationRepository $conversationRepo */
+        /** @var SynapseConversationRepository<SynapseConversation> $conversationRepo */
         $conversationRepo = $this->em->getRepository(SynapseConversation::class);
         $conversations = $conversationRepo->findOlderThan($days);
 
@@ -161,6 +161,8 @@ class PurgeConversationsCommand extends Command
 
     /**
      * Affiche un récapitulatif des conversations à supprimer
+     *
+     * @param SynapseConversation[] $conversations
      */
     private function displaySummary(SymfonyStyle $io, array $conversations): void
     {

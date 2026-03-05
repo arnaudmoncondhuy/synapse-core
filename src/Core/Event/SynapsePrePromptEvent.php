@@ -31,14 +31,17 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 class SynapsePrePromptEvent extends Event
 {
+    /** @var array<string, mixed> */
     private array $prompt;
+
+    /** @var array<string, mixed> */
     private array $config;
 
     /**
-     * @param string               $message Le message initial de l'utilisateur
-     * @param array<string, mixed> $options Les options passées au ChatService
-     * @param array<int, array>    $prompt  L'historique complet (incluant le message système)
-     * @param array<string, mixed> $config  La configuration de génération (model, temperature, etc.)
+     * @param string               $message
+     * @param array<string, mixed> $options
+     * @param array<string, mixed> $prompt
+     * @param array<string, mixed> $config
      */
     public function __construct(
         private string $message,
@@ -60,6 +63,8 @@ class SynapsePrePromptEvent extends Event
 
     /**
      * Retourne les options d'appel passées au ChatService.
+     *
+     * @return array<string, mixed>
      */
     public function getOptions(): array
     {
@@ -70,7 +75,7 @@ class SynapsePrePromptEvent extends Event
      * Retourne le prompt complet tel qu'il sera envoyé au client LLM.
      * Le premier élément (index 0) est généralement le message système.
      *
-     * @return array<int, array{role: string, content: ?string, tool_calls?: array}>
+     * @return array<string, mixed>
      */
     public function getPrompt(): array
     {
@@ -79,6 +84,8 @@ class SynapsePrePromptEvent extends Event
 
     /**
      * Permet de modifier ou remplacer le prompt complet.
+     *
+     * @param array<string, mixed> $prompt
      */
     public function setPrompt(array $prompt): self
     {
@@ -88,6 +95,8 @@ class SynapsePrePromptEvent extends Event
 
     /**
      * Retourne la configuration technique de génération.
+     *
+     * @return array<string, mixed>
      */
     public function getConfig(): array
     {
@@ -96,6 +105,8 @@ class SynapsePrePromptEvent extends Event
 
     /**
      * Permet de modifier la configuration technique (ex: changer le modèle à la volée).
+     *
+     * @param array<string, mixed> $config
      */
     public function setConfig(array $config): self
     {

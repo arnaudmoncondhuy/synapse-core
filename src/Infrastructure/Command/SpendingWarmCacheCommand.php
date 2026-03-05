@@ -65,6 +65,9 @@ final class SpendingWarmCacheCommand extends Command
         return Command::SUCCESS;
     }
 
+    /**
+     * @return array{\DateTimeImmutable, \DateTimeImmutable}
+     */
     private function getWindow(\ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod $period, \DateTimeImmutable $now): array
     {
         return match ($period) {

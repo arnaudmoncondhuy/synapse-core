@@ -21,6 +21,7 @@ class SynapseAgentBuilder
     private float $temperature = 1.0;
     private ?float $reasoningBudget = null;
     private ?string $reasoningEffort = null;
+    /** @var string[] */
     private array $allowedTools = [];
     private int $maxTurns = 5;
 

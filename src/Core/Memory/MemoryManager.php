@@ -58,7 +58,7 @@ class MemoryManager
     /**
      * Recherche dans la mémoire sémantique le contenu le plus pertinent.
      *
-     * @return array<int, array{content: string, score: float, metadata: array}>
+     * @return array<int, array{content: string, score: float, metadata: array<string, mixed>}>
      */
     public function recall(string $query, ?string $userId = null, ?string $conversationId = null, int $limit = 5): array
     {

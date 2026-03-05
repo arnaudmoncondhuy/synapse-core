@@ -92,6 +92,9 @@ abstract class SynapseConversation
      * Permet d'ajouter des champs custom sans modifier le schéma.
      * Exemples : tags, labels, contexte spécifique, etc.
      */
+    /**
+     * @var array<string, mixed>|null
+     */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     protected ?array $metadata = null;
 
@@ -180,11 +183,17 @@ abstract class SynapseConversation
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getMetadata(): ?array
     {
         return $this->metadata;
     }
 
+    /**
+     * @param array<string, mixed>|null $metadata
+     */
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;

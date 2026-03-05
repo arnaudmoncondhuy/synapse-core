@@ -81,8 +81,8 @@ class PromptBuilder
      * Agnostique : le bundle ne connaît pas les variables, il utilise celles
      * fournies par le ContextProvider via getInitialContext().
      *
-     * @param string $template Le template avec variables {DATE}, {EMAIL}, etc.
-     * @param array  $context  Le contexte retourné par getInitialContext()
+     * @param string               $template Le template avec variables {DATE}, {EMAIL}, etc.
+     * @param array<string, mixed> $context  Le contexte retourné par getInitialContext()
      *
      * @return string Le template avec les variables remplacées
      */

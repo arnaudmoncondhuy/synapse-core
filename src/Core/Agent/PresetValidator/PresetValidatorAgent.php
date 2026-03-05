@@ -41,7 +41,8 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * @param array $input ['preset' => SynapsePreset]
+     * @param array{preset: SynapsePreset} $input
+     * @return array<string, mixed>
      */
     public function run(array $input): array
     {
@@ -49,7 +50,9 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * Exécute une étape spécifique de validation (utilisé pour les Messenger handlers ou polling).
+     * Exécute une étape du diagnostic.
+     *
+     * @param array<string, mixed> $report
      */
     public function runStep(int $step, SynapsePreset $preset, array &$report): void
     {
@@ -62,8 +65,9 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * Exécute les 3 étapes de validation en séquence et retourne le rapport complet.
-     * À appeler depuis le contrôleur dans une seule requête HTTP.
+     * Récupère d'un coup tous les résultats (utilisé pour l'affichage final).
+     *
+     * @return array<string, mixed>
      */
     public function runAll(SynapsePreset $preset): array
     {
@@ -77,7 +81,9 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * Étape 1 : Vérifie le provider, les credentials et le modèle sans faire d'appel LLM.
+     * Étape 1 : Validation de la configuration technique.
+     *
+     * @param array<string, mixed> $report
      */
     private function executeConfigCheckStep(SynapsePreset $preset, array &$report): void
     {
@@ -136,8 +142,9 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * Étape 2 : Appel LLM réel avec les vrais paramètres du preset (streaming inclus) et debug activé.
-     * Construit également la comparaison preset déclaré vs paramètres réellement envoyés à l'API.
+     * Étape 2 : Test d'appel LLM (Hello world).
+     *
+     * @param array<string, mixed> $report
      */
     private function executeLlmCallStep(SynapsePreset $preset, array &$report): void
     {
@@ -243,8 +250,9 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * Étape 3 : Analyse IA des résultats avec un appel sur le preset ACTIF (pas le preset testé).
-     * L'override est explicitement réinitialisé avant cet appel comme défense supplémentaire.
+     * Étape 3 : Analyse des capacités (Thinking, Tools, Context).
+     *
+     * @param array<string, mixed> $report
      */
     private function executeAnalysisStep(SynapsePreset $preset, array &$report): void
     {

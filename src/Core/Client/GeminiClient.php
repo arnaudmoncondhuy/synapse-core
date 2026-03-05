@@ -37,11 +37,13 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private int    $thinkingBudget          = 1024;
     private bool   $safetySettingsEnabled   = false;
     private string $safetyDefaultThreshold  = 'BLOCK_MEDIUM_AND_ABOVE';
+    /** @var array<string, string> */
     private array  $safetyThresholds        = [];
     private float  $generationTemperature   = 1.0;
     private float  $generationTopP          = 0.95;
     private int    $generationTopK          = 40;
     private ?int   $generationMaxOutputTokens = null;
+    /** @var string[] */
     private array  $generationStopSequences = [];
 
     public function __construct(
@@ -187,7 +189,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * Les messages sont au format OpenAI canonical (contents contient déjà le message système en tête).
      *
-     * @return \Generator<array>
+     * @param array<int, array<string, mixed>> $contents
+     * @param array<int, array<string, mixed>> $tools
+     * @param string|null                      $model
+     * @param array<string, mixed>             $debugOut
+     *
+     * @return \Generator<int, array<string, mixed>>
      * @throws \RuntimeException En cas d'erreur API Vertex AI
      */
     public function streamGenerateContent(
@@ -296,6 +303,10 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Normalise un chunk brut Gemini vers le format Synapse canonical.
+     *
+     * @param array<string, mixed> $rawChunk
+     *
+     * @return array<string, mixed>
      */
     private function normalizeChunk(array $rawChunk): array
     {
@@ -517,9 +528,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * This is needed because the system uses OpenAI format internally,
      * but Vertex AI expects Gemini format.
      *
-     * @param array $openAiMessages Messages in format:
+     * @param array<int, array<string, mixed>> $openAiMessages Messages in format:
      *   ['role' => 'user'|'assistant'|'tool', 'content' => ..., 'tool_calls' => [...], 'tool_call_id' => ...]
-     * @return array Messages in Gemini format:
+     * @return array<int, array<string, mixed>> Messages in Gemini format:
      *   ['role' => 'user'|'model'|'function', 'parts' => [...]]
      */
     private function toGeminiMessages(array $openAiMessages): array
@@ -590,6 +601,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Resolve function name from tool_call_id by searching previous assistant messages.
+     *
+     * @param array<int, array<string, mixed>> $geminiMessages
+     * @param string                           $toolCallId
      */
     private function resolveFunctionName(array $geminiMessages, string $toolCallId): string
     {
@@ -608,6 +622,16 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         return '';
     }
 
+    /**
+     * Construit le payload de requête Vertex AI.
+     *
+     * @param array<int, array<string, mixed>> $contents
+     * @param array<int, array<string, mixed>> $tools
+     * @param string                           $effectiveModel
+     * @param array<string, mixed>|null        $thinkingConfigOverride
+     *
+     * @return array<string, mixed>
+     */
     private function buildPayload(
         array $contents,
         array $tools,
@@ -689,8 +713,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Intègre optionnellement une config thinking (peut être surcharge par paramètre).
      * Filtre les paramètres selon les capacités du modèle (ModelCapabilityRegistry).
      *
-     * @param string $effectiveModel Identifiant du modèle
-     * @param array|null $thinkingConfigOverride Config thinking optionnelle (surcharge buildThinkingConfig)
+     * @param string                    $effectiveModel         Identifiant du modèle
+     * @param array<string, mixed>|null $thinkingConfigOverride Config thinking optionnelle (surcharge buildThinkingConfig)
+     *
      * @return array<string, mixed> Config Gemini : {temperature, topP, topK?, maxOutputTokens?, stopSequences?, thinkingConfig?}
      */
     private function buildGenerationConfig(string $effectiveModel, ?array $thinkingConfigOverride = null): array

@@ -14,6 +14,11 @@ namespace ArnaudMoncondhuy\SynapseCore\Contract;
 interface EmbeddingClientInterface
 {
     /**
+     * Identifiant interne du fournisseur (ex: 'gemini', 'openai').
+     */
+    public function getProviderName(): string;
+
+    /**
      * Génère des embeddings vectoriels pour un ou plusieurs textes d'entrée.
      *
      * @param string|array<int, string> $input   Texte unique ou liste de textes à vectoriser.

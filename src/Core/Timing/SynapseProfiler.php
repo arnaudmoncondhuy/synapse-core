@@ -10,7 +10,10 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Timing;
  */
 class SynapseProfiler
 {
+    /** @var array<int, array{name: string, description: string, duration_ms: float, turn: int}> */
     private array $steps = [];
+
+    /** @var array<string, array{name: string, description: string, start: float}> */
     private array $activeTimers = [];
     private ?float $globalStart = null;
 
@@ -59,6 +62,8 @@ class SynapseProfiler
 
     /**
      * Renvoie le tableau structuré des étapes et de la durée totale pour l'interface de Debug (Admin).
+     *
+     * @return array{total_ms: float, steps: array<int, array{name: string, description: string, duration_ms: float, turn: int}>}
      */
     public function getTimings(): array
     {

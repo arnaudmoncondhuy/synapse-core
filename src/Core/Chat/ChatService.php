@@ -57,22 +57,28 @@ class ChatService
      * @param string        $message Le texte envoyé par l'utilisateur.
      * @param array{
      *     tone?: string,
-     *     history?: array,
+     *     history?: array<int, array<string, mixed>>,
      *     stateless?: bool,
      *     debug?: bool,
      *     preset?: SynapsePreset,
-     *     conversation_id?: string
+     *     conversation_id?: string,
+     *     user_id?: string,
+     *     estimated_cost_reference?: float,
+     *     streaming?: bool,
+     *     reset_conversation?: bool
      * } $options Options contrôlant le comportement de l'échange.
-     * @param callable|null $onStatusUpdate Callback appelé à chaque étape (thinking, tool_call, etc.) : fn(string $msg, string $step).
-     * @param callable|null $onToken        Callback appelé à chaque token reçu (streaming) : fn(string $token).
-     * @param callable|null $onToolExecuted Callback appelé après exécution d'un outil : fn(string $toolName, mixed $result).
+     * @param callable(string $msg, string $step): void|null $onStatusUpdate Callback appelé à chaque étape (thinking, tool_call, etc.).
+     * @param callable(string $token): void|null $onToken Callback appelé à chaque token reçu (streaming).
+     * @param callable(string $toolName, mixed $result): void|null $onToolExecuted Callback appelé après exécution d'un outil.
      *
      * @return array{
      *     answer: string,
      *     debug_id: ?string,
-     *     usage: array,
-     *     safety: array,
-     *     model: string
+     *     usage: array<string, int>,
+     *     safety: array<int, array<string, mixed>>,
+     *     model: string,
+     *     preset_id: ?int,
+     *     mission_id: ?int
      * } Résultat normalisé de l'échange.
      */
     public function ask(
@@ -89,6 +95,8 @@ class ChatService
                 'usage' => [],
                 'safety' => [],
                 'model' => 'unknown',
+                'preset_id' => null,
+                'mission_id' => null,
             ];
         }
 
@@ -381,9 +389,9 @@ class ChatService
     }
 
     /**
-     * Récupère l'historique de conversation complet au format OpenAI.
+     * Retourne l'historique complet formaté pour l'API.
      *
-     * @return array<int, array{role: string, content: string|null, tool_calls?: array, tool_call_id?: string}> Messages au format OpenAI
+     * @return array<int, array<string, mixed>>
      */
     public function getConversationHistory(): array
     {

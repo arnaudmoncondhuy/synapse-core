@@ -14,10 +14,10 @@ class ContextTruncationService
     /**
      * Tronque un historique de messages pour qu'il tienne dans le budget de tokens spécifié.
      *
-     * @param array<int, array> $messages  Tableau de messages (Ex: [['role' => '...', 'content' => '...'], ...])
-     * @param int               $maxTokens Capacité maximale de la fenêtre de contexte
+     * @param array<int, array<string, mixed>> $messages  Tableau de messages (Ex: [['role' => '...', 'content' => '...'], ...])
+     * @param int                              $maxTokens Capacité maximale de la fenêtre de contexte
      *
-     * @return array<int, array> L'historique tronqué, remis dans le bon ordre chronologique.
+     * @return array<int, array<string, mixed>> L'historique tronqué, remis dans le bon ordre chronologique.
      */
     public function truncate(array $messages, int $maxTokens): array
     {
@@ -86,6 +86,8 @@ class ContextTruncationService
     /**
      * Estime le nombre de tokens pour un tableau de messages (contenu + historique).
      * Heuristique : 1 token ≈ 4 caractères.
+     *
+     * @param array<int, array<string, mixed>> $contents
      */
     public function estimateTokensForContents(array $contents): int
     {
@@ -98,6 +100,8 @@ class ContextTruncationService
 
     /**
      * Heuristique : 1 token ≈ 4 caractères.
+     *
+     * @param array<string, mixed> $message
      */
     private function estimateTokens(array $message): int
     {

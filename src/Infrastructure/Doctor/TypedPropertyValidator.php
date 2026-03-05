@@ -55,6 +55,9 @@ class TypedPropertyValidator
         return $isValid;
     }
 
+    /**
+     * @return string[]
+     */
     private function detectUninitializedProperties(string $content, string $baseName): array
     {
         $issues = [];

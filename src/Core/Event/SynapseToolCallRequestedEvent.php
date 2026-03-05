@@ -17,12 +17,14 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 class SynapseToolCallRequestedEvent extends Event
 {
-    /** @var array<array{id: string, name: string, args: array}> */
+    /** @var array<int, array{id: string, name: string, args: array<string, mixed>}> */
     private array $toolCalls;
+
+    /** @var array<string, mixed> */
     private array $results = [];
 
     /**
-     * @param array<array{id: string, name: string, args: array}> $toolCalls Liste des appels d'outils demandés par le LLM.
+     * @param array<int, array{id: string, name: string, args: array<string, mixed>}> $toolCalls Liste des appels d'outils demandés par le LLM.
      */
     public function __construct(array $toolCalls)
     {
@@ -32,7 +34,7 @@ class SynapseToolCallRequestedEvent extends Event
     /**
      * Retourne la liste des outils que le modèle souhaite appeler.
      *
-     * @return array<array{id: string, name: string, args: array}>
+     * @return array<int, array{id: string, name: string, args: array<string, mixed>}>
      */
     public function getToolCalls(): array
     {

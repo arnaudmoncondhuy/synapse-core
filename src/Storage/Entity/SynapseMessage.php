@@ -112,6 +112,9 @@ abstract class SynapseMessage
      *     ...
      * ]
      */
+    /**
+     * @var array<string, array{category: string, probability: string}>|null
+     */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     protected ?array $safetyRatings = null;
 
@@ -125,6 +128,9 @@ abstract class SynapseMessage
      * Métadonnées additionnelles (JSON)
      *
      * Exemples : debug_id, thinking_text, function_calls, etc.
+     */
+    /**
+     * @var array<string, mixed>|null
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
     protected ?array $metadata = null;
@@ -253,11 +259,17 @@ abstract class SynapseMessage
         return $this;
     }
 
+    /**
+     * @return array<string, array{category: string, probability: string}>|null
+     */
     public function getSafetyRatings(): ?array
     {
         return $this->safetyRatings;
     }
 
+    /**
+     * @param array<string, array{category: string, probability: string}>|null $safetyRatings
+     */
     public function setSafetyRatings(?array $safetyRatings): self
     {
         $this->safetyRatings = $safetyRatings;
@@ -275,11 +287,17 @@ abstract class SynapseMessage
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getMetadata(): ?array
     {
         return $this->metadata;
     }
 
+    /**
+     * @param array<string, mixed>|null $metadata
+     */
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;

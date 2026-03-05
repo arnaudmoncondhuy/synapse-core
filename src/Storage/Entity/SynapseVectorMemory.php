@@ -63,11 +63,17 @@ class SynapseVectorMemory
         return $this->id;
     }
 
+    /**
+     * @return array<int, float>
+     */
     public function getEmbedding(): array
     {
         return $this->embedding;
     }
 
+    /**
+     * @param array<int, float> $embedding
+     */
     public function setEmbedding(array $embedding): self
     {
         $this->embedding = $embedding;
@@ -75,11 +81,17 @@ class SynapseVectorMemory
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getPayload(): array
     {
         return $this->payload;
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     public function setPayload(array $payload): self
     {
         $this->payload = $payload;

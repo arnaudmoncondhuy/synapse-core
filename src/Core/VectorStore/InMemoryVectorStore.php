@@ -46,6 +46,9 @@ class InMemoryVectorStore implements VectorStoreInterface
 
     /**
      * Calcule la similitude cosinus entre deux vecteurs.
+     *
+     * @param float[] $vec1
+     * @param float[] $vec2
      */
     private function calculateCosineSimilarity(array $vec1, array $vec2): float
     {

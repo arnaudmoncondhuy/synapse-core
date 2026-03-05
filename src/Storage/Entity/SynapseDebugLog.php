@@ -52,6 +52,9 @@ class SynapseDebugLog
      * - turns : détails de chaque tour de conversation
      * - tool_executions : exécutions d'outils (si applicable)
      */
+    /**
+     * @var array<string, mixed>
+     */
     #[ORM\Column(type: Types::JSON)]
     private array $data = [];
 
@@ -95,11 +98,17 @@ class SynapseDebugLog
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getData(): array
     {
         return $this->data;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function setData(array $data): self
     {
         $this->data = $data;

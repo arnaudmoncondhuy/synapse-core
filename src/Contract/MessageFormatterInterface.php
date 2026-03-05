@@ -17,11 +17,10 @@ interface MessageFormatterInterface
     /**
      * Convertit une liste d'entités de messages vers le format API brut.
      *
-     * @param array<int, object> $messageEntities Liste des entités (SynapseMessage).
-     *
-     * @return array<int, array{role: string, content: string|null, tool_calls?: array}> Messages formatés pour le LLM.
+     * @param iterable<object> $entities
+     * @return array<int, array<string, mixed>>
      */
-    public function entitiesToApiFormat(array $messageEntities): array;
+    public function entitiesToApiFormat(iterable $entities): array;
 
     /**
      * Transforme des messages provenant d'une API en objets entités prêts à la persistance.

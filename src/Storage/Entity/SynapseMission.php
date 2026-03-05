@@ -239,6 +239,9 @@ class SynapseMission
     /**
      * Représentation tableau pour Twig.
      */
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

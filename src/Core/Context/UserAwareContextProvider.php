@@ -25,8 +25,7 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     public function __construct(
         protected ?Security $security = null,
         protected string $language = 'fr'
-    ) {
-    }
+    ) {}
 
     /**
      * Construit le prompt système complet en assemblant les différentes parties
@@ -50,6 +49,8 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
 
     /**
      * Fournit le contexte initial pour la conversation
+     *
+     * @return array<string, mixed>
      */
     final public function getInitialContext(): array
     {
@@ -81,7 +82,8 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     protected function getDateContext(): string
     {
         $now = new \DateTimeImmutable();
-        return sprintf("Nous sommes le %s à %s",
+        return sprintf(
+            "Nous sommes le %s à %s",
             $now->format('d/m/Y'),
             $now->format('H:i')
         );
@@ -106,7 +108,7 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
      */
     protected function getInstructions(): string
     {
-        return match($this->language) {
+        return match ($this->language) {
             'fr' => <<<FR
             Instructions :
             - Réponds TOUJOURS en français
@@ -129,6 +131,8 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
      * Extrait les données utilisateur pour le contexte initial
      *
      * Override possible pour ajouter plus de données.
+     *
+     * @return array<string, mixed>
      */
     protected function extractUserData(ConversationOwnerInterface $user): array
     {

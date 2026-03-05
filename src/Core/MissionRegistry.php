@@ -23,7 +23,7 @@ class MissionRegistry
     /**
      * Récupère toutes les missions actives, indexées par clé.
      *
-     * @return array<string, array> Missions indexées par key, converties en tableau
+     * @return array<string, array<string, mixed>> Missions indexées par key, converties en tableau
      */
     public function getAll(): array
     {

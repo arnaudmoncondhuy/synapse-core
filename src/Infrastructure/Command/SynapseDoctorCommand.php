@@ -827,6 +827,9 @@ PHP);
 
     // ── Summary ───────────────────────────────────────────────────────────────
 
+    /**
+     * @param array<string, bool> $checks
+     */
     private function printSummary(array $checks, SymfonyStyle $io): void
     {
         $io->section('Summary');

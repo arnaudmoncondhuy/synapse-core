@@ -29,19 +29,26 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 class ConversationManager
 {
     private ?SynapseConversation $currentConversation = null;
+
+    /** @var SynapseConversationRepository<SynapseConversation>|null */
     private ?SynapseConversationRepository $resolvedConversationRepo = null;
 
     public function __construct(
         private EntityManagerInterface $em,
+        /** @var SynapseConversationRepository<SynapseConversation>|null */
         private ?SynapseConversationRepository $conversationRepo = null,
         private ?EncryptionServiceInterface $encryptionService = null,
         private ?PermissionCheckerInterface $permissionChecker = null,
+        /** @var class-string<SynapseConversation>|null */
         private ?string $conversationClass = null,
+        /** @var class-string<SynapseMessage>|null */
         private ?string $messageClass = null,
     ) {}
 
     /**
      * Récupère le repository de conversations (injecté ou résolu dynamiquement)
+     *
+     * @return SynapseConversationRepository<SynapseConversation>
      */
     private function getConversationRepo(): SynapseConversationRepository
     {
@@ -50,7 +57,7 @@ class ConversationManager
         }
 
         if ($this->resolvedConversationRepo === null) {
-            /** @var SynapseConversationRepository $repo */
+            /** @var SynapseConversationRepository<SynapseConversation> $repo */
             $repo = $this->em->getRepository($this->getConversationClass());
             $this->resolvedConversationRepo = $repo;
         }
@@ -112,11 +119,11 @@ class ConversationManager
      *     prompt_tokens?: int,
      *     completion_tokens?: int,
      *     thinking_tokens?: int,
-     *     safety_ratings?: array,
+     *     safety_ratings?: array<string, array{category: string, probability: string}>,
      *     blocked?: bool,
      *     model?: string,
      *     preset_id?: int|null,
-     *     metadata?: array
+     *     metadata?: array<string, mixed>
      * } $metadata Données techniques de l'échange.
      * @param string|null $callId UUID de l'appel LLM (SynapseLlmCall.callId) — pour les messages MODEL.
      *
@@ -291,7 +298,7 @@ class ConversationManager
         $this->checkPermission($conversation, 'view');
 
         $messageClass = $this->getMessageClass();
-        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository $messageRepo */
+        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository<SynapseMessage> $messageRepo */
         $messageRepo = $this->em->getRepository($messageClass);
         $messages = $messageRepo->findByConversation($conversation, $limit);
 
@@ -352,7 +359,7 @@ class ConversationManager
      * Filtre les messages non affichables (système, fonction, etc.).
      *
      * @param SynapseConversation $conversation SynapseConversation à formater
-     * @return array<int, array{role: string, content: string, parts: array, metadata: array}>
+     * @return array<int, array{role: string, content: string, parts: array<int, array{text: string}>, metadata: array<string, mixed>}>
      */
     public function getHistoryArray(SynapseConversation $conversation): array
     {
@@ -473,7 +480,7 @@ class ConversationManager
     /**
      * Retourne la classe SynapseConversation à utiliser
      *
-     * À override dans les projets
+     * @return class-string<SynapseConversation>
      */
     protected function getConversationClass(): string
     {
@@ -483,7 +490,7 @@ class ConversationManager
     /**
      * Retourne la classe SynapseMessage à utiliser
      *
-     * À override dans les projets
+     * @return class-string<SynapseMessage>
      */
     protected function getMessageClass(): string
     {

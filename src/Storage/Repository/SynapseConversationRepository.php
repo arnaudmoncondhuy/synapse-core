@@ -158,7 +158,7 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      *
      * Utilisé par la commande de purge RGPD.
      *
-     * @param array $conversations Conversations à supprimer
+     * @param T[] $conversations Conversations à supprimer
      * @return int Nombre de conversations supprimées
      */
     public function hardDelete(array $conversations): int

@@ -22,7 +22,7 @@ class GeminiAuthService
     private ?string $cachedToken = null;
     private ?int $tokenExpiry = null;
 
-    /** Credentials injectés depuis la DB (prioritaires sur le fichier) */
+    /** @var array<string, mixed>|null Credentials injectés depuis la DB (prioritaires sur le fichier) */
     private ?array $credentialsOverride = null;
 
     public function __construct(
@@ -90,6 +90,7 @@ class GeminiAuthService
      *
      * Priorité : DB (setCredentialsJson) > fichier YAML
      *
+     * @return array<string, mixed>
      * @throws \RuntimeException Si aucune source de credentials n'est disponible
      */
     private function loadCredentials(): array
@@ -113,6 +114,9 @@ class GeminiAuthService
         );
     }
 
+    /**
+     * @param array<string, mixed> $credentials
+     */
     private function createJwtAssertion(array $credentials): string
     {
         $header = [

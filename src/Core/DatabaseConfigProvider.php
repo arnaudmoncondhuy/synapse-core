@@ -31,6 +31,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     /** @var int Durée du cache en secondes (5 minutes) */
     private const CACHE_TTL = 300;
 
+    /** @var array<string, mixed>|null */
     private ?array $configOverride = null;
 
     public function __construct(
@@ -47,7 +48,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *
      * Si un override est défini (via setOverride()), retourne cet override au lieu du preset actif.
      *
-     * @return array Configuration formatée pour les services LLM
+     * @return array<string, mixed> Configuration formatée pour les services LLM
      */
     public function getConfig(): array
     {
@@ -70,6 +71,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      * Configure un override temporaire (en mémoire).
      *
      * Utilisé par ChatService pour tester un preset sans le rendre actif en DB.
+     *
+     * @param array<string, mixed>|null $config
      */
     public function setOverride(?array $config): void
     {
@@ -80,7 +83,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      * Retourne la configuration complète pour un preset spécifique,
      * sans utiliser le cache et sans modifier le preset actif.
      *
-     * @return array Configuration formatée pour les services LLM
+     * @return array<string, mixed> Configuration formatée pour les services LLM
      */
     public function getConfigForPreset(SynapsePreset $preset): array
     {
@@ -119,6 +122,10 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *
      * Les credentials sont stockés chiffrés en base et déchiffrés lors de la lecture.
      * Le cache stocke les données déjà déchiffrées (déchiffrées une fois, mises en cache).
+     *
+     * @param array<string, mixed> $credentials
+     *
+     * @return array<string, mixed>
      */
     private function decryptCredentials(array $credentials): array
     {
@@ -140,6 +147,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *
      * Si aucun preset valide n'existe, retourne une configuration par défaut
      * (pour permettre la création du premier preset).
+     *
+     * @return array<string, mixed>
      */
     private function loadConfig(): array
     {
@@ -179,6 +188,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     /**
      * Configuration par défaut safe quand aucun preset valide n'existe.
      * Permet la création du premier preset sans erreur.
+     *
+     * @return array<string, mixed>
      */
     private function getDefaultConfig(): array
     {

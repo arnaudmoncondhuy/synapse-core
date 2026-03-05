@@ -58,6 +58,8 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
     /**
      * Find and execute a tool by name.
      *
+     * @param array<string, mixed> $args
+     *
      * @return mixed Tool execution result (string, array, object, or null if tool not found)
      */
     private function executeTool(string $name, array $args): mixed

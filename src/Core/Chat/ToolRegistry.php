@@ -55,7 +55,7 @@ class ToolRegistry
      * Prêt à être envoyé au LLM via ChatService.
      *
      * @param string[]|null $names Si défini, ne retourne que les définitions des outils portant ces noms.
-     * @return array<int, array{name: string, description: string, parameters: array}>
+     * @return array<int, array{name: string, description: string, parameters: array<string, mixed>}>
      */
     public function getDefinitions(?array $names = null): array
     {

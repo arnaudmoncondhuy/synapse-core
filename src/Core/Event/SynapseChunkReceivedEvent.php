@@ -27,11 +27,12 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseChunkReceivedEvent extends Event
 {
     private int $turn;
+    /** @var array<string, mixed>|null */
     private ?array $rawChunk = null;
 
     /**
-     * @param array<string, mixed> $chunk    Le chunk normalisé reçu (text, function_calls, usage, etc.)
-     * @param int                  $turn     L'index du tour de parole actuel
+     * @param array<string, mixed>      $chunk    Le chunk normalisé reçu (text, function_calls, usage, etc.)
+     * @param int                       $turn     L'index du tour de parole actuel
      * @param array<string, mixed>|null $rawChunk Le payload brut reçu de l'API provider (pour debug avancé)
      */
     public function __construct(
@@ -45,6 +46,8 @@ class SynapseChunkReceivedEvent extends Event
 
     /**
      * Retourne tout le contenu normalisé du chunk.
+     *
+     * @return array<string, mixed>
      */
     public function getChunk(): array
     {
@@ -69,6 +72,8 @@ class SynapseChunkReceivedEvent extends Event
 
     /**
      * Retourne les appels de fonctions demandés dans ce chunk.
+     *
+     * @return array<int, array{id: string, name: string, args: array<string, mixed>}>
      */
     public function getFunctionCalls(): array
     {
@@ -77,6 +82,8 @@ class SynapseChunkReceivedEvent extends Event
 
     /**
      * Retourne les statistiques d'usage de tokens s'il s'agit du dernier chunk.
+     *
+     * @return array<string, mixed>
      */
     public function getUsage(): array
     {

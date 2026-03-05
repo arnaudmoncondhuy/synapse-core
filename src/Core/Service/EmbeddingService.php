@@ -21,6 +21,9 @@ class EmbeddingService
     /** @var array<string, EmbeddingClientInterface> */
     private array $clients = [];
 
+    /**
+     * @param iterable<EmbeddingClientInterface> $clients
+     */
     public function __construct(
         #[AutowireIterator('synapse.llm_client')] iterable $clients,
         private SynapseProviderRepository $providerRepository,
@@ -30,7 +33,7 @@ class EmbeddingService
     ) {
         foreach ($clients as $client) {
             // Seuls les clients implémentant l'interface d'embedding nous intéressent ici
-            if ($client instanceof EmbeddingClientInterface && method_exists($client, 'getProviderName')) {
+            if ($client instanceof EmbeddingClientInterface) {
                 $this->clients[$client->getProviderName()] = $client;
             }
         }
@@ -39,10 +42,10 @@ class EmbeddingService
     /**
      * Génère des embeddings pour un texte ou un tableau de textes.
      *
-     * @param string|array $input Texte unique ou liste de textes.
-     * @param string|null  $model Modèle optionnel (si null, le défaut est résolu dynamiquement).
+     * @param string|string[] $input Texte unique ou liste de textes.
+     * @param string|null     $model Modèle optionnel (si null, le défaut est résolu dynamiquement).
      *
-     * @return array Structure : ['embeddings' => [...], 'usage' => ['prompt_tokens' => X, 'total_tokens' => Y]]
+     * @return array{embeddings: float[][], usage: array{prompt_tokens: int, total_tokens: int}}
      */
     public function generateEmbeddings(string|array $input, ?string $model = null): array
     {

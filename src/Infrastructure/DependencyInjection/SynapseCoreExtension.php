@@ -90,7 +90,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
     /**
      * Chargement principal de la configuration du bundle.
      *
-     * @param array $configs configurations fusionnées
+     * @param array<mixed, mixed> $configs configurations fusionnées
      */
     public function load(array $configs, ContainerBuilder $container): void
     {

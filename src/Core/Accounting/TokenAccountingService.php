@@ -24,6 +24,9 @@ class TokenAccountingService
 {
     private const CACHE_PREFIX = 'synapse_spending_';
 
+    /**
+     * @param array<string, float> $currencyRates
+     */
     public function __construct(
         private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
         private EntityManagerInterface $em,
@@ -37,16 +40,8 @@ class TokenAccountingService
     /**
      * Log l'usage de tokens pour une action IA
      *
-     * @param string $module Module concerné (ex: 'gmail', 'calendar', 'summarization')
-     * @param string $action Action spécifique (ex: 'email_draft', 'event_suggestion')
-     * @param string $model Modèle IA utilisé (ex: 'gemini-2.5-flash')
-     * @param array $usage Usage détaillé ['prompt' => int, 'completion' => int, 'thinking' => int]
-     * @param string|int|null $userId ID de l'utilisateur concerné (nullable pour tâches système)
-     * @param string|null $conversationId ID de la conversation concernée (si applicable)
-     * @param int|null $presetId ID du preset LLM utilisé (si applicable, pour plafonds par preset)
-     * @param int|null $missionId ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission)
-     * @param array|null $metadata Métadonnées additionnelles (durée, debug_id, etc.)
-     * @return SynapseLlmCall L'entité créée — permet au caller de récupérer le callId pour le lier à un SynapseMessage
+     * @param array<string, int>   $usage
+     * @param array<string, mixed>|null $metadata
      */
     public function logUsage(
         string $module,
@@ -65,10 +60,9 @@ class TokenAccountingService
         $tokenUsage->setModel($model);
 
         // Récupérer le tarif actuel pour ce modèle (input, output, currency)
-        // Hiérarchie: synapse_model (BDD) surcharge ModelCapabilityRegistry (YAML)
         $modelPricing = $this->getPricingForModel($model);
 
-        // Tokens (format normalisé Synapse)
+        // Tokens
         $promptTokens     = $usage['prompt_tokens']     ?? 0;
         $completionTokens = $usage['completion_tokens'] ?? 0;
         $thinkingTokens   = $usage['thinking_tokens']   ?? 0;
@@ -78,27 +72,22 @@ class TokenAccountingService
         $tokenUsage->setThinkingTokens($thinkingTokens);
         $tokenUsage->calculateTotalTokens();
 
-        // User ID (convertir en string pour uniformiser)
         if ($userId !== null) {
             $tokenUsage->setUserId((string) $userId);
         }
 
-        // SynapseConversation ID
         if ($conversationId !== null) {
             $tokenUsage->setConversationId($conversationId);
         }
 
-        // Preset LLM (pour plafonds par preset)
         if ($presetId !== null) {
             $tokenUsage->setPresetId($presetId);
         }
 
-        // Mission (pour plafonds par mission)
         if ($missionId !== null) {
             $tokenUsage->setMissionId($missionId);
         }
 
-        // Calculer et stocker le coût en colonnes dédiées (snapshot immuable au tarif du moment)
         $currentUsage = [
             'prompt_tokens'     => $promptTokens,
             'completion_tokens' => $completionTokens,
@@ -114,7 +103,6 @@ class TokenAccountingService
         $tokenUsage->setPricingOutput($modelPricing['output'] ?? null);
         $tokenUsage->setPricingCurrency($currency);
 
-        // Métadonnées libres (sans coût — géré par les colonnes dédiées)
         $tokenUsage->setMetadata($metadata ?: null);
 
         $this->em->persist($tokenUsage);
@@ -187,8 +175,8 @@ class TokenAccountingService
     /**
      * Calcule le coût estimé d'un usage dans la devise du modèle.
      *
-     * @param array $usage   Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
-     * @param array $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
+     * @param array<string, int>   $usage   Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
+     * @param array<string, mixed> $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
      * @return float Coût dans la devise du modèle
      */
     public function calculateCost(array $usage, array $pricing): float

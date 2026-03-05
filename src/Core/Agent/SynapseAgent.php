@@ -15,6 +15,9 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
  */
 class SynapseAgent
 {
+    /**
+     * @param string[] $allowedTools
+     */
     public function __construct(
         private ChatService $chatService,
         private SynapsePreset $preset,
@@ -27,19 +30,20 @@ class SynapseAgent
      * Exécute une requête auprès de l'agent.
      *
      * @param string        $message Le message de l'utilisateur
-     * @param array         $history Historique optionnel (OpenAI format)
+     * @param array<int, array<string, mixed>> $history Historique optionnel (OpenAI format)
      * @param callable|null $onToken Callback pour le streaming de tokens
+     * @param array<string, mixed> $options Options supplémentaires pour la requête
      * 
-     * @return array Résultat normalisé Synapse
+     * @return array<string, mixed> Résultat normalisé Synapse
      */
-    public function ask(string $message, array $history = [], ?callable $onToken = null): array
+    public function ask(string $message, array $history = [], ?callable $onToken = null, array $options = []): array
     {
-        $options = [
+        $options = array_merge([
             'stateless' => true,
             'preset'    => $this->preset,
             'history'   => $history,
             'max_turns' => $this->maxTurns,
-        ];
+        ], $options);
 
         if ($this->systemPrompt) {
             $options['system_prompt'] = $this->systemPrompt;

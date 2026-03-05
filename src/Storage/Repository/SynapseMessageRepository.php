@@ -61,7 +61,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     /**
      * Récupère les statistiques d'utilisation des tokens par jour (7 derniers jours)
      *
-     * @return array [date => total_tokens]
+     * @return array<string, int> [date => total_tokens]
      */
     public function getTokenUsageStats(): array
     {
@@ -119,7 +119,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     /**
      * Calcule la répartition des rôles sur le dernier mois
      *
-     * @return array [role => count]
+     * @return array<string, int> [role => count]
      */
     public function getRoleDistribution(): array
     {

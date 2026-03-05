@@ -42,7 +42,7 @@ class SynapseProvider
     private string $label = '';
 
     /**
-     * Credentials du provider (JSON opaque, spécifique au provider).
+     * @var array<string, mixed>
      */
     #[ORM\Column(type: Types::JSON)]
     private array $credentials = [];
@@ -93,11 +93,17 @@ class SynapseProvider
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getCredentials(): array
     {
         return $this->credentials;
     }
 
+    /**
+     * @param array<string, mixed> $credentials
+     */
     public function setCredentials(array $credentials): self
     {
         $this->credentials = $credentials;

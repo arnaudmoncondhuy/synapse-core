@@ -45,7 +45,7 @@ interface ConfigProviderInterface
      * Cet override sera retourné par `getConfig()` à la place de la configuration
      * par défaut ou persistée. Utilisé pour tester des configurations à la volée.
      *
-     * @param array|null $config La configuration d'override ou null pour la désactiver.
+     * @param array<string, mixed>|null $config La configuration d'override ou null pour la désactiver.
      */
     public function setOverride(?array $config): void;
 
@@ -57,7 +57,7 @@ interface ConfigProviderInterface
      *
      * @param SynapsePreset $preset L'entité preset à analyser.
      *
-     * @return array Configuration extraite du preset.
+     * @return array<string, mixed> Configuration extraite du preset.
      */
     public function getConfigForPreset(SynapsePreset $preset): array;
 }

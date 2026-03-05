@@ -25,6 +25,7 @@ class RecursiveTextSplitter implements TextSplitterInterface
     /**
      * @param string $text
      * @param string[] $separators
+     * @return string[]
      */
     private function recursiveSplit(string $text, array $separators, int $chunkSize, int $chunkOverlap): array
     {

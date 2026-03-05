@@ -16,7 +16,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 class ModelCapabilityRegistry
 {
-    /** @var array<string, array> Cache local des modèles chargés */
+    /** @var array<string, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities> Cache local des modèles */
     private array $models = [];
 
     public function __construct()
@@ -124,7 +124,7 @@ class ModelCapabilityRegistry
     {
         return array_keys(array_filter(
             $this->models,
-            fn(array $caps) => ($caps['provider'] ?? '') === $provider
+            fn(ModelCapabilities $caps) => $caps->provider === $provider
         ));
     }
 

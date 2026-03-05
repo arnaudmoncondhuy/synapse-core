@@ -41,6 +41,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     private float  $temperature   = 1.0;
     private float  $topP          = 0.95;
     private ?int   $maxTokens     = null;
+    /** @var string[] */
     private array  $stopSequences = [];
     private bool   $thinkingEnabled = false;
     private ?int   $thinkingBudget = null;
@@ -299,6 +300,11 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     /**
      * Traite un chunk SSE et met à jour l'accumulateur de tool calls.
      * Retourne un chunk normalisé, ou null si le chunk ne contient rien d'utile.
+     *
+     * @param array<string, mixed> $data
+     * @param array<mixed>         $toolCallsAccumulator
+     *
+     * @return array<string, mixed>|null
      */
     private function processChunk(array $data, array &$toolCallsAccumulator): ?array
     {
@@ -350,13 +356,13 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $toolCallsAccumulator[$idx] = ['id' => '', 'name' => '', 'args' => ''];
                 }
                 if (!empty($tc['id'])) {
-                    $toolCallsAccumulator[$idx]['id'] = $tc['id'];
+                    $toolCallsAccumulator[$idx]['id'] = (string) $tc['id'];
                 }
                 if (!empty($tc['function']['name'] ?? '')) {
-                    $toolCallsAccumulator[$idx]['name'] = $tc['function']['name'];
+                    $toolCallsAccumulator[$idx]['name'] = (string) $tc['function']['name'];
                 }
                 if (isset($tc['function']['arguments'])) {
-                    $toolCallsAccumulator[$idx]['args'] .= $tc['function']['arguments'];
+                    $toolCallsAccumulator[$idx]['args'] .= (string) $tc['function']['arguments'];
                 }
             }
         }
@@ -381,6 +387,10 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     /**
      * Construit un chunk normalisé à partir des tool calls accumulés.
      * Vide l'accumulateur.
+     *
+     * @param array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator
+     *
+     * @return array<string, mixed>
      */
     private function buildToolCallChunk(array &$toolCallsAccumulator): array
     {
@@ -404,6 +414,10 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Convertit les déclarations d'outils Synapse en format OpenAI.
+     *
+     * @param array<int, array<string, mixed>> $tools
+     *
+     * @return array<int, array<string, mixed>>
      */
     private function toOpenAiTools(array $tools): array
     {
@@ -419,6 +433,14 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Construit le payload de requête OpenAI.
+     *
+     * @param string                           $model
+     * @param array<int, array<string, mixed>> $messages
+     * @param array<int, array<string, mixed>> $tools
+     * @param \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps
+     * @param bool                             $stream
+     *
+     * @return array<string, mixed>
      */
     private function buildPayload(string $model, array $messages, array $tools, $caps, bool $stream): array
     {
@@ -458,6 +480,10 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Normalise une réponse synchrone complète (non-streaming).
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
      */
     private function normalizeCompletionResponse(array $data): array
     {
@@ -509,6 +535,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
     /**
      * Retourne un chunk normalisé vide (toutes les valeurs par défaut).
+     *
+     * @return array<string, mixed>
      */
     private function emptyChunk(): array
     {
