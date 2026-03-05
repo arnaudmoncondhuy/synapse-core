@@ -126,7 +126,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
 
         // ── Version ──────────────────────────────────────────────────────────
         $versionFile = __DIR__ . '/../../../VERSION';
-        $version = is_file($versionFile) ? trim(file_get_contents($versionFile)) : 'dev';
+        $version = is_file($versionFile) ? trim((string) file_get_contents($versionFile)) : 'dev';
         $container->setParameter('synapse.version', $version);
 
         // ── Encryption Service ────────────────────────────────────────────────

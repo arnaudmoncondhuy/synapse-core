@@ -61,11 +61,11 @@ class AssetMapperValidator
                     $isValid = false;
                 }
             } elseif (is_link($symlinkPath)) {
-                $target = readlink($symlinkPath);
+                $target = (string) readlink($symlinkPath);
                 $realTarget = realpath($target);
                 $realBundleAssets = realpath($bundleAssets);
 
-                if ($realTarget !== $realBundleAssets) {
+                if ($realTarget !== false && $realBundleAssets !== false && $realTarget !== $realBundleAssets) {
                     $io->error(sprintf('[AssetMapper] Broken symlink: assets/%s points to %s (expected %s)', $assetPath, $realTarget, $realBundleAssets));
 
                     if ($fix) {

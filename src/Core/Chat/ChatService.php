@@ -274,7 +274,7 @@ class ChatService
                     $eventToolCalls = array_map(fn($tc) => [
                         'id'   => $tc['id'],
                         'name' => $tc['function']['name'],
-                        'args' => (array) (json_decode($tc['function']['arguments'], true) ?: [])
+                        'args' => (array) (json_decode(is_string($tc['function']['arguments']) ? $tc['function']['arguments'] : '', true) ?: [])
                     ], $modelToolCalls);
 
                     $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($eventToolCalls));

@@ -68,7 +68,8 @@ class SpendingLimitChecker
 
         foreach ($limits as $limit) {
             [$start, $end] = $this->getWindow($limit->getPeriod());
-            $scopeId = $limit->getScopeId();
+            $scopeId = (string) $limit->getScopeId();
+            /** @var 'user'|'preset'|'mission' $scope */
             $scope = $limit->getScope()->value;
 
             $consumption = $this->getConsumptionFromCacheOrDb($scope, $scopeId, $limit->getPeriod(), $start, $end);
@@ -87,6 +88,8 @@ class SpendingLimitChecker
 
     /**
      * Récupère la consommation (devise de référence) depuis le cache ou la DB.
+     *
+     * @param 'user'|'preset'|'mission' $scope
      */
     private function getConsumptionFromCacheOrDb(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start, \DateTimeInterface $end): float
     {

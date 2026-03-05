@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class EstimateCostApiController extends AbstractController
 {
     public function __construct(
-        private TokenCostEstimator $costEstimator,
+        private TokenCostEstimator $tokenCostEstimator,
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?MessageFormatter $messageFormatter = null,
@@ -30,6 +30,9 @@ class EstimateCostApiController extends AbstractController
     #[Route('/estimate-cost', name: 'synapse_api_estimate_cost', methods: ['POST'])]
     public function estimateCost(Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $modelId = (string) ($data['model_id'] ?? 'default');
+
         if (!$this->permissionChecker->canCreateConversation()) {
             return $this->json(['error' => 'Access denied.'], 403);
         }
@@ -65,8 +68,9 @@ class EstimateCostApiController extends AbstractController
             ]);
         }
 
-        $estimate = $this->costEstimator->estimateCost($contents);
+        /** @var array<int, array{role: string, content?: string|null}> $contents */
+        $totalCost = $this->tokenCostEstimator->estimateCost($contents, $modelId);
 
-        return $this->json($estimate);
+        return $this->json($totalCost);
     }
 }

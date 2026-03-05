@@ -25,8 +25,11 @@ class ComposerPathValidator
             return true;
         }
 
-        $content = file_get_contents($composerFile);
+        $content = (string) file_get_contents($composerFile);
         $composer = json_decode($content, true);
+        if (!is_array($composer)) {
+            return true;
+        }
 
         if (!isset($composer['repositories'])) {
             $io->writeln('  <info>[OK]</info> Composer (Packagist, production mode)');

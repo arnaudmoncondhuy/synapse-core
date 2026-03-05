@@ -25,11 +25,11 @@ class TypedPropertyValidator
             return true;
         }
 
-        $phpFiles = glob($entityDir . '/*.php');
+        $phpFiles = glob($entityDir . '/*.php') ?: [];
         $isValid = true;
 
         foreach ($phpFiles as $file) {
-            $content = file_get_contents($file);
+            $content = (string) file_get_contents($file);
             $baseName = basename($file);
 
             // Check for OneToMany/ManyToMany relations without initialization
@@ -80,7 +80,7 @@ class TypedPropertyValidator
 
     private function addPostLoadCallback(string $file, SymfonyStyle $io): void
     {
-        $content = file_get_contents($file);
+        $content = (string) file_get_contents($file);
 
         // Check if @PostLoad already exists
         if (preg_match('/#\[ORM\\\\PostLoad\]/', $content)) {

@@ -73,7 +73,8 @@ class SynapseMissionFixture extends Fixture
             $mission->setSystemPrompt($data['systemPrompt']);
             $mission->setIsBuiltin(false);
             $mission->setIsActive(true);
-            $mission->setSortOrder(array_search($data, self::MISSIONS));
+            $sortOrder = array_search($data, self::MISSIONS);
+            $mission->setSortOrder($sortOrder === false ? 0 : (int) $sortOrder);
 
             // Résoudre le tone si spécifié
             if ($data['tone'] !== null) {

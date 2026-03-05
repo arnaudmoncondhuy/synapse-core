@@ -32,7 +32,11 @@ class TextSplitterRegistry
     public function getSplitter(string $alias): TextSplitterInterface
     {
         if (!isset($this->splitters[$alias])) {
-            return $this->splitters['recursive'] ?? reset($this->splitters);
+            $fallback = $this->splitters['recursive'] ?? reset($this->splitters);
+            if ($fallback === false) {
+                throw new \LogicException('No text splitters registered.');
+            }
+            return $fallback;
         }
 
         return $this->splitters[$alias];

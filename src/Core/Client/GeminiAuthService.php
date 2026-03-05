@@ -102,7 +102,7 @@ class GeminiAuthService
 
         // Priorité 2 : fichier JSON (chemin YAML)
         if ($this->serviceAccountJsonPath && file_exists($this->serviceAccountJsonPath)) {
-            $credentials = json_decode(file_get_contents($this->serviceAccountJsonPath), true);
+            $credentials = json_decode((string) file_get_contents($this->serviceAccountJsonPath), true);
             if (is_array($credentials)) {
                 return $credentials;
             }
@@ -133,10 +133,10 @@ class GeminiAuthService
             'exp'   => $now + 3600,
         ];
 
-        $headerEncoded  = $this->base64UrlEncode(json_encode($header));
-        $payloadEncoded = $this->base64UrlEncode(json_encode($payload));
+        $header64 = $this->base64UrlEncode((string) json_encode($header));
+        $payload64 = $this->base64UrlEncode((string) json_encode($payload));
 
-        $signatureInput = $headerEncoded . '.' . $payloadEncoded;
+        $signatureInput = $header64 . '.' . $payload64;
 
         openssl_sign(
             $signatureInput,

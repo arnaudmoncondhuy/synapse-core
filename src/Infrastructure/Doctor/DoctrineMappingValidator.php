@@ -26,8 +26,11 @@ class DoctrineMappingValidator
             return true;
         }
 
-        $content = file_get_contents($doctrineFile);
+        $content = (string) file_get_contents($doctrineFile);
         $config = Yaml::parse($content);
+        if (!is_array($config)) {
+            return true;
+        }
 
         if (!isset($config['doctrine']['orm']['mappings'])) {
             $io->error('[Doctrine] No ORM mappings configured.');

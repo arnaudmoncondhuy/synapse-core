@@ -138,7 +138,7 @@ class SynapseDoctorCommand extends Command
             return false;
         }
 
-        $content = file_get_contents($bundlesFile);
+        $content = (string) file_get_contents($bundlesFile);
         $isValid = true;
 
         $expected = ['ArnaudMoncondhuy\\SynapseCore\\SynapseCoreBundle' => 'SynapseCoreBundle'];
@@ -160,7 +160,7 @@ class SynapseDoctorCommand extends Command
         if (str_contains($content, 'ArnaudMoncondhuy\\SynapseBundle\\SynapseBundle')) {
             $io->warning('[Bundles] Old meta-package SynapseBundle still registered.');
             if ($fix) {
-                $updated = preg_replace(
+                $updated = (string) preg_replace(
                     '/\s*ArnaudMoncondhuy\\\\SynapseBundle\\\\SynapseBundle::class\s*=>\s*\[.*?\],\n?/s',
                     '',
                     $content
@@ -199,7 +199,7 @@ class SynapseDoctorCommand extends Command
         $hasRoutes = false;
 
         if ($this->filesystem->exists($mainRoutesFile)) {
-            $content = file_get_contents($mainRoutesFile);
+            $content = (string) file_get_contents($mainRoutesFile);
             $hasRoutes = str_contains($content, 'type: synapse')
                 || str_contains($content, 'SynapseAdminBundle')
                 || str_contains($content, 'SynapseChatBundle');
@@ -216,7 +216,7 @@ class SynapseDoctorCommand extends Command
                         $subFile = $projectDir . '/' . ltrim($resource, './');
                     }
                     if ($this->filesystem->exists($subFile)) {
-                        $sub = file_get_contents($subFile);
+                        $sub = (string) file_get_contents($subFile);
                         if (
                             str_contains($sub, 'SynapseAdminBundle')
                             || str_contains($sub, 'SynapseChatBundle')
@@ -259,40 +259,42 @@ class SynapseDoctorCommand extends Command
         $isValid = true;
 
         if ($convClass) {
-            if (!class_exists($convClass)) {
-                $io->error(sprintf('[Entities] %s not found.', $convClass));
-                if ($fix && $convClass === 'App\\Entity\\SynapseConversation') {
+            $convClassStr = is_string($convClass) ? $convClass : '';
+            if (!class_exists($convClassStr)) {
+                $io->error(sprintf('[Entities] %s not found.', $convClassStr));
+                if ($fix && $convClassStr === 'App\\Entity\\SynapseConversation') {
                     $this->createConversationEntity($projectDir, $io);
                 } else {
                     $isValid = false;
                 }
-            } elseif (!is_subclass_of($convClass, BaseConversation::class)) {
-                $io->error(sprintf('[Entities] %s must extend %s', $convClass, BaseConversation::class));
+            } elseif (!is_subclass_of($convClassStr, BaseConversation::class)) {
+                $io->error(sprintf('[Entities] %s must extend %s', $convClassStr, BaseConversation::class));
                 $isValid = false;
-            } elseif (!property_exists($convClass, 'messages')) {
-                $io->error(sprintf('[Entities] %s must declare $messages with #[ORM\\OneToMany]', $convClass));
+            } elseif (!property_exists($convClassStr, 'messages')) {
+                $io->error(sprintf('[Entities] %s must declare $messages with #[ORM\\OneToMany]', $convClassStr));
                 $isValid = false;
             } else {
-                $io->writeln(sprintf('  <info>[OK]</info> Conversation: %s', $convClass));
+                $io->writeln(sprintf('  <info>[OK]</info> Conversation: %s', $convClassStr));
             }
         }
 
         if ($msgClass) {
-            if (!class_exists($msgClass)) {
-                $io->error(sprintf('[Entities] %s not found.', $msgClass));
-                if ($fix && $msgClass === 'App\\Entity\\SynapseMessage') {
+            $msgClassStr = is_string($msgClass) ? $msgClass : '';
+            if (!class_exists($msgClassStr)) {
+                $io->error(sprintf('[Entities] %s not found.', $msgClassStr));
+                if ($fix && $msgClassStr === 'App\\Entity\\SynapseMessage') {
                     $this->createMessageEntity($projectDir, $io);
                 } else {
                     $isValid = false;
                 }
-            } elseif (!is_subclass_of($msgClass, BaseMessage::class)) {
-                $io->error(sprintf('[Entities] %s must extend %s', $msgClass, BaseMessage::class));
+            } elseif (!is_subclass_of($msgClassStr, BaseMessage::class)) {
+                $io->error(sprintf('[Entities] %s must extend %s', $msgClassStr, BaseMessage::class));
                 $isValid = false;
-            } elseif (!property_exists($msgClass, 'conversation')) {
-                $io->error(sprintf('[Entities] %s must declare $conversation with #[ORM\\ManyToOne]', $msgClass));
+            } elseif (!property_exists($msgClassStr, 'conversation')) {
+                $io->error(sprintf('[Entities] %s must declare $conversation with #[ORM\\ManyToOne]', $msgClassStr));
                 $isValid = false;
             } else {
-                $io->writeln(sprintf('  <info>[OK]</info> Message: %s', $msgClass));
+                $io->writeln(sprintf('  <info>[OK]</info> Message: %s', $msgClassStr));
             }
         }
 
@@ -311,7 +313,7 @@ class SynapseDoctorCommand extends Command
             return false;
         }
 
-        $content = file_get_contents($securityFile);
+        $content = (string) file_get_contents($securityFile);
         if (!str_contains($content, 'firewalls:')) {
             $io->error('[Security] No firewall configured in security.yaml.');
             return false;
@@ -327,15 +329,20 @@ class SynapseDoctorCommand extends Command
         $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
         $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
 
-        $hasAdminControl = str_contains($content, (string) $adminPrefix);
-        $hasChatControl = str_contains($content, (string) $chatPrefix);
+        $adminPrefixStr = is_string($adminPrefix) ? $adminPrefix : '/synapse/admin';
+        $adminRoleStr = is_string($adminRole) ? $adminRole : 'ROLE_ADMIN';
+        $chatPrefixStr = is_string($chatPrefix) ? $chatPrefix : '/synapse/chat';
+        $chatRoleStr = is_string($chatRole) ? $chatRole : 'ROLE_USER';
+
+        $hasAdminControl = str_contains($content, $adminPrefixStr);
+        $hasChatControl = str_contains($content, $chatPrefixStr);
 
         if ($this->hasAdmin && !$hasAdminControl) {
-            $io->writeln(sprintf('  <comment>[WARN]</comment> No access_control for %s in security.yaml', $adminPrefix));
-            $io->writeln(sprintf('         Add: - { path: ^%s, roles: %s }', $adminPrefix, $adminRole));
-            $io->writeln(sprintf('              - { path: ^%s, roles: %s }', $chatPrefix, $chatRole));
+            $io->writeln(sprintf('  <comment>[WARN]</comment> No access_control for %s in security.yaml', $adminPrefixStr));
+            $io->writeln(sprintf('         Add: - { path: ^%s, roles: %s }', $adminPrefixStr, $adminRoleStr));
+            $io->writeln(sprintf('              - { path: ^%s, roles: %s }', $chatPrefixStr, $chatRoleStr));
         } else {
-            $io->writeln(sprintf('  <info>[OK]</info> Security (admin: %s, chat: %s)', $adminRole, $chatRole));
+            $io->writeln(sprintf('  <info>[OK]</info> Security (admin: %s, chat: %s)', $adminRoleStr, $chatRoleStr));
         }
 
         return true;
@@ -349,7 +356,7 @@ class SynapseDoctorCommand extends Command
             return true;
         }
 
-        $content = file_get_contents($importmapFile);
+        $content = (string) file_get_contents($importmapFile);
         $hasError = false;
         if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
             $io->writeln('  <comment>[INFO]</comment> Legacy synapse_chat_controller missing from importmap.php (Optional if using V2)');
@@ -427,7 +434,7 @@ class SynapseDoctorCommand extends Command
             return true;
         }
 
-        $content = file_get_contents($bootstrapFile);
+        $content = (string) file_get_contents($bootstrapFile);
         $hasError = false;
 
         if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
@@ -477,6 +484,9 @@ class SynapseDoctorCommand extends Command
     {
         try {
             $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
+            if (!$connection instanceof \Doctrine\DBAL\Connection) {
+                throw new \RuntimeException('Database connection not found');
+            }
             $connection->executeQuery('SELECT 1');
             $io->writeln('  <info>[OK]</info> Database connection');
             return true;
@@ -491,6 +501,9 @@ class SynapseDoctorCommand extends Command
         $expected = ['synapse_conversation', 'synapse_message', 'synapse_preset', 'synapse_provider', 'synapse_model', 'synapse_config'];
         try {
             $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
+            if (!$connection instanceof \Doctrine\DBAL\Connection) {
+                throw new \RuntimeException('Database connection not found');
+            }
             $existing = $connection->createSchemaManager()->listTableNames();
             $missing = array_diff($expected, $existing);
 
@@ -520,7 +533,9 @@ class SynapseDoctorCommand extends Command
     {
         try {
             $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
-
+            if (!$connection instanceof \Doctrine\DBAL\Connection) {
+                throw new \RuntimeException('Database connection not found');
+            }
             // Try to find the User/Owner table (check common table names)
             $userTables = ['users', 'app_user', 'user'];
             $existing = $connection->createSchemaManager()->listTableNames();
@@ -611,10 +626,13 @@ class SynapseDoctorCommand extends Command
         $msgClass = ($this->parameterBag->has('synapse.persistence.message_class')
             ? $this->parameterBag->get('synapse.persistence.message_class')
             : null) ?: 'App\\Entity\\SynapseMessage';
-        if ($convClass && !class_exists($convClass) && str_starts_with($convClass, 'App\\')) {
+        $convClassStr = is_string($convClass) ? $convClass : '';
+        $msgClassStr = is_string($msgClass) ? $msgClass : '';
+
+        if ($convClassStr !== '' && !class_exists($convClassStr) && str_starts_with($convClassStr, 'App\\')) {
             $this->createConversationEntity($projectDir, $io);
         }
-        if ($msgClass && !class_exists($msgClass) && str_starts_with($msgClass, 'App\\')) {
+        if ($msgClassStr !== '' && !class_exists($msgClassStr) && str_starts_with($msgClassStr, 'App\\')) {
             $this->createMessageEntity($projectDir, $io);
         }
 
@@ -640,7 +658,7 @@ class SynapseDoctorCommand extends Command
             return;
         }
 
-        $content = file_get_contents($routesFile);
+        $content = (string) file_get_contents($routesFile);
         if (
             str_contains($content, 'type: synapse')
             || str_contains($content, 'SynapseAdminBundle')
@@ -670,9 +688,12 @@ class SynapseDoctorCommand extends Command
         $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
         $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
 
-        $this->filesystem->dumpFile(
-            $projectDir . '/config/packages/security.yaml',
-            <<<YAML
+        $adminPrefixStr = is_string($adminPrefix) ? $adminPrefix : '/synapse/admin';
+        $adminRoleStr = is_string($adminRole) ? $adminRole : 'ROLE_ADMIN';
+        $chatPrefixStr = is_string($chatPrefix) ? $chatPrefix : '/synapse/chat';
+        $chatRoleStr = is_string($chatRole) ? $chatRole : 'ROLE_USER';
+
+        $template = <<<YAML
 security:
     password_hashers:
         Symfony\\Component\\Security\\Core\\User\\InMemoryUser: 'auto'
@@ -699,9 +720,13 @@ security:
                 path: app_logout
 
     access_control:
-        - { path: ^$adminPrefix, roles: $adminRole }
-        - { path: ^$chatPrefix, roles: $chatRole }
-YAML
+        - { path: ^{$adminPrefixStr}, roles: {$adminRoleStr} }
+        - { path: ^{$chatPrefixStr}, roles: {$chatRoleStr} }
+YAML;
+
+        $this->filesystem->dumpFile(
+            $projectDir . '/config/packages/security.yaml',
+            $template
         );
 
         $controllerPath = $projectDir . '/src/Controller/SecurityController.php';
@@ -848,6 +873,7 @@ PHP);
 
     private function getDefaultCoreConfig(): string
     {
-        return file_get_contents(__DIR__ . '/../Resources/skeleton/synapse.yaml');
+        $path = __DIR__ . '/../../../config/synapse.yaml';
+        return is_file($path) ? (string) file_get_contents($path) : '';
     }
 }

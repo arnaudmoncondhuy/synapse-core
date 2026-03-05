@@ -26,9 +26,9 @@ class RepositoryValidator
             return true;
         }
 
-        $phpFiles = glob($entityDir . '/*.php');
+        $phpFiles = glob($entityDir . '/*.php') ?: [];
         foreach ($phpFiles as $file) {
-            $content = file_get_contents($file);
+            $content = (string) file_get_contents($file);
 
             // Extract namespace and imports
             preg_match('/namespace\s+([^;]+);/', $content, $nsMatches);
@@ -119,14 +119,17 @@ class RepositoryValidator
 
     private function addImport(string $file, string $className, SymfonyStyle $io): void
     {
-        $content = file_get_contents($file);
+        $content = (string) file_get_contents($file);
         $namespace = 'App\\Repository';
 
         // Find the position to insert the import (after namespace declaration)
         if (preg_match('/namespace\s+([^;]+);/', $content, $matches)) {
             $insertPos = strpos($content, 'namespace');
-            $insertPos = strpos($content, ';', $insertPos) + 1;
-
+            $pos = strpos($content, ';', (int) $insertPos);
+            if ($pos === false) {
+                return;
+            }
+            $insertPos = $pos + 1;
             $import = "\nuse {$className};";
             $content = substr_replace($content, $import, $insertPos, 0);
 
