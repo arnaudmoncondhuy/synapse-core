@@ -7,7 +7,7 @@ services:
     # Controllers registered here: MemoryApiController, CsrfController, EstimateCostApiController
     # Chat-specific controllers (ChatApiController, ConversationApiController, ResetController) are in synapse-chat/config/chat.yaml
     ArnaudMoncondhuy\SynapseCore\Controller\Api\:
-        resource: '../src/Core/Controller/Api/'
+        resource: '../src/Controller/Api/'
         tags: ['controller.service_arguments']
 
     ArnaudMoncondhuy\SynapseCore\Manager\:
