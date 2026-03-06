@@ -23,7 +23,8 @@ class PromptBuilder
         private ContextProviderInterface $contextProvider,
         private ToneRegistry $toneRegistry,
         private \ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface $configProvider,
-    ) {}
+    ) {
+    }
 
     /**
      * Construit un message système au format OpenAI canonical.
@@ -31,6 +32,7 @@ class PromptBuilder
      * Retourne un tableau avec role et content, prêt à être utilisé dans le tableau contents.
      *
      * @param string|null $toneKey Clé optionnelle du ton de réponse
+     *
      * @return array{role: 'system', content: string} Message système au format OpenAI
      */
     public function buildSystemMessage(?string $toneKey = null): array
@@ -38,7 +40,7 @@ class PromptBuilder
         $systemContent = $this->buildSystemInstruction($toneKey);
 
         return [
-            'role'    => 'system',
+            'role' => 'system',
             'content' => $systemContent,
         ];
     }
@@ -47,6 +49,7 @@ class PromptBuilder
      * Construit l'instruction système brute (texte pur).
      *
      * @param string|null $toneKey Clé optionnelle du ton de réponse
+     *
      * @return string Le texte complet du système (contexte + ton)
      */
     public function buildSystemInstruction(?string $toneKey = null): string
@@ -81,7 +84,7 @@ class PromptBuilder
      * Agnostique : le bundle ne connaît pas les variables, il utilise celles
      * fournies par le ContextProvider via getInitialContext().
      *
-     * @param string               $template Le template avec variables {DATE}, {EMAIL}, etc.
+     * @param string               $template le template avec variables {DATE}, {EMAIL}, etc
      * @param array<string, mixed> $context  Le contexte retourné par getInitialContext()
      *
      * @return string Le template avec les variables remplacées
@@ -93,12 +96,12 @@ class PromptBuilder
         foreach ($context as $key => $value) {
             if (is_scalar($value)) {
                 // Variables de premier niveau : date, time, etc.
-                $replacements['{' . strtoupper($key) . '}'] = (string) $value;
-            } elseif (is_array($value) && $key === 'user') {
+                $replacements['{'.strtoupper($key).'}'] = (string) $value;
+            } elseif (is_array($value) && 'user' === $key) {
                 // Variables utilisateur : email, nom, prenom, role, groups, etc.
                 foreach ($value as $userKey => $userValue) {
                     if (is_scalar($userValue)) {
-                        $replacements['{' . strtoupper($userKey) . '}'] = (string) $userValue;
+                        $replacements['{'.strtoupper($userKey).'}'] = (string) $userValue;
                     }
                 }
             }

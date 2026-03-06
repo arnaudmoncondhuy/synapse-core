@@ -7,4 +7,6 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Exception;
 /**
  * Levée quand le quota (financier ou limite de projet) est dépassé.
  */
-class LlmQuotaException extends LlmException {}
+class LlmQuotaException extends LlmException
+{
+}

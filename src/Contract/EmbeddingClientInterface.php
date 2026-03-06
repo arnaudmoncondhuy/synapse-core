@@ -21,14 +21,14 @@ interface EmbeddingClientInterface
     /**
      * Génère des embeddings vectoriels pour un ou plusieurs textes d'entrée.
      *
-     * @param string|array<int, string> $input   Texte unique ou liste de textes à vectoriser.
-     * @param string|null               $model   Identifiant du modèle (ex: 'text-multilingual-embedding-002').
-     * @param array<string, mixed>      $options Options (ex: dimensionality, task_type).
+     * @param string|array<int, string> $input   texte unique ou liste de textes à vectoriser
+     * @param string|null               $model   identifiant du modèle (ex: 'text-multilingual-embedding-002')
+     * @param array<string, mixed>      $options options (ex: dimensionality, task_type)
      *
      * @return array{
      *     embeddings: list<list<float>>,
      *     usage: array{prompt_tokens: int, total_tokens: int}
-     * } Structure de retour normalisée.
+     * } Structure de retour normalisée
      */
     public function generateEmbeddings(string|array $input, ?string $model = null, array $options = []): array;
 }

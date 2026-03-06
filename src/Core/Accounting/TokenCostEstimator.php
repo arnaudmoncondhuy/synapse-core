@@ -19,14 +19,16 @@ class TokenCostEstimator
         private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
         private ContextTruncationService $contextTruncationService,
         private TokenAccountingService $accountingService,
-    ) {}
+    ) {
+    }
 
     /**
      * Estime le coût d'une requête à partir du contenu (historique + nouveau message).
      *
-     * @param array<int, array{role: string, content?: string|null}> $contents   Historique au format OpenAI (optionnel) + nouveau message
-     * @param string|null                                           $model      Modèle (null = modèle actif depuis la config)
-     * @param int|null                                              $maxOutput  Max tokens en sortie (null = config ou défaut 2048)
+     * @param array<int, array{role: string, content?: string|null}> $contents  Historique au format OpenAI (optionnel) + nouveau message
+     * @param string|null                                            $model     Modèle (null = modèle actif depuis la config)
+     * @param int|null                                               $maxOutput Max tokens en sortie (null = config ou défaut 2048)
+     *
      * @return array{prompt_tokens: int, estimated_output_tokens: int, cost_model_currency: float, cost_reference: float, currency: string}
      */
     public function estimateCost(array $contents, ?string $model = null, ?int $maxOutput = null): array

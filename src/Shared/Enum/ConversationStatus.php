@@ -5,27 +5,27 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Shared\Enum;
 
 /**
- * Statut d'une conversation
+ * Statut d'une conversation.
  */
 enum ConversationStatus: string
 {
     /**
-     * SynapseConversation active (en cours d'utilisation)
+     * SynapseConversation active (en cours d'utilisation).
      */
     case ACTIVE = 'ACTIVE';
 
     /**
-     * SynapseConversation archivée (historique, lecture seule)
+     * SynapseConversation archivée (historique, lecture seule).
      */
     case ARCHIVED = 'ARCHIVED';
 
     /**
-     * SynapseConversation supprimée (soft delete, purge RGPD)
+     * SynapseConversation supprimée (soft delete, purge RGPD).
      */
     case DELETED = 'DELETED';
 
     /**
-     * Retourne tous les statuts visibles pour l'utilisateur
+     * Retourne tous les statuts visibles pour l'utilisateur.
      *
      * @return self[]
      */
@@ -35,18 +35,18 @@ enum ConversationStatus: string
     }
 
     /**
-     * Vérifie si le statut est visible
+     * Vérifie si le statut est visible.
      */
     public function isVisible(): bool
     {
-        return $this !== self::DELETED;
+        return self::DELETED !== $this;
     }
 
     /**
-     * Vérifie si la conversation peut être modifiée
+     * Vérifie si la conversation peut être modifiée.
      */
     public function isEditable(): bool
     {
-        return $this === self::ACTIVE;
+        return self::ACTIVE === $this;
     }
 }

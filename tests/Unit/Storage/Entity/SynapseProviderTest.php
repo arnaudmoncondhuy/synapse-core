@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 class SynapseProviderTest extends TestCase
 {
-    public function testIsConfigured_falseWhenCredentialsEmpty(): void
+    public function testIsConfiguredFalseWhenCredentialsEmpty(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -18,7 +18,7 @@ class SynapseProviderTest extends TestCase
         $this->assertFalse($provider->isConfigured());
     }
 
-    public function testIsConfigured_falseWhenCredentialsNotSet(): void
+    public function testIsConfiguredFalseWhenCredentialsNotSet(): void
     {
         // Credentials default to [] when not set
         $provider = new SynapseProvider();
@@ -28,7 +28,7 @@ class SynapseProviderTest extends TestCase
         $this->assertFalse($provider->isConfigured());
     }
 
-    public function testIsConfigured_trueWhenCredentialsSet(): void
+    public function testIsConfiguredTrueWhenCredentialsSet(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -37,7 +37,7 @@ class SynapseProviderTest extends TestCase
         $this->assertTrue($provider->isConfigured());
     }
 
-    public function testIsConfigured_trueWhenCredentialsHaveMultipleKeys(): void
+    public function testIsConfiguredTrueWhenCredentialsHaveMultipleKeys(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -49,7 +49,7 @@ class SynapseProviderTest extends TestCase
         $this->assertTrue($provider->isConfigured());
     }
 
-    public function testGetCredential_returnsValue(): void
+    public function testGetCredentialReturnsValue(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -58,7 +58,7 @@ class SynapseProviderTest extends TestCase
         $this->assertSame('secret-key-123', $provider->getCredential('api_key'));
     }
 
-    public function testGetCredential_returnsDefault_whenKeyMissing(): void
+    public function testGetCredentialReturnsDefaultWhenKeyMissing(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -67,7 +67,7 @@ class SynapseProviderTest extends TestCase
         $this->assertSame('default-value', $provider->getCredential('missing_key', 'default-value'));
     }
 
-    public function testGetCredential_returnsNull_whenKeyMissingAndNoDefault(): void
+    public function testGetCredentialReturnsNullWhenKeyMissingAndNoDefault(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -76,7 +76,7 @@ class SynapseProviderTest extends TestCase
         $this->assertNull($provider->getCredential('missing_key'));
     }
 
-    public function testGetCredential_fromEmptyCredentials(): void
+    public function testGetCredentialFromEmptyCredentials(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('gemini');
@@ -86,7 +86,7 @@ class SynapseProviderTest extends TestCase
         $this->assertSame('fallback', $provider->getCredential('api_key', 'fallback'));
     }
 
-    public function testGetCredential_returnsZeroAsValid(): void
+    public function testGetCredentialReturnsZeroAsValid(): void
     {
         $provider = new SynapseProvider();
         $provider->setName('custom');

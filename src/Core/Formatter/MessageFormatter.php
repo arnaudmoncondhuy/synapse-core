@@ -6,12 +6,12 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Formatter;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\MessageFormatterInterface;
+use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
-use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 
 /**
- * Formateur de messages pour le format OpenAI canonical
+ * Formateur de messages pour le format OpenAI canonical.
  *
  * Convertit entre le format des entités Doctrine et le format OpenAI canonical.
  */
@@ -19,11 +19,14 @@ class MessageFormatter implements MessageFormatterInterface
 {
     public function __construct(
         private ?EncryptionServiceInterface $encryptionService = null,
-    ) {}
+    ) {
+    }
+
     /**
-     * Convertit les entités SynapseMessage vers le format OpenAI canonical
+     * Convertit les entités SynapseMessage vers le format OpenAI canonical.
      *
      * @param iterable<object> $entities
+     *
      * @return array<int, array<string, mixed>>
      */
     public function entitiesToApiFormat(iterable $entities): array
@@ -37,7 +40,7 @@ class MessageFormatter implements MessageFormatterInterface
                 if (isset($entity['role']) && (isset($entity['content']) || isset($entity['parts']))) {
                     // Decrypt content if needed
                     $decrypted = $entity;
-                    if ($this->encryptionService !== null) {
+                    if (null !== $this->encryptionService) {
                         if (!empty($decrypted['content']) && is_string($decrypted['content']) && $this->encryptionService->isEncrypted($decrypted['content'])) {
                             $decrypted['content'] = $this->encryptionService->decrypt($decrypted['content']);
                         }
@@ -61,7 +64,7 @@ class MessageFormatter implements MessageFormatterInterface
             $mappedRole = $this->mapRoleToOpenAi($role);
 
             $messages[] = [
-                'role'    => $mappedRole,
+                'role' => $mappedRole,
                 'content' => $content,
             ];
         }
@@ -70,7 +73,7 @@ class MessageFormatter implements MessageFormatterInterface
     }
 
     /**
-     * Map internal MessageRole enum to OpenAI role strings
+     * Map internal MessageRole enum to OpenAI role strings.
      */
     private function mapRoleToOpenAi(MessageRole $role): string
     {
@@ -83,7 +86,7 @@ class MessageFormatter implements MessageFormatterInterface
     }
 
     /**
-     * Convertit le format OpenAI canonical vers des entités SynapseMessage
+     * Convertit le format OpenAI canonical vers des entités SynapseMessage.
      *
      * Utile pour l'import de conversations ou les tests.
      * Les entités retournées ne sont PAS persistées.
@@ -124,7 +127,7 @@ class MessageFormatter implements MessageFormatterInterface
     }
 
     /**
-     * Map OpenAI role strings to internal MessageRole enum
+     * Map OpenAI role strings to internal MessageRole enum.
      */
     private function mapRoleFromOpenAi(string $role): MessageRole
     {

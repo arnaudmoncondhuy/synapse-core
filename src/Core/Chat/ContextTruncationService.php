@@ -17,7 +17,7 @@ class ContextTruncationService
      * @param array<int, array<string, mixed>> $messages  Tableau de messages (Ex: [['role' => '...', 'content' => '...'], ...])
      * @param int                              $maxTokens Capacité maximale de la fenêtre de contexte
      *
-     * @return array<int, array<string, mixed>> L'historique tronqué, remis dans le bon ordre chronologique.
+     * @return array<int, array<string, mixed>> L'historique tronqué, remis dans le bon ordre chronologique
      */
     public function truncate(array $messages, int $maxTokens): array
     {
@@ -27,7 +27,7 @@ class ContextTruncationService
 
         // 1. Extraire le message système s'il est au début
         $systemMessage = null;
-        if (isset($messages[0]['role']) && $messages[0]['role'] === 'system') {
+        if (isset($messages[0]['role']) && 'system' === $messages[0]['role']) {
             $systemMessage = array_shift($messages);
         }
 
@@ -64,7 +64,7 @@ class ContextTruncationService
         // 5. Reconstruire le tableau final chronologiquement
         $finalMessages = [];
 
-        if ($systemMessage !== null) {
+        if (null !== $systemMessage) {
             $finalMessages[] = $systemMessage;
         }
 
@@ -76,7 +76,7 @@ class ContextTruncationService
             }
         }
 
-        if ($lastMessage !== null) {
+        if (null !== $lastMessage) {
             $finalMessages[] = $lastMessage;
         }
 
@@ -95,6 +95,7 @@ class ContextTruncationService
         foreach ($contents as $message) {
             $total += $this->estimateTokens($message);
         }
+
         return $total;
     }
 

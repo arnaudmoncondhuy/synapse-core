@@ -16,7 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Commande de purge RGPD des conversations
+ * Commande de purge RGPD des conversations.
  *
  * Supprime définitivement (hard delete) les conversations plus anciennes
  * que X jours, conformément au droit à l'oubli (RGPD).
@@ -29,7 +29,7 @@ class PurgeConversationsCommand extends Command
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private int $defaultRetentionDays = 30
+        private int $defaultRetentionDays = 30,
     ) {
         parent::__construct();
     }
@@ -82,6 +82,7 @@ class PurgeConversationsCommand extends Command
         // Validation
         if ($days <= 0) {
             $io->error('La durée de rétention doit être supérieure à 0 jours.');
+
             return Command::FAILURE;
         }
 
@@ -106,6 +107,7 @@ class PurgeConversationsCommand extends Command
 
         if (empty($conversations)) {
             $io->success('✅ Aucune conversation à purger.');
+
             return Command::SUCCESS;
         }
 
@@ -122,6 +124,7 @@ class PurgeConversationsCommand extends Command
         if (!$dryRun) {
             if (!$io->confirm('⚠️  Confirmer la suppression définitive ?', false)) {
                 $io->warning('Opération annulée.');
+
                 return Command::SUCCESS;
             }
         }
@@ -135,7 +138,7 @@ class PurgeConversationsCommand extends Command
             foreach ($conversations as $conversation) {
                 try {
                     $conversationRepo->hardDelete([$conversation]);
-                    $deleted++;
+                    ++$deleted;
                 } catch (\Exception $e) {
                     $io->error(sprintf(
                         'Erreur lors de la suppression de la conversation %s : %s',
@@ -161,7 +164,7 @@ class PurgeConversationsCommand extends Command
     }
 
     /**
-     * Affiche un récapitulatif des conversations à supprimer
+     * Affiche un récapitulatif des conversations à supprimer.
      *
      * @param SynapseConversation[] $conversations
      */
@@ -171,11 +174,11 @@ class PurgeConversationsCommand extends Command
         $byOwner = [];
         foreach ($conversations as $conversation) {
             $ownerEntity = $conversation->getOwner();
-            $owner = $ownerEntity !== null ? $ownerEntity->getIdentifier() : 'unknown';
+            $owner = null !== $ownerEntity ? $ownerEntity->getIdentifier() : 'unknown';
             if (!isset($byOwner[$owner])) {
                 $byOwner[$owner] = 0;
             }
-            $byOwner[$owner]++;
+            ++$byOwner[$owner];
         }
 
         // Afficher sous forme de table
@@ -194,15 +197,15 @@ class PurgeConversationsCommand extends Command
 
         foreach ($conversations as $conversation) {
             $updatedAt = $conversation->getUpdatedAt();
-            if ($oldest === null || $updatedAt < $oldest) {
+            if (null === $oldest || $updatedAt < $oldest) {
                 $oldest = $updatedAt;
             }
-            if ($newest === null || $updatedAt > $newest) {
+            if (null === $newest || $updatedAt > $newest) {
                 $newest = $updatedAt;
             }
         }
 
-        if ($oldest !== null && $newest !== null) {
+        if (null !== $oldest && null !== $newest) {
             $io->writeln('');
             $io->writeln(sprintf(
                 '📅 Plage de dates : de <fg=cyan>%s</> à <fg=cyan>%s</>',

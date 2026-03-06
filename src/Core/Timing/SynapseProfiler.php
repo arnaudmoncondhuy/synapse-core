@@ -17,7 +17,9 @@ class SynapseProfiler
     private array $activeTimers = [];
     private ?float $globalStart = null;
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
     /**
      * Démarre un chronomètre pour une étape donnée.
@@ -25,11 +27,11 @@ class SynapseProfiler
      */
     public function start(string $group, string $name, string $description = ''): void
     {
-        if ($this->globalStart === null) {
+        if (null === $this->globalStart) {
             $this->globalStart = microtime(true);
         }
 
-        $id = $group . '_' . $name;
+        $id = $group.'_'.$name;
         $this->activeTimers[$id] = [
             'name' => $name,
             'description' => $description,
@@ -42,7 +44,7 @@ class SynapseProfiler
      */
     public function stop(string $group, string $name, int $turn = 0): void
     {
-        $id = $group . '_' . $name;
+        $id = $group.'_'.$name;
         if (!isset($this->activeTimers[$id])) {
             return;
         }
@@ -68,7 +70,7 @@ class SynapseProfiler
     public function getTimings(): array
     {
         $totalMs = 0;
-        if ($this->globalStart !== null) {
+        if (null !== $this->globalStart) {
             $totalMs = round((microtime(true) - $this->globalStart) * 1000, 2);
         }
 

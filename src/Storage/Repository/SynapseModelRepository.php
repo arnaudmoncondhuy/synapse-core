@@ -59,7 +59,7 @@ class SynapseModelRepository extends ServiceEntityRepository
         $map = [];
 
         foreach ($models as $model) {
-            if ($model->getPricingInput() !== null && $model->getPricingOutput() !== null) {
+            if (null !== $model->getPricingInput() && null !== $model->getPricingOutput()) {
                 $map[$model->getModelId()] = [
                     'input' => $model->getPricingInput(),
                     'output' => $model->getPricingOutput(),

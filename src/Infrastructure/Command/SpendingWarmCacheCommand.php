@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Infrastructure\Command;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * Recalcule les compteurs de consommation (plafonds) depuis la DB et repopule le cache.
@@ -36,8 +36,9 @@ final class SpendingWarmCacheCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        if ($this->cache === null) {
+        if (null === $this->cache) {
             $io->warning('Aucun cache configuré pour Synapse spending. Rien à réchauffer.');
+
             return Command::SUCCESS;
         }
 
@@ -56,12 +57,13 @@ final class SpendingWarmCacheCommand extends Command
             $key = $this->buildCacheKey($scope->value, $scopeId, $period, $start);
             $item = $this->cache->getItem($key);
             $item->set($consumption);
-            $item->expiresAfter($period->value === 'sliding_day' ? 90000 : ($period->value === 'sliding_month' ? 2678400 : 3600));
+            $item->expiresAfter('sliding_day' === $period->value ? 90000 : ('sliding_month' === $period->value ? 2678400 : 3600));
             $this->cache->save($item);
-            $updated++;
+            ++$updated;
         }
 
         $io->success(sprintf('Cache mis à jour pour %d plafond(s).', $updated));
+
         return Command::SUCCESS;
     }
 
@@ -83,10 +85,11 @@ final class SpendingWarmCacheCommand extends Command
 
     private function buildCacheKey(string $scope, string $scopeId, \ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod $period, \DateTimeInterface $start): string
     {
-        $base = 'synapse:spending:' . $scope . ':' . $scopeId . ':' . $period->value;
+        $base = 'synapse:spending:'.$scope.':'.$scopeId.':'.$period->value;
+
         return match ($period) {
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod::CALENDAR_DAY => $base . ':' . $start->format('Y-m-d'),
-            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod::CALENDAR_MONTH => $base . ':' . $start->format('Y-m'),
+            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod::CALENDAR_DAY => $base.':'.$start->format('Y-m-d'),
+            \ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod::CALENDAR_MONTH => $base.':'.$start->format('Y-m'),
             default => $base,
         };
     }

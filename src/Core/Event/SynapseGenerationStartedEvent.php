@@ -18,13 +18,14 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseGenerationStartedEvent extends Event
 {
     /**
-     * @param string               $message Le message brut envoyé par l'utilisateur.
-     * @param array<string, mixed> $options Les options de configuration passées à l'appel.
+     * @param string               $message le message brut envoyé par l'utilisateur
+     * @param array<string, mixed> $options les options de configuration passées à l'appel
      */
     public function __construct(
         private string $message,
         private array $options = [],
-    ) {}
+    ) {
+    }
 
     /**
      * Retourne le message utilisateur initial.

@@ -11,7 +11,8 @@ class TestPresetMessage
 {
     public function __construct(
         private int $presetId,
-    ) {}
+    ) {
+    }
 
     public function getPresetId(): int
     {

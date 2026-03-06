@@ -33,9 +33,10 @@ class TextSplitterRegistry
     {
         if (!isset($this->splitters[$alias])) {
             $fallback = $this->splitters['recursive'] ?? reset($this->splitters);
-            if ($fallback === false) {
+            if (false === $fallback) {
                 throw new \LogicException('No text splitters registered.');
             }
+
             return $fallback;
         }
 

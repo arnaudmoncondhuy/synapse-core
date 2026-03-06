@@ -10,7 +10,7 @@ use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * Repository pour SynapseVectorMemory.
- * 
+ *
  * @extends ServiceEntityRepository<SynapseVectorMemory>
  *
  * @method SynapseVectorMemory|null find($id, $lockMode = null, $lockVersion = null)

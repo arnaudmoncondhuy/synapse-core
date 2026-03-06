@@ -15,18 +15,19 @@ class RepositoryValidator
 {
     public function __construct(
         private readonly Filesystem $filesystem,
-    ) {}
+    ) {
+    }
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $isValid = true;
-        $entityDir = $projectDir . '/src/Entity';
+        $entityDir = $projectDir.'/src/Entity';
 
         if (!$this->filesystem->exists($entityDir)) {
             return true;
         }
 
-        $phpFiles = glob($entityDir . '/*.php') ?: [];
+        $phpFiles = glob($entityDir.'/*.php') ?: [];
         foreach ($phpFiles as $file) {
             $content = (string) file_get_contents($file);
 
@@ -62,7 +63,7 @@ class RepositoryValidator
 
                     if ($fix) {
                         // Try to add import
-                        if (count($suggestions) === 1) {
+                        if (1 === count($suggestions)) {
                             $this->addImport($file, $suggestions[0], $io);
                         }
                     } else {
@@ -91,7 +92,7 @@ class RepositoryValidator
         }
 
         // Try namespace-relative
-        return $namespace . '\\' . $className;
+        return $namespace.'\\'.$className;
     }
 
     /**
@@ -103,13 +104,13 @@ class RepositoryValidator
         $suggestions = [];
 
         // App repository
-        $appRepo = 'App\\Repository\\' . $basename;
+        $appRepo = 'App\\Repository\\'.$basename;
         if (class_exists($appRepo)) {
             $suggestions[] = $appRepo;
         }
 
         // Synapse base repository
-        $synapseRepo = 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Repository\\' . $basename;
+        $synapseRepo = 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Repository\\'.$basename;
         if (class_exists($synapseRepo)) {
             $suggestions[] = $synapseRepo;
         }
@@ -126,7 +127,7 @@ class RepositoryValidator
         if (preg_match('/namespace\s+([^;]+);/', $content, $matches)) {
             $insertPos = strpos($content, 'namespace');
             $pos = strpos($content, ';', (int) $insertPos);
-            if ($pos === false) {
+            if (false === $pos) {
                 return;
             }
             $insertPos = $pos + 1;

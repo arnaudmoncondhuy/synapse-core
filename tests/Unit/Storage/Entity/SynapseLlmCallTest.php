@@ -33,7 +33,7 @@ class SynapseLlmCallTest extends TestCase
         $this->assertMatchesRegularExpression($uuidRegex, $callId);
     }
 
-    public function testCalculateTotalTokens_sumsProperly(): void
+    public function testCalculateTotalTokensSumsProperly(): void
     {
         $call = new SynapseLlmCall();
         $call->setModule('chat');
@@ -47,7 +47,7 @@ class SynapseLlmCallTest extends TestCase
         $this->assertSame(160, $call->getTotalTokens());
     }
 
-    public function testCalculateTotalTokens_withZeroThinking(): void
+    public function testCalculateTotalTokensWithZeroThinking(): void
     {
         $call = new SynapseLlmCall();
         $call->setModule('chat');
@@ -61,7 +61,7 @@ class SynapseLlmCallTest extends TestCase
         $this->assertSame(150, $call->getTotalTokens());
     }
 
-    public function testCalculateTotalTokens_withOnlyPromptTokens(): void
+    public function testCalculateTotalTokensWithOnlyPromptTokens(): void
     {
         $call = new SynapseLlmCall();
         $call->setModule('chat');
@@ -92,7 +92,7 @@ class SynapseLlmCallTest extends TestCase
         $this->assertLessThanOrEqual($after, $createdAt);
     }
 
-    public function testMultipleCallIds_areUnique(): void
+    public function testMultipleCallIdsAreUnique(): void
     {
         $call1 = new SynapseLlmCall();
         $call1->setModule('chat');

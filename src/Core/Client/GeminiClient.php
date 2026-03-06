@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
-use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmAuthenticationException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
-use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -25,33 +25,34 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 {
-    private const VERTEX_URL        = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent';
+    private const VERTEX_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent';
     private const VERTEX_STREAM_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent';
     private const VERTEX_EMBEDDING_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict';
 
     // ── Config runtime (chargée depuis DB via applyDynamicConfig) ────────────
-    private string $model                   = 'gemini-2.5-flash';
-    private string $vertexProjectId         = '';
-    private string $vertexRegion            = 'europe-west1';
-    private bool   $thinkingEnabled         = true;
-    private int    $thinkingBudget          = 1024;
-    private bool   $safetySettingsEnabled   = false;
-    private string $safetyDefaultThreshold  = 'BLOCK_MEDIUM_AND_ABOVE';
+    private string $model = 'gemini-2.5-flash';
+    private string $vertexProjectId = '';
+    private string $vertexRegion = 'europe-west1';
+    private bool $thinkingEnabled = true;
+    private int $thinkingBudget = 1024;
+    private bool $safetySettingsEnabled = false;
+    private string $safetyDefaultThreshold = 'BLOCK_MEDIUM_AND_ABOVE';
     /** @var array<string, string> */
-    private array  $safetyThresholds        = [];
-    private float  $generationTemperature   = 1.0;
-    private float  $generationTopP          = 0.95;
-    private int    $generationTopK          = 40;
-    private ?int   $generationMaxOutputTokens = null;
+    private array $safetyThresholds = [];
+    private float $generationTemperature = 1.0;
+    private float $generationTopP = 0.95;
+    private int $generationTopK = 40;
+    private ?int $generationMaxOutputTokens = null;
     /** @var string[] */
-    private array  $generationStopSequences = [];
+    private array $generationStopSequences = [];
 
     public function __construct(
         private HttpClientInterface $httpClient,
         private GeminiAuthService $geminiAuthService,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {}
+    ) {
+    }
 
     public function getProviderName(): string
     {
@@ -82,23 +83,23 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
         $debugOut['actual_request_params'] = [
-            'model'              => $effectiveModel,
-            'provider'           => 'gemini',
-            'temperature'        => $this->generationTemperature,
-            'top_p'              => $this->generationTopP,
-            'top_k'              => $caps->topK ? $this->generationTopK : null,
-            'max_output_tokens'  => $this->generationMaxOutputTokens,
-            'thinking_enabled'   => $this->thinkingEnabled && $caps->thinking,
-            'thinking_budget'    => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
-            'safety_enabled'     => $this->safetySettingsEnabled,
-            'tools_sent'         => !empty($tools) && $caps->functionCalling,
+            'model' => $effectiveModel,
+            'provider' => 'gemini',
+            'temperature' => $this->generationTemperature,
+            'top_p' => $this->generationTopP,
+            'top_k' => $caps->topK ? $this->generationTopK : null,
+            'max_output_tokens' => $this->generationMaxOutputTokens,
+            'thinking_enabled' => $this->thinkingEnabled && $caps->thinking,
+            'thinking_budget' => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
+            'safety_enabled' => $this->safetySettingsEnabled,
+            'tools_sent' => !empty($tools) && $caps->functionCalling,
             'system_prompt_sent' => !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
         ];
         $debugOut['raw_request_body'] = TextUtil::sanitizeArrayUtf8($payload);
 
         try {
             $response = $this->httpClient->request('POST', $url, [
-                'json'    => TextUtil::sanitizeArrayUtf8($payload),
+                'json' => TextUtil::sanitizeArrayUtf8($payload),
                 'headers' => $this->buildVertexHeaders(),
                 'timeout' => 300,
             ]);
@@ -110,6 +111,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             return $this->normalizeChunk($data);
         } catch (\Throwable $e) {
             $this->handleException($e);
+
             return $this->emptyChunk();
         }
     }
@@ -147,7 +149,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         try {
             $response = $this->httpClient->request('POST', $url, [
-                'json'    => TextUtil::sanitizeArrayUtf8($payload),
+                'json' => TextUtil::sanitizeArrayUtf8($payload),
                 'headers' => $this->buildVertexHeaders(),
                 'timeout' => 60,
             ]);
@@ -170,15 +172,16 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
             $usage = [
                 'prompt_tokens' => $totalTokens,
-                'total_tokens'  => $totalTokens,
+                'total_tokens' => $totalTokens,
             ];
 
             return [
                 'embeddings' => $embeddings,
-                'usage'      => $usage,
+                'usage' => $usage,
             ];
         } catch (\Throwable $e) {
             $this->handleException($e);
+
             return ['embeddings' => [], 'usage' => ['prompt_tokens' => 0, 'total_tokens' => 0]];
         }
     }
@@ -191,10 +194,10 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @param array<int, array<string, mixed>> $contents
      * @param array<int, array<string, mixed>> $tools
-     * @param string|null                      $model
      * @param array<string, mixed>             $debugOut
      *
      * @return \Generator<int, array<string, mixed>>
+     *
      * @throws \RuntimeException En cas d'erreur API Vertex AI
      */
     public function streamGenerateContent(
@@ -212,16 +215,16 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
         $debugOut['actual_request_params'] = [
-            'model'              => $effectiveModel,
-            'provider'           => 'gemini',
-            'temperature'        => $this->generationTemperature,
-            'top_p'              => $this->generationTopP,
-            'top_k'              => $caps->topK ? $this->generationTopK : null,
-            'max_output_tokens'  => $this->generationMaxOutputTokens,
-            'thinking_enabled'   => $this->thinkingEnabled && $caps->thinking,
-            'thinking_budget'    => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
-            'safety_enabled'     => $this->safetySettingsEnabled,
-            'tools_sent'         => !empty($tools) && $caps->functionCalling,
+            'model' => $effectiveModel,
+            'provider' => 'gemini',
+            'temperature' => $this->generationTemperature,
+            'top_p' => $this->generationTopP,
+            'top_k' => $caps->topK ? $this->generationTopK : null,
+            'max_output_tokens' => $this->generationMaxOutputTokens,
+            'thinking_enabled' => $this->thinkingEnabled && $caps->thinking,
+            'thinking_budget' => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
+            'safety_enabled' => $this->safetySettingsEnabled,
+            'tools_sent' => !empty($tools) && $caps->functionCalling,
             'system_prompt_sent' => !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
         ];
         $debugOut['raw_request_body'] = TextUtil::sanitizeArrayUtf8($payload);
@@ -230,7 +233,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         try {
             $response = $this->httpClient->request('POST', $url, [
-                'json'    => TextUtil::sanitizeArrayUtf8($payload),
+                'json' => TextUtil::sanitizeArrayUtf8($payload),
                 'headers' => $this->buildVertexHeaders(),
                 'timeout' => 300,
             ]);
@@ -242,6 +245,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     $content = $chunk->getContent();
                 } catch (\Throwable $e) {
                     $this->handleException($e);
+
                     return;
                 }
 
@@ -274,14 +278,14 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
                     $objEnd = $this->findObjectEnd($buffer);
 
-                    if ($objEnd === null) {
+                    if (null === $objEnd) {
                         break;
                     }
 
-                    $jsonStr  = substr($buffer, 0, $objEnd + 1);
+                    $jsonStr = substr($buffer, 0, $objEnd + 1);
                     $jsonData = json_decode($jsonStr, true);
 
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                    if (JSON_ERROR_NONE === json_last_error() && is_array($jsonData)) {
                         // Capture le chunk brut AVANT normalisation (pour debug)
                         $rawApiChunks[] = $jsonData;
                         yield $this->normalizeChunk($jsonData);
@@ -315,10 +319,10 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         if (isset($rawChunk['usageMetadata'])) {
             $u = $rawChunk['usageMetadata'];
             $normalized['usage'] = [
-                'prompt_tokens'     => $u['promptTokenCount'] ?? 0,
+                'prompt_tokens' => $u['promptTokenCount'] ?? 0,
                 'completion_tokens' => $u['candidatesTokenCount'] ?? 0,
-                'thinking_tokens'   => $u['thoughtsTokenCount'] ?? 0,
-                'total_tokens'      => $u['totalTokenCount'] ?? 0,
+                'thinking_tokens' => $u['thoughtsTokenCount'] ?? 0,
+                'total_tokens' => $u['totalTokenCount'] ?? 0,
             ];
         }
 
@@ -328,15 +332,15 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $normalized['safety_ratings'] = $candidate['safetyRatings'];
             foreach ($candidate['safetyRatings'] as $rating) {
                 if ($rating['blocked'] ?? false) {
-                    $normalized['blocked']        = true;
+                    $normalized['blocked'] = true;
                     $normalized['blocked_reason'] = $this->getHarmCategoryLabel($rating['category'] ?? 'UNKNOWN');
                     break;
                 }
             }
         }
 
-        $parts         = $candidate['content']['parts'] ?? [];
-        $textParts     = [];
+        $parts = $candidate['content']['parts'] ?? [];
+        $textParts = [];
         $thinkingParts = [];
 
         foreach ($parts as $part) {
@@ -352,7 +356,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 $textParts[] = $part['text'];
             } elseif (isset($part['functionCall'])) {
                 $normalized['function_calls'][] = [
-                    'id'   => 'call_' . substr(md5($part['functionCall']['name'] . count($normalized['function_calls'])), 0, 12),
+                    'id' => 'call_'.substr(md5($part['functionCall']['name'].count($normalized['function_calls'])), 0, 12),
                     'name' => $part['functionCall']['name'],
                     'args' => $part['functionCall']['args'] ?? [],
                 ];
@@ -379,12 +383,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function emptyChunk(): array
     {
         return [
-            'text'           => null,
-            'thinking'       => null,
+            'text' => null,
+            'thinking' => null,
             'function_calls' => [],
-            'usage'          => [],
+            'usage' => [],
             'safety_ratings' => [],
-            'blocked'        => false,
+            'blocked' => false,
             'blocked_reason' => null,
         ];
     }
@@ -393,13 +397,14 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Convertit une catégorie Gemini HARM_CATEGORY_* en string lisible.
      *
      * @param string $category Catégorie Gemini (ex: 'HARM_CATEGORY_HATE_SPEECH')
+     *
      * @return string Description en français
      */
     private function getHarmCategoryLabel(string $category): string
     {
         $labels = [
-            'HARM_CATEGORY_HARASSMENT'        => 'harcèlement',
-            'HARM_CATEGORY_HATE_SPEECH'       => 'discours haineux',
+            'HARM_CATEGORY_HARASSMENT' => 'harcèlement',
+            'HARM_CATEGORY_HATE_SPEECH' => 'discours haineux',
             'HARM_CATEGORY_SEXUALLY_EXPLICIT' => 'contenu explicite',
             'HARM_CATEGORY_DANGEROUS_CONTENT' => 'contenu dangereux',
         ];
@@ -440,12 +445,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Thinking
         if (isset($config['thinking']) && is_array($config['thinking'])) {
             $this->thinkingEnabled = (bool) ($config['thinking']['enabled'] ?? $this->thinkingEnabled);
-            $this->thinkingBudget  = (int) ($config['thinking']['budget'] ?? $this->thinkingBudget);
+            $this->thinkingBudget = (int) ($config['thinking']['budget'] ?? $this->thinkingBudget);
         }
 
         // Safety Settings
         if (isset($config['safety_settings']) && is_array($config['safety_settings'])) {
-            $this->safetySettingsEnabled  = (bool) ($config['safety_settings']['enabled'] ?? $this->safetySettingsEnabled);
+            $this->safetySettingsEnabled = (bool) ($config['safety_settings']['enabled'] ?? $this->safetySettingsEnabled);
             $this->safetyDefaultThreshold = (string) ($config['safety_settings']['default_threshold'] ?? $this->safetyDefaultThreshold);
             if (isset($config['safety_settings']['thresholds']) && is_array($config['safety_settings']['thresholds'])) {
                 /** @var array<string, string> $thresholds */
@@ -457,21 +462,21 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Generation Config
         if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
-            $this->generationTemperature     = (float) ($gen['temperature'] ?? $this->generationTemperature);
-            $this->generationTopP            = (float) ($gen['top_p'] ?? $this->generationTopP);
-            $this->generationTopK            = (int) ($gen['top_k'] ?? $this->generationTopK);
+            $this->generationTemperature = (float) ($gen['temperature'] ?? $this->generationTemperature);
+            $this->generationTopP = (float) ($gen['top_p'] ?? $this->generationTopP);
+            $this->generationTopK = (int) ($gen['top_k'] ?? $this->generationTopK);
             $this->generationMaxOutputTokens = !empty($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : null;
         }
     }
 
     private function findObjectEnd(string $buffer): ?int
     {
-        $len      = strlen($buffer);
-        $depth    = 0;
+        $len = strlen($buffer);
+        $depth = 0;
         $inString = false;
-        $escaped  = false;
+        $escaped = false;
 
-        for ($i = 0; $i < $len; $i++) {
+        for ($i = 0; $i < $len; ++$i) {
             $char = $buffer[$i];
 
             if ($escaped) {
@@ -479,22 +484,22 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 continue;
             }
 
-            if ($char === '\\') {
+            if ('\\' === $char) {
                 $escaped = true;
                 continue;
             }
 
-            if ($char === '"') {
+            if ('"' === $char) {
                 $inString = !$inString;
                 continue;
             }
 
             if (!$inString) {
-                if ($char === '{') {
-                    $depth++;
-                } elseif ($char === '}') {
-                    $depth--;
-                    if ($depth === 0) {
+                if ('{' === $char) {
+                    ++$depth;
+                } elseif ('}' === $char) {
+                    --$depth;
+                    if (0 === $depth) {
                         return $i;
                     }
                 }
@@ -510,7 +515,8 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Le model_id est obtenu depuis ModelCapabilityRegistry (peut différer du model passé).
      *
      * @param string $template Template URL Vertex : https://REGION-aiplatform.googleapis.com/v1/projects/PROJECT/locations/REGION/publishers/google/models/MODEL:endpoint
-     * @param string $model Identifiant du modèle (ex: 'gemini-2.5-flash')
+     * @param string $model    Identifiant du modèle (ex: 'gemini-2.5-flash')
+     *
      * @return string URL complète et fonctionnelle pour l'API Vertex
      */
     private function buildVertexUrl(string $template, string $model): string
@@ -533,9 +539,10 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * but Vertex AI expects Gemini format.
      *
      * @param array<int, array<string, mixed>> $openAiMessages Messages in format:
-     *   ['role' => 'user'|'assistant'|'tool', 'content' => ..., 'tool_calls' => [...], 'tool_call_id' => ...]
+     *                                                         ['role' => 'user'|'assistant'|'tool', 'content' => ..., 'tool_calls' => [...], 'tool_call_id' => ...]
+     *
      * @return array<int, array<string, mixed>> Messages in Gemini format:
-     *   ['role' => 'user'|'model'|'function', 'parts' => [...]]
+     *                                          ['role' => 'user'|'model'|'function', 'parts' => [...]]
      */
     private function toGeminiMessages(array $openAiMessages): array
     {
@@ -544,13 +551,13 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         foreach ($openAiMessages as $msg) {
             $role = $msg['role'] ?? '';
 
-            if ($role === 'user') {
+            if ('user' === $role) {
                 $content = $msg['content'] ?? '';
                 $geminiMessages[] = [
-                    'role'  => 'user',
-                    'parts' => [['text' => (string)$content]],
+                    'role' => 'user',
+                    'parts' => [['text' => (string) $content]],
                 ];
-            } elseif ($role === 'assistant') {
+            } elseif ('assistant' === $role) {
                 $parts = [];
 
                 // Add text content if present
@@ -564,18 +571,18 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     $parts[] = [
                         'functionCall' => [
                             'name' => $tc['function']['name'],
-                            'args' => !empty($args) ? $args : (object)[],
+                            'args' => !empty($args) ? $args : (object) [],
                         ],
                     ];
                 }
 
                 if (!empty($parts)) {
                     $geminiMessages[] = [
-                        'role'  => 'model',
+                        'role' => 'model',
                         'parts' => $parts,
                     ];
                 }
-            } elseif ($role === 'tool') {
+            } elseif ('tool' === $role) {
                 // Find the function name from the corresponding tool_call_id in previous assistant messages
                 $toolName = $this->resolveFunctionName($geminiMessages, $msg['tool_call_id'] ?? '');
 
@@ -586,12 +593,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     }
 
                     $geminiMessages[] = [
-                        'role'  => 'function',
+                        'role' => 'function',
                         'parts' => [
                             [
                                 'functionResponse' => [
-                                    'name'     => $toolName,
-                                    'response' => !empty($response) ? $response : (object)[],
+                                    'name' => $toolName,
+                                    'response' => !empty($response) ? $response : (object) [],
                                 ],
                             ],
                         ],
@@ -607,7 +614,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Resolve function name from tool_call_id by searching previous assistant messages.
      *
      * @param array<int, array<string, mixed>> $geminiMessages
-     * @param string                           $toolCallId
      */
     private function resolveFunctionName(array $geminiMessages, string $toolCallId): string
     {
@@ -623,6 +629,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 }
             }
         }
+
         return '';
     }
 
@@ -631,7 +638,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @param array<int, array<string, mixed>> $contents
      * @param array<int, array<string, mixed>> $tools
-     * @param string                           $effectiveModel
      * @param array<string, mixed>|null        $thinkingConfigOverride
      *
      * @return array<string, mixed>
@@ -640,7 +646,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         array $contents,
         array $tools,
         string $effectiveModel,
-        ?array $thinkingConfigOverride
+        ?array $thinkingConfigOverride,
     ): array {
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
 
@@ -706,8 +712,8 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function buildVertexHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->geminiAuthService->getAccessToken(),
-            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.$this->geminiAuthService->getAccessToken(),
+            'Content-Type' => 'application/json',
         ];
     }
 
@@ -728,14 +734,14 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         $config = [
             'temperature' => $this->generationTemperature,
-            'topP'        => $this->generationTopP,
+            'topP' => $this->generationTopP,
         ];
 
         if ($caps->topK) {
             $config['topK'] = $this->generationTopK;
         }
 
-        if ($this->generationMaxOutputTokens !== null) {
+        if (null !== $this->generationMaxOutputTokens) {
             $config['maxOutputTokens'] = $this->generationMaxOutputTokens;
         }
 
@@ -756,6 +762,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Le thinking n'est envoyé que si : (1) activé en config ET (2) supporté par le modèle.
      *
      * @param string $effectiveModel Identifiant du modèle
+     *
      * @return array<string, mixed>|null Config thinking : {thinkingBudget: int, includeThoughts: true} ou null
      */
     private function buildThinkingConfig(string $effectiveModel): ?array
@@ -767,7 +774,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         return [
-            'thinkingBudget'  => $this->thinkingBudget,
+            'thinkingBudget' => $this->thinkingBudget,
             'includeThoughts' => true,
         ];
     }
@@ -782,9 +789,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function buildSafetySettings(): array
     {
         $categoryMapping = [
-            'hate_speech'       => 'HARM_CATEGORY_HATE_SPEECH',
+            'hate_speech' => 'HARM_CATEGORY_HATE_SPEECH',
             'dangerous_content' => 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            'harassment'        => 'HARM_CATEGORY_HARASSMENT',
+            'harassment' => 'HARM_CATEGORY_HARASSMENT',
             'sexually_explicit' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         ];
 
@@ -794,9 +801,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         $settings = [];
         foreach ($categoryMapping as $configKey => $apiCategory) {
-            $threshold  = $this->safetyThresholds[$configKey] ?? $this->safetyDefaultThreshold;
+            $threshold = $this->safetyThresholds[$configKey] ?? $this->safetyDefaultThreshold;
             $settings[] = [
-                'category'  => $apiCategory,
+                'category' => $apiCategory,
                 'threshold' => $threshold,
             ];
         }
@@ -819,42 +826,42 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         ];
 
-        return array_map(fn($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
+        return array_map(fn ($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
     }
 
     public function getCredentialFields(): array
     {
         return [
             'project_id' => [
-                'label'       => 'Project ID Google Cloud',
-                'type'        => 'text',
-                'help'        => 'Identifiant de votre projet Google Cloud Platform.',
+                'label' => 'Project ID Google Cloud',
+                'type' => 'text',
+                'help' => 'Identifiant de votre projet Google Cloud Platform.',
                 'placeholder' => 'my-gcp-project',
-                'required'    => true,
+                'required' => true,
             ],
             'region' => [
-                'label'    => 'Région Vertex AI',
-                'type'     => 'select',
+                'label' => 'Région Vertex AI',
+                'type' => 'select',
                 'required' => true,
-                'options'  => [
-                    'europe-west9'    => 'Europe West 9 (Paris)',
-                    'europe-west1'    => 'Europe West 1 (Belgique)',
-                    'europe-west4'    => 'Europe West 4 (Pays-Bas)',
-                    'europe-west3'    => 'Europe West 3 (Francfort)',
-                    'europe-west2'    => 'Europe West 2 (Londres)',
-                    'us-central1'     => 'US Central 1 (Iowa)',
-                    'us-east1'        => 'US East 1 (Caroline du Sud)',
-                    'asia-east1'      => 'Asia East 1 (Taiwan)',
+                'options' => [
+                    'europe-west9' => 'Europe West 9 (Paris)',
+                    'europe-west1' => 'Europe West 1 (Belgique)',
+                    'europe-west4' => 'Europe West 4 (Pays-Bas)',
+                    'europe-west3' => 'Europe West 3 (Francfort)',
+                    'europe-west2' => 'Europe West 2 (Londres)',
+                    'us-central1' => 'US Central 1 (Iowa)',
+                    'us-east1' => 'US East 1 (Caroline du Sud)',
+                    'asia-east1' => 'Asia East 1 (Taiwan)',
                     'asia-northeast1' => 'Asia Northeast 1 (Tokyo)',
                 ],
             ],
             'service_account_json' => [
-                'label'       => 'Service Account JSON',
-                'type'        => 'textarea',
-                'help'        => 'Collez le contenu complet du fichier JSON du Service Account Google Cloud. Ce fichier est généré depuis IAM → Comptes de service → Clés.',
+                'label' => 'Service Account JSON',
+                'type' => 'textarea',
+                'help' => 'Collez le contenu complet du fichier JSON du Service Account Google Cloud. Ce fichier est généré depuis IAM → Comptes de service → Clés.',
                 'placeholder' => '{"type": "service_account", "project_id": "...", "private_key": "...", ...}',
-                'required'    => true,
-                'is_code'     => true,
+                'required' => true,
+                'is_code' => true,
             ],
         ];
     }
@@ -892,7 +899,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Conserve la exception d'origine comme cause (previous).
      *
      * @param \Throwable $e Exception originelle (HttpExceptionInterface, network, etc.)
+     *
      * @return void N'existe jamais — lève toujours \RuntimeException
+     *
      * @throws \RuntimeException Toujours levée avec message normalisé
      */
     private function handleException(\Throwable $e): void
@@ -904,18 +913,18 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $statusCode = $e->getResponse()->getStatusCode();
             try {
                 $errorBody = $e->getResponse()->getContent(false);
-                $message .= ' || Google Error: ' . $errorBody;
+                $message .= ' || Google Error: '.$errorBody;
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'Gemini API Error: ' . $message;
+        $fullMsg = 'Gemini API Error: '.$message;
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
-            429      => new LlmRateLimitException($fullMsg, 0, $e),
+            429 => new LlmRateLimitException($fullMsg, 0, $e),
             500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default  => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
+            default => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
         };
     }
 }

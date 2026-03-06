@@ -29,14 +29,14 @@ class SynapseProvider
     /**
      * Identifiant technique du provider (slug).
      * Doit correspondre à `getProviderName()` du client LLM.
-     * Ex : 'gemini', 'ovh'
+     * Ex : 'gemini', 'ovh'.
      */
     #[ORM\Column(type: Types::STRING, length: 50, unique: true)]
     private string $name = '';
 
     /**
      * Label affiché dans l'admin.
-     * Ex : 'Google Vertex AI', 'OVH AI Endpoints'
+     * Ex : 'Google Vertex AI', 'OVH AI Endpoints'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $label = '';
@@ -79,6 +79,7 @@ class SynapseProvider
     public function setName(string $name): self
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -90,6 +91,7 @@ class SynapseProvider
     public function setLabel(string $label): self
     {
         $this->label = $label;
+
         return $this;
     }
 
@@ -107,6 +109,7 @@ class SynapseProvider
     public function setCredentials(array $credentials): self
     {
         $this->credentials = $credentials;
+
         return $this;
     }
 
@@ -126,6 +129,7 @@ class SynapseProvider
     public function setIsEnabled(bool $isEnabled): self
     {
         $this->isEnabled = $isEnabled;
+
         return $this;
     }
 

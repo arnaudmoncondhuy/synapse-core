@@ -34,7 +34,7 @@ class SynapseDoctorCommand extends Command
     public function __construct(
         private readonly KernelInterface $kernel,
         private readonly ParameterBagInterface $parameterBag,
-        ?Filesystem $filesystem = null
+        ?Filesystem $filesystem = null,
     ) {
         parent::__construct();
         $this->filesystem = $filesystem ?? new Filesystem();
@@ -94,10 +94,11 @@ class SynapseDoctorCommand extends Command
 
         $this->printSummary($checks, $io);
 
-        $errors = count(array_filter($checks, fn($v) => $v === false));
+        $errors = count(array_filter($checks, fn ($v) => false === $v));
 
-        if ($errors === 0) {
+        if (0 === $errors) {
             $io->success('All checks passed! Synapse is ready.');
+
             return Command::SUCCESS;
         }
 
@@ -114,9 +115,11 @@ class SynapseDoctorCommand extends Command
     {
         if (version_compare(PHP_VERSION, '8.2.0', '<')) {
             $io->error(sprintf('[PHP] Version %s detected. PHP 8.2+ required.', PHP_VERSION));
+
             return false;
         }
         $io->writeln(sprintf('  <info>[OK]</info> PHP %s', PHP_VERSION));
+
         return true;
     }
 
@@ -127,14 +130,16 @@ class SynapseDoctorCommand extends Command
         } else {
             $io->writeln('  <info>[OK]</info> Sodium extension');
         }
+
         return true;
     }
 
     private function checkBundleRegistration(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $bundlesFile = $projectDir . '/config/bundles.php';
+        $bundlesFile = $projectDir.'/config/bundles.php';
         if (!$this->filesystem->exists($bundlesFile)) {
             $io->error('[Bundles] config/bundles.php not found.');
+
             return false;
         }
 
@@ -175,27 +180,30 @@ class SynapseDoctorCommand extends Command
         if ($isValid) {
             $io->writeln('  <info>[OK]</info> Bundles registered');
         }
+
         return $isValid;
     }
 
     private function checkCoreConfig(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $configPath = $projectDir . '/config/packages/synapse.yaml';
+        $configPath = $projectDir.'/config/packages/synapse.yaml';
         if (!$this->filesystem->exists($configPath)) {
             $io->error('[Config] config/packages/synapse.yaml missing.');
             if ($fix) {
                 $this->filesystem->dumpFile($configPath, $this->getDefaultCoreConfig());
                 $io->writeln('  -> synapse.yaml created.');
             }
+
             return false;
         }
         $io->writeln('  <info>[OK]</info> config/packages/synapse.yaml');
+
         return true;
     }
 
     private function checkRoutes(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $mainRoutesFile = $projectDir . '/config/routes.yaml';
+        $mainRoutesFile = $projectDir.'/config/routes.yaml';
         $hasRoutes = false;
 
         if ($this->filesystem->exists($mainRoutesFile)) {
@@ -211,9 +219,9 @@ class SynapseDoctorCommand extends Command
                     if (str_starts_with($resource, '@') || str_starts_with($resource, 'http')) {
                         continue;
                     }
-                    $subFile = $projectDir . '/config/' . ltrim($resource, './');
+                    $subFile = $projectDir.'/config/'.ltrim($resource, './');
                     if (!$this->filesystem->exists($subFile)) {
-                        $subFile = $projectDir . '/' . ltrim($resource, './');
+                        $subFile = $projectDir.'/'.ltrim($resource, './');
                     }
                     if ($this->filesystem->exists($subFile)) {
                         $sub = (string) file_get_contents($subFile);
@@ -239,10 +247,12 @@ class SynapseDoctorCommand extends Command
             if ($fix) {
                 $this->addSynapseRouteEntry($projectDir, $io);
             }
+
             return false;
         }
 
         $io->writeln('  <info>[OK]</info> Routes');
+
         return true;
     }
 
@@ -253,6 +263,7 @@ class SynapseDoctorCommand extends Command
 
         if (!$convClass && !$msgClass) {
             $io->writeln('  <comment>[INFO]</comment> No custom entity classes configured');
+
             return true;
         }
 
@@ -262,7 +273,7 @@ class SynapseDoctorCommand extends Command
             $convClassStr = is_string($convClass) ? $convClass : '';
             if (!class_exists($convClassStr)) {
                 $io->error(sprintf('[Entities] %s not found.', $convClassStr));
-                if ($fix && $convClassStr === 'App\\Entity\\SynapseConversation') {
+                if ($fix && 'App\\Entity\\SynapseConversation' === $convClassStr) {
                     $this->createConversationEntity($projectDir, $io);
                 } else {
                     $isValid = false;
@@ -282,7 +293,7 @@ class SynapseDoctorCommand extends Command
             $msgClassStr = is_string($msgClass) ? $msgClass : '';
             if (!class_exists($msgClassStr)) {
                 $io->error(sprintf('[Entities] %s not found.', $msgClassStr));
-                if ($fix && $msgClassStr === 'App\\Entity\\SynapseMessage') {
+                if ($fix && 'App\\Entity\\SynapseMessage' === $msgClassStr) {
                     $this->createMessageEntity($projectDir, $io);
                 } else {
                     $isValid = false;
@@ -303,19 +314,22 @@ class SynapseDoctorCommand extends Command
 
     private function checkSecurity(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $securityFile = $projectDir . '/config/packages/security.yaml';
+        $securityFile = $projectDir.'/config/packages/security.yaml';
         if (!$this->filesystem->exists($securityFile)) {
             $io->error('[Security] config/packages/security.yaml not found.');
             if ($fix) {
                 $this->generateSecurityConfig($projectDir, $io);
+
                 return true;
             }
+
             return false;
         }
 
         $content = (string) file_get_contents($securityFile);
         if (!str_contains($content, 'firewalls:')) {
             $io->error('[Security] No firewall configured in security.yaml.');
+
             return false;
         }
 
@@ -350,9 +364,10 @@ class SynapseDoctorCommand extends Command
 
     private function checkImportmap(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $importmapFile = $projectDir . '/importmap.php';
+        $importmapFile = $projectDir.'/importmap.php';
         if (!$this->filesystem->exists($importmapFile)) {
             $io->writeln('  <comment>[SKIP]</comment> importmap.php not found');
+
             return true;
         }
 
@@ -373,9 +388,9 @@ class SynapseDoctorCommand extends Command
             $io->writeln("         Add: 'synapse-chat/controllers/synapse_chat_controller.js' => ['path' => 'synapse-chat/controllers/synapse_chat_controller.js']");
             if ($fix) {
                 $entry = "\n    'synapse-chat/controllers/synapse_chat_controller.js' => [\n"
-                    . "        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
-                    . "    ],\n";
-                $content = (string) preg_replace('/(];\s*)$/', $entry . '$1', $content);
+                    ."        'path' => 'synapse-chat/controllers/synapse_chat_controller.js',\n"
+                    ."    ],\n";
+                $content = (string) preg_replace('/(];\s*)$/', $entry.'$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
                 $io->writeln('  -> importmap.php updated with synapse_chat_controller.');
                 $hasError = true;
@@ -389,9 +404,9 @@ class SynapseDoctorCommand extends Command
             $io->writeln("         Add: 'synapse-chat/styles/synapse_chat.css' => ['path' => 'synapse-chat/styles/synapse_chat.css']");
             if ($fix) {
                 $entry = "\n    'synapse-chat/styles/synapse_chat.css' => [\n"
-                    . "        'path' => 'synapse-chat/styles/synapse_chat.css',\n"
-                    . "    ],\n";
-                $content = (string) preg_replace('/(];\s*)$/', $entry . '$1', $content);
+                    ."        'path' => 'synapse-chat/styles/synapse_chat.css',\n"
+                    ."    ],\n";
+                $content = (string) preg_replace('/(];\s*)$/', $entry.'$1', $content);
                 $this->filesystem->dumpFile($importmapFile, $content);
                 $io->writeln('  -> importmap.php updated with synapse_chat.css.');
                 $hasError = true;
@@ -405,18 +420,19 @@ class SynapseDoctorCommand extends Command
         }
 
         $io->writeln('  <info>[OK]</info> Importmap (Stimulus controllers)');
+
         return true;
     }
 
     private function checkStimulusBootstrap(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $importmapFile = $projectDir . '/importmap.php';
-        $bootstrapFile = $projectDir . '/assets/stimulus_bootstrap.js'; // Default
+        $importmapFile = $projectDir.'/importmap.php';
+        $bootstrapFile = $projectDir.'/assets/stimulus_bootstrap.js'; // Default
 
         if ($this->filesystem->exists($importmapFile)) {
             $map = include $importmapFile;
             if (isset($map['app']['path'])) {
-                $bootstrapFile = $projectDir . '/assets/' . ltrim($map['app']['path'], './');
+                $bootstrapFile = $projectDir.'/assets/'.ltrim($map['app']['path'], './');
             }
         }
 
@@ -424,13 +440,15 @@ class SynapseDoctorCommand extends Command
             // Fallback to bootstrap.js if stimulus_bootstrap.js not found and not in importmap
             if (!str_contains($bootstrapFile, 'stimulus_bootstrap.js')) {
                 $io->writeln(sprintf('  <comment>[SKIP]</comment> Stimulus entrypoint %s not found', $bootstrapFile));
+
                 return true;
             }
-            $bootstrapFile = $projectDir . '/assets/bootstrap.js';
+            $bootstrapFile = $projectDir.'/assets/bootstrap.js';
         }
 
         if (!$this->filesystem->exists($bootstrapFile)) {
             $io->writeln('  <comment>[SKIP]</comment> stimulus_bootstrap.js not found');
+
             return true;
         }
 
@@ -444,14 +462,14 @@ class SynapseDoctorCommand extends Command
 
             if ($fix) {
                 // Try to insert before startStimulusApp or at the end
-                if (str_contains($content, "import { startStimulusApp }")) {
+                if (str_contains($content, 'import { startStimulusApp }')) {
                     $content = str_replace(
-                        "import { startStimulusApp }",
+                        'import { startStimulusApp }',
                         "import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';\nimport { startStimulusApp }",
                         $content
                     );
                 } else {
-                    $content = "import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';\n" . $content;
+                    $content = "import SynapseChatController from '@arnaudmoncondhuy/synapse-chat/synapse_chat_controller';\n".$content;
                 }
 
                 if (str_contains($content, 'const app = startStimulusApp();')) {
@@ -477,6 +495,7 @@ class SynapseDoctorCommand extends Command
         }
 
         $io->writeln('  <info>[OK]</info> Stimulus Bootstrap');
+
         return true;
     }
 
@@ -489,9 +508,11 @@ class SynapseDoctorCommand extends Command
             }
             $connection->executeQuery('SELECT 1');
             $io->writeln('  <info>[OK]</info> Database connection');
+
             return true;
         } catch (\Exception $e) {
-            $io->error('[Database] Cannot connect: ' . $e->getMessage());
+            $io->error('[Database] Cannot connect: '.$e->getMessage());
+
             return false;
         }
     }
@@ -510,6 +531,7 @@ class SynapseDoctorCommand extends Command
             if (!empty($missing)) {
                 $io->error(sprintf('[Database] Missing tables: %s', implode(', ', $missing)));
                 $io->writeln('         Run: bin/console doctrine:migrations:migrate');
+
                 return false;
             }
 
@@ -524,7 +546,8 @@ class SynapseDoctorCommand extends Command
 
             return true;
         } catch (\Exception $e) {
-            $io->writeln('  <comment>[WARN]</comment> Could not verify tables: ' . $e->getMessage());
+            $io->writeln('  <comment>[WARN]</comment> Could not verify tables: '.$e->getMessage());
+
             return false;
         }
     }
@@ -549,8 +572,9 @@ class SynapseDoctorCommand extends Command
             }
 
             if (!$userTableFound) {
-                $io->error('[Chat] No user table found (checked: ' . implode(', ', $userTables) . ')');
+                $io->error('[Chat] No user table found (checked: '.implode(', ', $userTables).')');
                 $io->writeln('         Create an entity implementing ConversationOwnerInterface with a "users" table.');
+
                 return false;
             }
 
@@ -558,16 +582,19 @@ class SynapseDoctorCommand extends Command
             $userCountFetch = $connection->executeQuery("SELECT COUNT(*) FROM $userTableFound")->fetchOne();
             $userCount = is_numeric($userCountFetch) ? (int) $userCountFetch : 0;
 
-            if ($userCount === 0) {
+            if (0 === $userCount) {
                 $io->writeln(sprintf('  <comment>[WARN]</comment> No users found in %s table', $userTableFound));
                 $io->writeln('         Run: bin/console doctrine:fixtures:load --append');
+
                 return false;
             }
 
             $io->writeln(sprintf('  <info>[OK]</info> Chat owner (%s users)', $userCount));
+
             return true;
         } catch (\Exception $e) {
-            $io->writeln('  <comment>[WARN]</comment> Could not verify chat owner: ' . $e->getMessage());
+            $io->writeln('  <comment>[WARN]</comment> Could not verify chat owner: '.$e->getMessage());
+
             return false;
         }
     }
@@ -575,30 +602,35 @@ class SynapseDoctorCommand extends Command
     private function checkRepositories(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $validator = new RepositoryValidator($this->filesystem);
+
         return $validator->validate($projectDir, $fix, $io);
     }
 
     private function checkDoctrineMappings(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $validator = new DoctrineMappingValidator($this->filesystem);
+
         return $validator->validate($projectDir, $fix, $io);
     }
 
     private function checkComposerConfig(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $validator = new ComposerPathValidator($this->filesystem);
+
         return $validator->validate($projectDir, $fix, $io);
     }
 
     private function checkTypedProperties(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $validator = new TypedPropertyValidator($this->filesystem);
+
         return $validator->validate($projectDir, $fix, $io);
     }
 
     private function checkAssetMapper(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $validator = new AssetMapperValidator($this->filesystem, $this->kernel);
+
         return $validator->validate($projectDir, $fix, $io);
     }
 
@@ -609,7 +641,7 @@ class SynapseDoctorCommand extends Command
         $io->section('Init — creating missing files');
 
         // synapse.yaml
-        $configPath = $projectDir . '/config/packages/synapse.yaml';
+        $configPath = $projectDir.'/config/packages/synapse.yaml';
         if (!$this->filesystem->exists($configPath)) {
             $this->filesystem->dumpFile($configPath, $this->getDefaultCoreConfig());
             $io->writeln('  -> Created config/packages/synapse.yaml');
@@ -630,15 +662,15 @@ class SynapseDoctorCommand extends Command
         $convClassStr = is_string($convClass) ? $convClass : '';
         $msgClassStr = is_string($msgClass) ? $msgClass : '';
 
-        if ($convClassStr !== '' && !class_exists($convClassStr) && str_starts_with($convClassStr, 'App\\')) {
+        if ('' !== $convClassStr && !class_exists($convClassStr) && str_starts_with($convClassStr, 'App\\')) {
             $this->createConversationEntity($projectDir, $io);
         }
-        if ($msgClassStr !== '' && !class_exists($msgClassStr) && str_starts_with($msgClassStr, 'App\\')) {
+        if ('' !== $msgClassStr && !class_exists($msgClassStr) && str_starts_with($msgClassStr, 'App\\')) {
             $this->createMessageEntity($projectDir, $io);
         }
 
         // Security
-        $securityFile = $projectDir . '/config/packages/security.yaml';
+        $securityFile = $projectDir.'/config/packages/security.yaml';
         if (!$this->filesystem->exists($securityFile)) {
             $this->generateSecurityConfig($projectDir, $io);
         }
@@ -654,7 +686,7 @@ class SynapseDoctorCommand extends Command
 
     private function addSynapseRouteEntry(string $projectDir, SymfonyStyle $io): void
     {
-        $routesFile = $projectDir . '/config/routes.yaml';
+        $routesFile = $projectDir.'/config/routes.yaml';
         if (!$this->filesystem->exists($routesFile)) {
             return;
         }
@@ -669,11 +701,11 @@ class SynapseDoctorCommand extends Command
         }
 
         $entry = "\n# Synapse — loads Admin (/admin) and Chat routes automatically\n"
-            . "_synapse:\n"
-            . "    resource: .\n"
-            . "    type: synapse\n";
+            ."_synapse:\n"
+            ."    resource: .\n"
+            ."    type: synapse\n";
 
-        $this->filesystem->dumpFile($routesFile, $content . $entry);
+        $this->filesystem->dumpFile($routesFile, $content.$entry);
         $io->writeln('  -> Added Synapse route loader to config/routes.yaml');
     }
 
@@ -726,11 +758,11 @@ security:
 YAML;
 
         $this->filesystem->dumpFile(
-            $projectDir . '/config/packages/security.yaml',
+            $projectDir.'/config/packages/security.yaml',
             $template
         );
 
-        $controllerPath = $projectDir . '/src/Controller/SecurityController.php';
+        $controllerPath = $projectDir.'/src/Controller/SecurityController.php';
         if (!$this->filesystem->exists($controllerPath)) {
             $this->filesystem->dumpFile($controllerPath, <<<'PHP'
 <?php
@@ -765,7 +797,7 @@ PHP);
 
     private function createConversationEntity(string $projectDir, SymfonyStyle $io): void
     {
-        $path = $projectDir . '/src/Entity/SynapseConversation.php';
+        $path = $projectDir.'/src/Entity/SynapseConversation.php';
         if ($this->filesystem->exists($path)) {
             return;
         }
@@ -811,7 +843,7 @@ PHP);
 
     private function createMessageEntity(string $projectDir, SymfonyStyle $io): void
     {
-        $path = $projectDir . '/src/Entity/SynapseMessage.php';
+        $path = $projectDir.'/src/Entity/SynapseMessage.php';
         if ($this->filesystem->exists($path)) {
             return;
         }
@@ -874,7 +906,8 @@ PHP);
 
     private function getDefaultCoreConfig(): string
     {
-        $path = __DIR__ . '/../../../config/synapse.yaml';
+        $path = __DIR__.'/../../../config/synapse.yaml';
+
         return is_file($path) ? (string) file_get_contents($path) : '';
     }
 }

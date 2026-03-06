@@ -8,14 +8,14 @@ use ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface;
 
 /**
  * Découpeur de texte récursif.
- * 
+ *
  * Tente de découper le texte sur des séparateurs naturels (paragraphes, lignes, espaces)
  * pour conserver le maximum de contexte sémantique dans chaque segment.
  */
 class RecursiveTextSplitter implements TextSplitterInterface
 {
     /** @var string[] Liste des séparateurs par ordre de priorité décroissante */
-    private array $separators = ["\n\n", "\n", " ", ""];
+    private array $separators = ["\n\n", "\n", ' ', ''];
 
     public function splitText(string $text, int $chunkSize = 1000, int $chunkOverlap = 200): array
     {
@@ -23,8 +23,8 @@ class RecursiveTextSplitter implements TextSplitterInterface
     }
 
     /**
-     * @param string $text
      * @param string[] $separators
+     *
      * @return string[]
      */
     private function recursiveSplit(string $text, array $separators, int $chunkSize, int $chunkOverlap): array
@@ -32,11 +32,11 @@ class RecursiveTextSplitter implements TextSplitterInterface
         $finalChunks = [];
 
         // Trouver le meilleur séparateur actuel
-        $separator = "";
+        $separator = '';
         $newSeparators = [];
 
         foreach ($separators as $i => $s) {
-            if ($s === "" || str_contains($text, $s)) {
+            if ('' === $s || str_contains($text, $s)) {
                 $separator = $s;
                 $newSeparators = array_slice($separators, $i + 1);
                 break;
@@ -44,11 +44,13 @@ class RecursiveTextSplitter implements TextSplitterInterface
         }
 
         // Découper le texte avec ce séparateur
-        $splits = ($separator === "") ? str_split($text) : explode($separator, $text);
+        $splits = ('' === $separator) ? str_split($text) : explode($separator, $text);
 
         $goodSplits = [];
         foreach ($splits as $s) {
-            if ($s === "") continue;
+            if ('' === $s) {
+                continue;
+            }
             $goodSplits[] = $s;
         }
 
@@ -59,17 +61,17 @@ class RecursiveTextSplitter implements TextSplitterInterface
             $sLen = mb_strlen($s);
 
             // Si le segment actuel + le nouveau dépasse la taille max
-            if ($totalLen + $sLen + ($separator !== "" ? mb_strlen($separator) : 0) > $chunkSize) {
+            if ($totalLen + $sLen + ('' !== $separator ? mb_strlen($separator) : 0) > $chunkSize) {
                 if ($totalLen > 0) {
                     $doc = $this->joinDocs($currentDoc, $separator);
-                    if ($doc !== null) {
+                    if (null !== $doc) {
                         $finalChunks[] = $doc;
                     }
 
                     // Gérer le chevauchement (overlap)
                     while ($totalLen > $chunkOverlap || ($totalLen + $sLen > $chunkSize && $totalLen > 0)) {
                         $removed = array_shift($currentDoc);
-                        $totalLen -= mb_strlen((string) $removed) + ($separator !== "" ? mb_strlen($separator) : 0);
+                        $totalLen -= mb_strlen((string) $removed) + ('' !== $separator ? mb_strlen($separator) : 0);
                     }
                 }
 
@@ -81,17 +83,17 @@ class RecursiveTextSplitter implements TextSplitterInterface
                     }
                 } else {
                     $currentDoc[] = $s;
-                    $totalLen += $sLen + ($separator !== "" ? mb_strlen($separator) : 0);
+                    $totalLen += $sLen + ('' !== $separator ? mb_strlen($separator) : 0);
                 }
             } else {
                 $currentDoc[] = $s;
-                $totalLen += $sLen + ($separator !== "" ? mb_strlen($separator) : 0);
+                $totalLen += $sLen + ('' !== $separator ? mb_strlen($separator) : 0);
             }
         }
 
         // Ajouter le dernier reliquat
         $doc = $this->joinDocs($currentDoc, $separator);
-        if ($doc !== null) {
+        if (null !== $doc) {
             $finalChunks[] = $doc;
         }
 
@@ -105,6 +107,7 @@ class RecursiveTextSplitter implements TextSplitterInterface
     {
         $text = implode($separator, $docs);
         $text = trim($text);
-        return $text === "" ? null : $text;
+
+        return '' === $text ? null : $text;
     }
 }

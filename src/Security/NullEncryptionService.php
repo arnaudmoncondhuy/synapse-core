@@ -7,7 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Security;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 
 /**
- * Service de chiffrement désactivé (pass-through)
+ * Service de chiffrement désactivé (pass-through).
  *
  * Utilisé quand le chiffrement est désactivé dans la configuration.
  * Ne fait aucune transformation des données.

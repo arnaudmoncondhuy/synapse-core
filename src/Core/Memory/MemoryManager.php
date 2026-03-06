@@ -23,8 +23,9 @@ class MemoryManager
         private EmbeddingService $embeddingService,
         private VectorStoreInterface $vectorStore,
         private SynapseVectorMemoryRepository $repository,
-        private EntityManagerInterface $em
-    ) {}
+        private EntityManagerInterface $em,
+    ) {
+    }
 
     /**
      * Enregistre un fait ou un document dans la mémoire sémantique.
@@ -34,7 +35,7 @@ class MemoryManager
         MemoryScope $scope = MemoryScope::USER,
         ?string $userId = null,
         ?string $conversationId = null,
-        string $sourceType = 'fact'
+        string $sourceType = 'fact',
     ): void {
         $result = $this->embeddingService->generateEmbeddings($text);
 
@@ -82,10 +83,11 @@ class MemoryManager
 
         return array_map(function ($m) {
             $payload = $m['payload'];
+
             return [
                 'content' => is_string($payload['content'] ?? null) ? (string) $payload['content'] : '',
-                'score'   => (float) $m['score'],
-                'metadata' => $payload
+                'score' => (float) $m['score'],
+                'metadata' => $payload,
             ];
         }, $memories);
     }

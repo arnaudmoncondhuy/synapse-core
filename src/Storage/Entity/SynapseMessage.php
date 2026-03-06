@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;
 
 /**
- * Entité SynapseMessage
+ * Entité SynapseMessage.
  *
  * MappedSuperclass : Permet l'extension dans les projets.
  *
@@ -45,20 +45,20 @@ use Symfony\Component\Uid\Ulid;
 abstract class SynapseMessage
 {
     /**
-     * Identifiant unique (ULID au format UUID)
+     * Identifiant unique (ULID au format UUID).
      */
     #[ORM\Id]
     #[ORM\Column(type: Types::STRING, length: 36)]
     protected string $id;
 
     /**
-     * Rôle du message (USER, MODEL, SYSTEM, FUNCTION)
+     * Rôle du message (USER, MODEL, SYSTEM, FUNCTION).
      */
     #[ORM\Column(type: Types::STRING, length: 20, enumType: MessageRole::class)]
     protected MessageRole $role;
 
     /**
-     * Contenu du message (peut être chiffré)
+     * Contenu du message (peut être chiffré).
      *
      * Si le chiffrement est activé, ce champ contient le contenu chiffré.
      * Utiliser getContent() et setContent() pour la gestion transparente.
@@ -67,43 +67,43 @@ abstract class SynapseMessage
     protected string $content;
 
     /**
-     * Date de création (immuable)
+     * Date de création (immuable).
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     protected \DateTimeImmutable $createdAt;
 
     /**
-     * Nombre de tokens dans le prompt (input)
+     * Nombre de tokens dans le prompt (input).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     protected ?int $promptTokens = null;
 
     /**
-     * Nombre de tokens dans la complétion (output)
+     * Nombre de tokens dans la complétion (output).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     protected ?int $completionTokens = null;
 
     /**
-     * Nombre de tokens dans le thinking (Gemini 2.5+)
+     * Nombre de tokens dans le thinking (Gemini 2.5+).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     protected ?int $thinkingTokens = null;
 
     /**
-     * Nombre total de tokens
+     * Nombre total de tokens.
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     protected ?int $totalTokens = null;
 
     /**
-     * Feedback utilisateur (-1 = pouce baissé, 0 = neutre, 1 = pouce levé)
+     * Feedback utilisateur (-1 = pouce baissé, 0 = neutre, 1 = pouce levé).
      */
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
     protected ?int $feedback = null;
 
     /**
-     * Safety ratings (évaluations de sécurité Gemini)
+     * Safety ratings (évaluations de sécurité Gemini).
      *
      * Format :
      * [
@@ -119,13 +119,13 @@ abstract class SynapseMessage
     protected ?array $safetyRatings = null;
 
     /**
-     * SynapseMessage bloqué par les filtres de sécurité
+     * SynapseMessage bloqué par les filtres de sécurité.
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     protected bool $blocked = false;
 
     /**
-     * Métadonnées additionnelles (JSON)
+     * Métadonnées additionnelles (JSON).
      *
      * Exemples : debug_id, thinking_text, function_calls, etc.
      */
@@ -173,6 +173,7 @@ abstract class SynapseMessage
     public function setRole(MessageRole $role): self
     {
         $this->role = $role;
+
         return $this;
     }
 
@@ -184,6 +185,7 @@ abstract class SynapseMessage
     public function setContent(string $content): self
     {
         $this->content = $content;
+
         return $this;
     }
 
@@ -200,6 +202,7 @@ abstract class SynapseMessage
     public function setPromptTokens(?int $promptTokens): self
     {
         $this->promptTokens = $promptTokens;
+
         return $this;
     }
 
@@ -211,6 +214,7 @@ abstract class SynapseMessage
     public function setCompletionTokens(?int $completionTokens): self
     {
         $this->completionTokens = $completionTokens;
+
         return $this;
     }
 
@@ -222,6 +226,7 @@ abstract class SynapseMessage
     public function setThinkingTokens(?int $thinkingTokens): self
     {
         $this->thinkingTokens = $thinkingTokens;
+
         return $this;
     }
 
@@ -233,11 +238,12 @@ abstract class SynapseMessage
     public function setTotalTokens(?int $totalTokens): self
     {
         $this->totalTokens = $totalTokens;
+
         return $this;
     }
 
     /**
-     * Calcule et définit automatiquement le total de tokens
+     * Calcule et définit automatiquement le total de tokens.
      */
     public function calculateTotalTokens(): self
     {
@@ -245,6 +251,7 @@ abstract class SynapseMessage
         $this->totalTokens = ($this->promptTokens ?? 0)
             + ($this->completionTokens ?? 0)
             + ($this->thinkingTokens ?? 0);
+
         return $this;
     }
 
@@ -256,6 +263,7 @@ abstract class SynapseMessage
     public function setFeedback(?int $feedback): self
     {
         $this->feedback = $feedback;
+
         return $this;
     }
 
@@ -273,6 +281,7 @@ abstract class SynapseMessage
     public function setSafetyRatings(?array $safetyRatings): self
     {
         $this->safetyRatings = $safetyRatings;
+
         return $this;
     }
 
@@ -284,6 +293,7 @@ abstract class SynapseMessage
     public function setBlocked(bool $blocked): self
     {
         $this->blocked = $blocked;
+
         return $this;
     }
 
@@ -301,11 +311,12 @@ abstract class SynapseMessage
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;
+
         return $this;
     }
 
     /**
-     * Récupère une métadonnée spécifique
+     * Récupère une métadonnée spécifique.
      */
     public function getMetadataValue(string $key, mixed $default = null): mixed
     {
@@ -313,14 +324,15 @@ abstract class SynapseMessage
     }
 
     /**
-     * Définit une métadonnée spécifique
+     * Définit une métadonnée spécifique.
      */
     public function setMetadataValue(string $key, mixed $value): self
     {
-        if ($this->metadata === null) {
+        if (null === $this->metadata) {
             $this->metadata = [];
         }
         $this->metadata[$key] = $value;
+
         return $this;
     }
 
@@ -332,11 +344,12 @@ abstract class SynapseMessage
     public function setLlmCallId(?string $llmCallId): self
     {
         $this->llmCallId = $llmCallId;
+
         return $this;
     }
 
     /**
-     * Retourne le contenu déchiffré s'il existe, sinon le contenu brut
+     * Retourne le contenu déchiffré s'il existe, sinon le contenu brut.
      */
     public function getDecryptedContent(): string
     {
@@ -344,50 +357,51 @@ abstract class SynapseMessage
     }
 
     /**
-     * Définit le contenu déchiffré sans affecter la persistence
+     * Définit le contenu déchiffré sans affecter la persistence.
      */
     public function setDecryptedContent(?string $content): self
     {
         $this->decryptedContent = $content;
+
         return $this;
     }
 
     // Méthodes Helper
 
     /**
-     * Vérifie si le message est de l'utilisateur
+     * Vérifie si le message est de l'utilisateur.
      */
     public function isUser(): bool
     {
-        return $this->role === MessageRole::USER;
+        return MessageRole::USER === $this->role;
     }
 
     /**
-     * Vérifie si le message est du modèle IA
+     * Vérifie si le message est du modèle IA.
      */
     public function isModel(): bool
     {
-        return $this->role === MessageRole::MODEL;
+        return MessageRole::MODEL === $this->role;
     }
 
     /**
-     * Vérifie si le message est système
+     * Vérifie si le message est système.
      */
     public function isSystem(): bool
     {
-        return $this->role === MessageRole::SYSTEM;
+        return MessageRole::SYSTEM === $this->role;
     }
 
     /**
-     * Vérifie si le message est une fonction
+     * Vérifie si le message est une fonction.
      */
     public function isFunction(): bool
     {
-        return $this->role === MessageRole::FUNCTION;
+        return MessageRole::FUNCTION === $this->role;
     }
 
     /**
-     * Vérifie si le message doit être affiché dans l'interface
+     * Vérifie si le message doit être affiché dans l'interface.
      */
     public function isDisplayable(): bool
     {
@@ -395,7 +409,7 @@ abstract class SynapseMessage
     }
 
     /**
-     * Retourne le feedback comme une évaluation
+     * Retourne le feedback comme une évaluation.
      *
      * @return string|null 'positive', 'negative', ou null
      */
@@ -409,41 +423,44 @@ abstract class SynapseMessage
     }
 
     /**
-     * Définit un feedback positif
+     * Définit un feedback positif.
      */
     public function likeMessage(): self
     {
         $this->feedback = 1;
+
         return $this;
     }
 
     /**
-     * Définit un feedback négatif
+     * Définit un feedback négatif.
      */
     public function dislikeMessage(): self
     {
         $this->feedback = -1;
+
         return $this;
     }
 
     /**
-     * Réinitialise le feedback
+     * Réinitialise le feedback.
      */
     public function resetFeedback(): self
     {
         $this->feedback = null;
+
         return $this;
     }
 
     // Méthodes abstraites (à implémenter dans les projets)
 
     /**
-     * Retourne la conversation associée
+     * Retourne la conversation associée.
      */
     abstract public function getConversation(): SynapseConversation;
 
     /**
-     * Définit la conversation associée
+     * Définit la conversation associée.
      */
     abstract public function setConversation(SynapseConversation $conversation): self;
 }

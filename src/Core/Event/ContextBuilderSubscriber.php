@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
-use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry;
@@ -29,7 +28,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private ToolRegistry $toolRegistry,
         private MissionRegistry $missionRegistry,
         private SynapseProfiler $profiler,
-    ) {}
+    ) {
+    }
 
     /**
      * Décrit l'événement écouté : SynapsePrePromptEvent avec haute priorité (100).
@@ -69,13 +69,13 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // Support mission override (combine mission prompt + optional tone)
         if (isset($options['mission']) && is_string($options['mission'])) {
             $mission = $this->missionRegistry->get($options['mission']);
-            if ($mission !== null && $mission->isActive()) {
+            if (null !== $mission && $mission->isActive()) {
                 $systemContent = $mission->getSystemPrompt();
                 // Fusionner le tone de la mission si défini
-                if ($mission->getTone() !== null && $mission->getTone()->isActive()) {
+                if (null !== $mission->getTone() && $mission->getTone()->isActive()) {
                     $tonePrompt = $mission->getTone()->getSystemPrompt();
                     if (!empty($tonePrompt)) {
-                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n" . $tonePrompt;
+                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n".$tonePrompt;
                     }
                 }
                 $systemMessage = ['role' => 'system', 'content' => $systemContent];
@@ -116,7 +116,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // Support preset override via mission (if mission has a preset)
         if (isset($options['mission']) && is_string($options['mission'])) {
             $mission = $this->missionRegistry->get($options['mission']);
-            if ($mission !== null && $mission->getPreset() !== null) {
+            if (null !== $mission && null !== $mission->getPreset()) {
                 $config = $this->configProvider->getConfigForPreset($mission->getPreset());
             }
         }
@@ -130,7 +130,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // Expose mission_id in config for spending limits and token accounting
         if (isset($options['mission']) && is_string($options['mission'])) {
             $mission = $this->missionRegistry->get($options['mission']);
-            if ($mission !== null) {
+            if (null !== $mission) {
                 $config['mission_id'] = $mission->getId();
             }
         }
@@ -144,12 +144,12 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         /** @var list<string>|null $toolsOverride */
         $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
 
-        $toolDefinitions = $toolsOverride !== null
+        $toolDefinitions = null !== $toolsOverride
             ? $this->toolRegistry->getDefinitions($toolsOverride)
             : (is_array($toolsOption) ? $this->toolRegistry->getDefinitions($toolsOption) : $this->toolRegistry->getDefinitions());
 
         $prompt = [
-            'contents'        => array_merge([$systemMessage], $contents),
+            'contents' => array_merge([$systemMessage], $contents),
             'toolDefinitions' => $toolDefinitions,
         ];
 
@@ -183,19 +183,19 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 continue;
             }
 
-            if ($role === 'user' || $role === 'assistant') {
+            if ('user' === $role || 'assistant' === $role) {
                 $contentRaw = $message['content'] ?? '';
                 $content = is_string($contentRaw) ? $contentRaw : null;
 
                 // Skip user messages with non-string content
-                if ($role === 'user' && $content === null) {
+                if ('user' === $role && null === $content) {
                     continue;
                 }
 
                 /** @var array{role: string, content: string|null, tool_calls?: array<mixed>} $entry */
                 $entry = [
-                    'role'    => $role,
-                    'content' => $content !== null ? TextUtil::sanitizeUtf8($content) : null,
+                    'role' => $role,
+                    'content' => null !== $content ? TextUtil::sanitizeUtf8($content) : null,
                 ];
 
                 // Preserve tool_calls for assistant messages
@@ -205,11 +205,11 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 }
 
                 $sanitized[] = $entry;
-            } elseif ($role === 'tool') {
+            } elseif ('tool' === $role) {
                 $sanitized[] = [
-                    'role'         => 'tool',
+                    'role' => 'tool',
                     'tool_call_id' => is_string($message['tool_call_id'] ?? null) ? (string) $message['tool_call_id'] : '',
-                    'content'      => TextUtil::sanitizeUtf8(is_string($message['content'] ?? null) ? (string) $message['content'] : ''),
+                    'content' => TextUtil::sanitizeUtf8(is_string($message['content'] ?? null) ? (string) $message['content'] : ''),
                 ];
             }
         }

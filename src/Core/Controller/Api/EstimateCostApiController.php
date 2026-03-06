@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Controller\Api;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
-use ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenCostEstimator;
-use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
-use ArnaudMoncondhuy\SynapseCore\Core\Formatter\MessageFormatter;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
+use ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenCostEstimator;
+use ArnaudMoncondhuy\SynapseCore\Core\Formatter\MessageFormatter;
+use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +25,8 @@ class EstimateCostApiController extends AbstractController
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?MessageFormatter $messageFormatter = null,
-    ) {}
+    ) {
+    }
 
     #[Route('/estimate-cost', name: 'synapse_api_estimate_cost', methods: ['POST'])]
     public function estimateCost(Request $request): JsonResponse
@@ -47,14 +48,14 @@ class EstimateCostApiController extends AbstractController
             $user = $this->getUser();
             if ($user instanceof ConversationOwnerInterface) {
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
-                if ($conversation !== null) {
+                if (null !== $conversation) {
                     $dbMessages = $this->conversationManager->getMessages($conversation);
                     $contents = $this->messageFormatter->entitiesToApiFormat($dbMessages);
                 }
             }
         }
 
-        if ($message !== '') {
+        if ('' !== $message) {
             $contents[] = ['role' => 'user', 'content' => $message];
         }
 

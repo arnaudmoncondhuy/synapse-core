@@ -15,8 +15,9 @@ class DynamicVectorStore implements VectorStoreInterface
 {
     public function __construct(
         private VectorStoreRegistry $registry,
-        private SynapseConfigRepository $configRepository
-    ) {}
+        private SynapseConfigRepository $configRepository,
+    ) {
+    }
 
     public function saveMemory(array $vector, array $payload): void
     {

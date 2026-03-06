@@ -15,15 +15,16 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseToolCallCompletedEvent extends Event
 {
     /**
-     * @param string               $toolName     Nom de l'outil exécuté.
-     * @param mixed                $result       Donnée retournée par l'outil.
-     * @param array<string, mixed> $toolCallData Payload original de l'appel (ID, arguments).
+     * @param string               $toolName     nom de l'outil exécuté
+     * @param mixed                $result       donnée retournée par l'outil
+     * @param array<string, mixed> $toolCallData payload original de l'appel (ID, arguments)
      */
     public function __construct(
         private string $toolName,
         private mixed $result,
         private array $toolCallData = [],
-    ) {}
+    ) {
+    }
 
     public function getToolName(): string
     {

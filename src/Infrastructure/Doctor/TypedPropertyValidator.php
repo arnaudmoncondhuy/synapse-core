@@ -15,17 +15,18 @@ class TypedPropertyValidator
 {
     public function __construct(
         private readonly Filesystem $filesystem,
-    ) {}
+    ) {
+    }
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $entityDir = $projectDir . '/src/Entity';
+        $entityDir = $projectDir.'/src/Entity';
 
         if (!$this->filesystem->exists($entityDir)) {
             return true;
         }
 
-        $phpFiles = glob($entityDir . '/*.php') ?: [];
+        $phpFiles = glob($entityDir.'/*.php') ?: [];
         $isValid = true;
 
         foreach ($phpFiles as $file) {
@@ -67,7 +68,7 @@ class TypedPropertyValidator
             $propertyName = $matches[1];
 
             // Check if constructor initializes it
-            if (!preg_match('/\$this->' . $propertyName . '\s*=\s*new\s+ArrayCollection/', $content)) {
+            if (!preg_match('/\$this->'.$propertyName.'\s*=\s*new\s+ArrayCollection/', $content)) {
                 // Check if there's a @PostLoad callback
                 if (!preg_match('/#\[ORM\\\\PostLoad\]/', $content)) {
                     $issues[] = sprintf('Collection property $%s not initialized in constructor or @PostLoad callback', $propertyName);
@@ -89,7 +90,7 @@ class TypedPropertyValidator
 
         // Find the class closing brace
         $lastBracePos = strrpos($content, '}');
-        if ($lastBracePos === false) {
+        if (false === $lastBracePos) {
             return;
         }
 

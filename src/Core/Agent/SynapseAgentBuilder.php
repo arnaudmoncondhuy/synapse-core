@@ -10,8 +10,8 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
 
 /**
  * Service de fabrication d'agents IA (AgentBuilder).
- * 
- * Permet de définir dynamiquement le modèle, le prompt système, la température, 
+ *
+ * Permet de définir dynamiquement le modèle, le prompt système, la température,
  * et les outils autorisés, tout en validant ces choix via ModelCapabilityRegistry.
  */
 class SynapseAgentBuilder
@@ -27,8 +27,9 @@ class SynapseAgentBuilder
 
     public function __construct(
         private ChatService $chatService,
-        private ModelCapabilityRegistry $capabilityRegistry
-    ) {}
+        private ModelCapabilityRegistry $capabilityRegistry,
+    ) {
+    }
 
     /**
      * Définit le modèle LLM à utiliser.
@@ -36,6 +37,7 @@ class SynapseAgentBuilder
     public function withModel(string $model): self
     {
         $this->model = $model;
+
         return $this;
     }
 
@@ -45,6 +47,7 @@ class SynapseAgentBuilder
     public function withSystemPrompt(string $prompt): self
     {
         $this->systemPrompt = $prompt;
+
         return $this;
     }
 
@@ -54,6 +57,7 @@ class SynapseAgentBuilder
     public function withTemperature(float $temperature): self
     {
         $this->temperature = $temperature;
+
         return $this;
     }
 
@@ -67,16 +71,19 @@ class SynapseAgentBuilder
         } elseif (is_string($effortOrBudget)) {
             $this->reasoningEffort = $effortOrBudget;
         }
+
         return $this;
     }
 
     /**
      * Définit les outils (functions) que l'agent est autorisé à appeler.
+     *
      * @param string[] $toolNames
      */
     public function withAllowedTools(array $toolNames): self
     {
         $this->allowedTools = $toolNames;
+
         return $this;
     }
 
@@ -86,18 +93,19 @@ class SynapseAgentBuilder
     public function withMaxTurns(int $maxTurns): self
     {
         $this->maxTurns = $maxTurns;
+
         return $this;
     }
 
     /**
      * Construit l'instance de SynapseAgent configurée.
-     * 
-     * @throws \LogicException Si le modèle n'est pas défini ou si les capacités requises manquent.
+     *
+     * @throws \LogicException si le modèle n'est pas défini ou si les capacités requises manquent
      */
     public function build(): SynapseAgent
     {
         if (!$this->model) {
-            throw new \LogicException("Un modèle doit être défini pour construire un agent.");
+            throw new \LogicException('Un modèle doit être défini pour construire un agent.');
         }
 
         $capabilities = $this->capabilityRegistry->getCapabilities($this->model);
@@ -114,15 +122,19 @@ class SynapseAgentBuilder
 
         // Création du Preset Virtuel (Stateless)
         $preset = new SynapsePreset();
-        $preset->setName("Agent Virtuel: " . $this->model);
+        $preset->setName('Agent Virtuel: '.$this->model);
         $preset->setProviderName($capabilities->provider);
         $preset->setModel($this->model);
         $preset->setGenerationTemperature($this->temperature);
 
         $providerOptions = [];
         if (($this->reasoningBudget || $this->reasoningEffort) && $capabilities->thinking) {
-            if ($this->reasoningBudget) $providerOptions['thinking_budget'] = $this->reasoningBudget;
-            if ($this->reasoningEffort) $providerOptions['reasoning_effort'] = $this->reasoningEffort;
+            if ($this->reasoningBudget) {
+                $providerOptions['thinking_budget'] = $this->reasoningBudget;
+            }
+            if ($this->reasoningEffort) {
+                $providerOptions['reasoning_effort'] = $this->reasoningEffort;
+            }
         }
 
         $preset->setProviderOptions($providerOptions);

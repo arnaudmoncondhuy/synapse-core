@@ -42,8 +42,8 @@ class EmbeddingService
     /**
      * Génère des embeddings pour un texte ou un tableau de textes.
      *
-     * @param string|string[] $input Texte unique ou liste de textes.
-     * @param string|null     $model Modèle optionnel (si null, le défaut est résolu dynamiquement).
+     * @param string|string[] $input texte unique ou liste de textes
+     * @param string|null     $model modèle optionnel (si null, le défaut est résolu dynamiquement)
      *
      * @return array{embeddings: float[][], usage: array{prompt_tokens: int, total_tokens: int}}
      */
@@ -100,6 +100,7 @@ class EmbeddingService
                 return $provider;
             }
         }
+
         return null;
     }
 
@@ -112,7 +113,7 @@ class EmbeddingService
 
         foreach ($modelsForProvider as $modelId) {
             $caps = $this->capabilityRegistry->getCapabilities($modelId);
-            if ($caps->type === 'embedding') {
+            if ('embedding' === $caps->type) {
                 return $modelId;
             }
         }

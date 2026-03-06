@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Accounting;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod;
-use ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitScope;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseSpendingLimit;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
@@ -38,10 +36,11 @@ class SpendingLimitChecker
     /**
      * Vérifie que l'utilisateur / le preset / la mission peut encore dépenser le montant estimé.
      *
-     * @param string      $userId              ID utilisateur (string)
-     * @param int|null    $presetId            ID du preset utilisé (optionnel)
-     * @param float       $estimatedCostRef    Coût estimé en devise de référence
-     * @param int|null    $missionId           ID de la mission utilisée (optionnel)
+     * @param string   $userId           ID utilisateur (string)
+     * @param int|null $presetId         ID du preset utilisé (optionnel)
+     * @param float    $estimatedCostRef Coût estimé en devise de référence
+     * @param int|null $missionId        ID de la mission utilisée (optionnel)
+     *
      * @throws LlmQuotaException Si un plafond serait dépassé
      */
     public function assertCanSpend(string $userId, ?int $presetId, float $estimatedCostRef, ?int $missionId = null): void
@@ -55,12 +54,12 @@ class SpendingLimitChecker
         foreach ($this->spendingLimitRepo->findForUser($userId) as $limit) {
             $limits[] = $limit;
         }
-        if ($presetId !== null) {
+        if (null !== $presetId) {
             foreach ($this->spendingLimitRepo->findForPreset($presetId) as $limit) {
                 $limits[] = $limit;
             }
         }
-        if ($missionId !== null) {
+        if (null !== $missionId) {
             foreach ($this->spendingLimitRepo->findForMission($missionId) as $limit) {
                 $limits[] = $limit;
             }
@@ -76,12 +75,7 @@ class SpendingLimitChecker
             $limitAmount = (float) $limit->getAmount();
 
             if ($consumption + $estimatedCostRef > $limitAmount) {
-                throw new LlmQuotaException(sprintf(
-                    'Plafond de dépense atteint (%s / %s %s). Réessayez plus tard ou contactez l\'administrateur.',
-                    number_format($consumption + $estimatedCostRef, 4),
-                    number_format($limitAmount, 4),
-                    $limit->getCurrency()
-                ));
+                throw new LlmQuotaException(sprintf('Plafond de dépense atteint (%s / %s %s). Réessayez plus tard ou contactez l\'administrateur.', number_format($consumption + $estimatedCostRef, 4), number_format($limitAmount, 4), $limit->getCurrency()));
             }
         }
     }
@@ -94,7 +88,7 @@ class SpendingLimitChecker
     private function getConsumptionFromCacheOrDb(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start, \DateTimeInterface $end): float
     {
         $key = $this->buildCacheKey($scope, $scopeId, $period, $start);
-        if ($this->cache !== null) {
+        if (null !== $this->cache) {
             $item = $this->cache->getItem($key);
             if ($item->isHit()) {
                 return (float) $item->get();
@@ -103,10 +97,10 @@ class SpendingLimitChecker
 
         $consumption = $this->tokenUsageRepo->getConsumptionForWindow($scope, $scopeId, $start, $end);
 
-        if ($this->cache !== null) {
+        if (null !== $this->cache) {
             $item = $this->cache->getItem($key);
             $item->set($consumption);
-            $item->expiresAfter($period === SpendingLimitPeriod::SLIDING_DAY ? ($this->slidingDayHours * 3600) : ($period === SpendingLimitPeriod::SLIDING_MONTH ? 2678400 : 3600));
+            $item->expiresAfter(SpendingLimitPeriod::SLIDING_DAY === $period ? ($this->slidingDayHours * 3600) : (SpendingLimitPeriod::SLIDING_MONTH === $period ? 2678400 : 3600));
             $this->cache->save($item);
         }
 
@@ -115,10 +109,11 @@ class SpendingLimitChecker
 
     private function buildCacheKey(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start): string
     {
-        $base = self::CACHE_PREFIX . $scope . ':' . $scopeId . ':' . $period->value;
+        $base = self::CACHE_PREFIX.$scope.':'.$scopeId.':'.$period->value;
+
         return match ($period) {
-            SpendingLimitPeriod::CALENDAR_DAY => $base . ':' . $start->format('Y-m-d'),
-            SpendingLimitPeriod::CALENDAR_MONTH => $base . ':' . $start->format('Y-m'),
+            SpendingLimitPeriod::CALENDAR_DAY => $base.':'.$start->format('Y-m-d'),
+            SpendingLimitPeriod::CALENDAR_MONTH => $base.':'.$start->format('Y-m'),
             default => $base,
         };
     }
@@ -134,7 +129,7 @@ class SpendingLimitChecker
 
         return match ($period) {
             SpendingLimitPeriod::SLIDING_DAY => [
-                $now->modify('-' . $this->slidingDayHours . ' hours'),
+                $now->modify('-'.$this->slidingDayHours.' hours'),
                 $now,
             ],
             SpendingLimitPeriod::SLIDING_MONTH => [

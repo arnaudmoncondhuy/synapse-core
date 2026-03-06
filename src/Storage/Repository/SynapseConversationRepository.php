@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Repository;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ConversationStatus;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository pour l'entité SynapseConversation
+ * Repository pour l'entité SynapseConversation.
  *
  * @template T of SynapseConversation
+ *
  * @extends ServiceEntityRepository<T>
  *
  * Note : Ce repository est abstrait car SynapseConversation est une MappedSuperclass.
@@ -35,10 +36,11 @@ use Doctrine\Persistence\ManagerRegistry;
 abstract class SynapseConversationRepository extends ServiceEntityRepository
 {
     /**
-     * Trouve les conversations actives d'un propriétaire
+     * Trouve les conversations actives d'un propriétaire.
      *
      * @param ConversationOwnerInterface $owner Propriétaire
-     * @param int $limit Nombre maximum de résultats
+     * @param int                        $limit Nombre maximum de résultats
+     *
      * @return SynapseConversation[] Liste des conversations
      */
     public function findActiveByOwner(ConversationOwnerInterface $owner, int $limit = 50): array
@@ -58,9 +60,10 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve les conversations plus anciennes que X jours (pour purge RGPD)
+     * Trouve les conversations plus anciennes que X jours (pour purge RGPD).
      *
      * @param int $days Nombre de jours de rétention
+     *
      * @return SynapseConversation[] Conversations à purger
      */
     public function findOlderThan(int $days): array
@@ -78,7 +81,7 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Compte les conversations actives des dernières 24h
+     * Compte les conversations actives des dernières 24h.
      *
      * @return int Nombre de conversations
      */
@@ -97,9 +100,10 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Compte les utilisateurs actifs depuis une date
+     * Compte les utilisateurs actifs depuis une date.
      *
      * @param \DateTimeInterface $since Date de début
+     *
      * @return int Nombre d'utilisateurs uniques
      */
     public function countActiveUsersSince(\DateTimeInterface $since): int
@@ -113,10 +117,11 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve les conversations par statut
+     * Trouve les conversations par statut.
      *
      * @param ConversationStatus $status Statut recherché
-     * @param int $limit Nombre maximum de résultats
+     * @param int                $limit  Nombre maximum de résultats
+     *
      * @return SynapseConversation[] Liste des conversations
      */
     public function findByStatus(ConversationStatus $status, int $limit = 100): array
@@ -134,14 +139,15 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Recherche dans les conversations (titre, résumé)
+     * Recherche dans les conversations (titre, résumé).
      *
      * Note : La recherche dans les titres chiffrés n'est pas possible.
      *        Seule la recherche dans les résumés (non chiffrés) fonctionne.
      *
-     * @param string $query Terme de recherche
+     * @param string                          $query Terme de recherche
      * @param ConversationOwnerInterface|null $owner Filtrer par propriétaire
-     * @param int $limit Nombre maximum de résultats
+     * @param int                             $limit Nombre maximum de résultats
+     *
      * @return SynapseConversation[] Résultats de recherche
      */
     public function search(string $query, ?ConversationOwnerInterface $owner = null, int $limit = 50): array
@@ -149,12 +155,12 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('c')
             ->where('c.summary LIKE :query')
             ->andWhere('c.status != :deleted')
-            ->setParameter('query', '%' . $query . '%')
+            ->setParameter('query', '%'.$query.'%')
             ->setParameter('deleted', ConversationStatus::DELETED)
             ->orderBy('c.updatedAt', 'DESC')
             ->setMaxResults($limit);
 
-        if ($owner !== null) {
+        if (null !== $owner) {
             $qb->andWhere('c.owner = :owner')
                 ->setParameter('owner', $owner);
         }
@@ -166,11 +172,12 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Supprime définitivement les conversations (hard delete)
+     * Supprime définitivement les conversations (hard delete).
      *
      * Utilisé par la commande de purge RGPD.
      *
      * @param T[] $conversations Conversations à supprimer
+     *
      * @return int Nombre de conversations supprimées
      */
     public function hardDelete(array $conversations): int
@@ -180,7 +187,7 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
 
         foreach ($conversations as $conversation) {
             $em->remove($conversation);
-            $count++;
+            ++$count;
         }
 
         $em->flush();

@@ -79,6 +79,7 @@ class SynapseChunkReceivedEvent extends Event
     {
         /** @var array<int, array{id: string, name: string, args: array<string, mixed>}> $calls */
         $calls = is_array($this->chunk['function_calls'] ?? null) ? $this->chunk['function_calls'] : [];
+
         return $calls;
     }
 

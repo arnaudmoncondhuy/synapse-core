@@ -13,7 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;
 
 /**
- * Entité SynapseConversation
+ * Entité SynapseConversation.
  *
  * MappedSuperclass : Permet l'extension dans les projets.
  * Les projets doivent créer leur propre entité qui étend celle-ci.
@@ -47,14 +47,14 @@ use Symfony\Component\Uid\Ulid;
 abstract class SynapseConversation
 {
     /**
-     * Identifiant unique (ULID au format UUID)
+     * Identifiant unique (ULID au format UUID).
      */
     #[ORM\Id]
     #[ORM\Column(type: Types::STRING, length: 36)]
     protected string $id;
 
     /**
-     * Titre de la conversation (peut être chiffré)
+     * Titre de la conversation (peut être chiffré).
      *
      * Si le chiffrement est activé, ce champ contient le titre chiffré.
      * Utiliser getTitle() et setTitle() pour la gestion transparente.
@@ -63,31 +63,31 @@ abstract class SynapseConversation
     protected ?string $title = null;
 
     /**
-     * Date de création (immuable)
+     * Date de création (immuable).
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     protected \DateTimeImmutable $createdAt;
 
     /**
-     * Date de dernière mise à jour
+     * Date de dernière mise à jour.
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     protected \DateTimeImmutable $updatedAt;
 
     /**
-     * Statut de la conversation
+     * Statut de la conversation.
      */
     #[ORM\Column(type: Types::STRING, length: 20, enumType: ConversationStatus::class)]
     protected ConversationStatus $status = ConversationStatus::ACTIVE;
 
     /**
-     * Résumé de la conversation (généré par IA)
+     * Résumé de la conversation (généré par IA).
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     protected ?string $summary = null;
 
     /**
-     * Métadonnées additionnelles (JSON)
+     * Métadonnées additionnelles (JSON).
      *
      * Permet d'ajouter des champs custom sans modifier le schéma.
      * Exemples : tags, labels, contexte spécifique, etc.
@@ -99,7 +99,7 @@ abstract class SynapseConversation
     protected ?array $metadata = null;
 
     /**
-     * Messages de la conversation
+     * Messages de la conversation.
      *
      * @var Collection<int, SynapseMessage>
      */
@@ -116,7 +116,7 @@ abstract class SynapseConversation
 
     /**
      * Hydratation Doctrine — initialiser $messages si absent
-     * (Doctrine n'appelle pas le constructeur lors du chargement depuis la BDD)
+     * (Doctrine n'appelle pas le constructeur lors du chargement depuis la BDD).
      */
     #[ORM\PostLoad]
     public function ensureMessagesInitialized(): void
@@ -142,6 +142,7 @@ abstract class SynapseConversation
     public function setTitle(?string $title): self
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -169,6 +170,7 @@ abstract class SynapseConversation
     public function setStatus(ConversationStatus $status): self
     {
         $this->status = $status;
+
         return $this;
     }
 
@@ -180,6 +182,7 @@ abstract class SynapseConversation
     public function setSummary(?string $summary): self
     {
         $this->summary = $summary;
+
         return $this;
     }
 
@@ -197,11 +200,12 @@ abstract class SynapseConversation
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;
+
         return $this;
     }
 
     /**
-     * Récupère une métadonnée spécifique
+     * Récupère une métadonnée spécifique.
      */
     public function getMetadataValue(string $key, mixed $default = null): mixed
     {
@@ -209,14 +213,15 @@ abstract class SynapseConversation
     }
 
     /**
-     * Définit une métadonnée spécifique
+     * Définit une métadonnée spécifique.
      */
     public function setMetadataValue(string $key, mixed $value): self
     {
-        if ($this->metadata === null) {
+        if (null === $this->metadata) {
             $this->metadata = [];
         }
         $this->metadata[$key] = $value;
+
         return $this;
     }
 
@@ -233,72 +238,77 @@ abstract class SynapseConversation
         if (!$this->messages->contains($message)) {
             $this->messages->add($message);
         }
+
         return $this;
     }
 
     public function removeMessage(SynapseMessage $message): self
     {
         $this->messages->removeElement($message);
+
         return $this;
     }
 
     // Méthodes Helper
 
     /**
-     * Vérifie si la conversation est active
+     * Vérifie si la conversation est active.
      */
     public function isActive(): bool
     {
-        return $this->status === ConversationStatus::ACTIVE;
+        return ConversationStatus::ACTIVE === $this->status;
     }
 
     /**
-     * Vérifie si la conversation est archivée
+     * Vérifie si la conversation est archivée.
      */
     public function isArchived(): bool
     {
-        return $this->status === ConversationStatus::ARCHIVED;
+        return ConversationStatus::ARCHIVED === $this->status;
     }
 
     /**
-     * Vérifie si la conversation est supprimée
+     * Vérifie si la conversation est supprimée.
      */
     public function isDeleted(): bool
     {
-        return $this->status === ConversationStatus::DELETED;
+        return ConversationStatus::DELETED === $this->status;
     }
 
     /**
-     * Archive la conversation
+     * Archive la conversation.
      */
     public function archive(): self
     {
         $this->status = ConversationStatus::ARCHIVED;
+
         return $this;
     }
 
     /**
-     * Soft delete la conversation
+     * Soft delete la conversation.
      */
     public function softDelete(): self
     {
         $this->status = ConversationStatus::DELETED;
+
         return $this;
     }
 
     /**
-     * Restaure une conversation supprimée
+     * Restaure une conversation supprimée.
      */
     public function restore(): self
     {
         if ($this->isDeleted()) {
             $this->status = ConversationStatus::ACTIVE;
         }
+
         return $this;
     }
 
     /**
-     * Compte le nombre de messages
+     * Compte le nombre de messages.
      */
     public function getMessageCount(): int
     {
@@ -308,12 +318,12 @@ abstract class SynapseConversation
     // Méthodes abstraites (à implémenter dans les projets)
 
     /**
-     * Retourne le propriétaire de la conversation
+     * Retourne le propriétaire de la conversation.
      */
     abstract public function getOwner(): ?ConversationOwnerInterface;
 
     /**
-     * Définit le propriétaire de la conversation
+     * Définit le propriétaire de la conversation.
      */
     abstract public function setOwner(ConversationOwnerInterface $owner): self;
 }

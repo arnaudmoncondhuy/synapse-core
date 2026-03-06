@@ -20,7 +20,8 @@ class CsrfController extends AbstractController
     public function __construct(
         private PermissionCheckerInterface $permissionChecker,
         private ?CsrfTokenManagerInterface $csrfTokenManager = null,
-    ) {}
+    ) {
+    }
 
     #[Route('/csrf-token', name: 'synapse_api_csrf_token', methods: ['GET'])]
     public function token(): JsonResponse
@@ -32,6 +33,7 @@ class CsrfController extends AbstractController
             return $this->json(['token' => '']);
         }
         $token = $this->csrfTokenManager->getToken('synapse_api')->getValue();
+
         return $this->json(['token' => $token]);
     }
 }

@@ -46,7 +46,7 @@ interface LlmClientInterface
      * @param string|null                      $model    Identifiant du modèle à utiliser (ex: 'gemini-1.5-pro')
      * @param array<string, mixed>             $debugOut Sortie de debug (passage par référence)
      *
-     * @return \Generator<int, array<string, mixed>> Yield des chunks normalisés contenant 'text', 'usage', etc.
+     * @return \Generator<int, array<string, mixed>> yield des chunks normalisés contenant 'text', 'usage', etc
      */
     public function streamGenerateContent(
         array $contents,

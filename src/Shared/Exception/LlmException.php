@@ -7,4 +7,6 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Exception;
 /**
  * Exception de base pour les erreurs liées aux clients LLM.
  */
-class LlmException extends \RuntimeException implements SynapseException {}
+class LlmException extends \RuntimeException implements SynapseException
+{
+}

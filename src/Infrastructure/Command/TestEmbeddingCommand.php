@@ -20,7 +20,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class TestEmbeddingCommand extends Command
 {
     public function __construct(
-        private readonly EmbeddingService $embeddingService
+        private readonly EmbeddingService $embeddingService,
     ) {
         parent::__construct();
     }
@@ -61,6 +61,7 @@ class TestEmbeddingCommand extends Command
             $embeddings = $result['embeddings'] ?? [];
             if (empty($embeddings) || empty($embeddings[0])) {
                 $io->error('Aucun vecteur retourné.');
+
                 return Command::FAILURE;
             }
 
@@ -70,7 +71,7 @@ class TestEmbeddingCommand extends Command
 
             // Afficher les 5 premières valeurs
             $sample = array_slice($vector, 0, 5);
-            $sampleStr = implode(', ', array_map(fn($v) => sprintf('%.4f', $v), $sample));
+            $sampleStr = implode(', ', array_map(fn ($v) => sprintf('%.4f', $v), $sample));
             $io->text(sprintf('Extrait des 5 premières valeurs: [%s, ...]', $sampleStr));
 
             if (isset($result['usage'])) {
@@ -87,6 +88,7 @@ class TestEmbeddingCommand extends Command
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $io->error(sprintf("Erreur lors de la génération: %s\nFichier: %s:%d", $e->getMessage(), $e->getFile(), $e->getLine()));
+
             return Command::FAILURE;
         }
     }

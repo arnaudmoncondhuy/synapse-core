@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Core\Event;
 
-use ArnaudMoncondhuy\SynapseCore\Core\Event\SynapseToolCallRequestedEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -19,7 +18,8 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private \ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry $toolRegistry,
-    ) {}
+    ) {
+    }
 
     /**
      * Décrit l'événement écouté : SynapseToolCallRequestedEvent avec priorité normale (0).
@@ -45,7 +45,7 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
         foreach ($event->getToolCalls() as $toolCall) {
             // Le format est déjà normalisé par l'événement : array{id: string, name: string, args: array}
             $toolName = $toolCall['name'] ?? null;
-            if ($toolName === null || $toolName === '') {
+            if (null === $toolName || '' === $toolName) {
                 continue;
             }
             $args = $toolCall['args'] ?? [];

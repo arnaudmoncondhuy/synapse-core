@@ -61,7 +61,7 @@ class SynapseMissionFixture extends Fixture
 
         foreach (self::MISSIONS as $data) {
             // Idempotent : vérifie l'existence par clé
-            if ($manager->getRepository(SynapseMission::class)->findOneBy(['key' => $data['key']]) !== null) {
+            if (null !== $manager->getRepository(SynapseMission::class)->findOneBy(['key' => $data['key']])) {
                 continue;
             }
 
@@ -74,12 +74,12 @@ class SynapseMissionFixture extends Fixture
             $mission->setIsBuiltin(false);
             $mission->setIsActive(true);
             $sortOrder = array_search($data, self::MISSIONS);
-            $mission->setSortOrder($sortOrder === false ? 0 : (int) $sortOrder);
+            $mission->setSortOrder(false === $sortOrder ? 0 : (int) $sortOrder);
 
             // Résoudre le tone si spécifié
-            if ($data['tone'] !== null) {
+            if (null !== $data['tone']) {
                 $tone = $toneRepo->findByKey($data['tone']);
-                if ($tone !== null) {
+                if (null !== $tone) {
                     $mission->setTone($tone);
                 }
             }

@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Infrastructure\DependencyInjection;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConversationRepository;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageRepository;
-use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
-use ArnaudMoncondhuy\SynapseCore\Security\LibsodiumEncryptionService;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
-use Symfony\Component\DependencyInjection\Reference;
+use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
+use ArnaudMoncondhuy\SynapseCore\Security\LibsodiumEncryptionService;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Extension principale du conteneur de dépendance pour SynapseBundle.
@@ -79,11 +77,11 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                     'orm' => [
                         'mappings' => [
                             'SynapseCore' => [
-                                'type'      => 'attribute',
+                                'type' => 'attribute',
                                 'is_bundle' => false,
-                                'dir'       => dirname(__DIR__, 2) . '/Storage/Entity',
-                                'prefix'    => 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Entity',
-                                'alias'     => 'Synapse',
+                                'dir' => dirname(__DIR__, 2).'/Storage/Entity',
+                                'prefix' => 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Entity',
+                                'alias' => 'Synapse',
                             ],
                         ],
                     ],
@@ -130,7 +128,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.chat_api_prefix', $config['routing']['chat_api_prefix'] ?? '/synapse/api');
 
         // ── Version ──────────────────────────────────────────────────────────
-        $versionFile = __DIR__ . '/../../../VERSION';
+        $versionFile = __DIR__.'/../../../VERSION';
         $version = is_file($versionFile) ? trim((string) file_get_contents($versionFile)) : 'dev';
         $container->setParameter('synapse.version', $version);
 
@@ -148,11 +146,8 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
             );
         }
 
-
-
-
         // ── Chargement des services ───────────────────────────────────────────
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../../config'));
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../../config'));
 
         // Load core services (always loaded)
         $loader->load('core.yaml');

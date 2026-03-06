@@ -6,10 +6,10 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Controller\Api;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
-use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
-use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
+use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
+use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,7 +29,8 @@ class MemoryApiController extends AbstractController
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?CsrfTokenManagerInterface $csrfTokenManager = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Confirme la mémorisation d'un fait proposé par le LLM.
@@ -130,7 +131,7 @@ class MemoryApiController extends AbstractController
         return $this->json([
             'success' => true,
             'message' => 'Proposition ignorée.',
-            'feedback_message' => $feedbackMessage
+            'feedback_message' => $feedbackMessage,
         ]);
     }
 
@@ -153,7 +154,7 @@ class MemoryApiController extends AbstractController
         $page = max(1, (int) $request->query->get('page', 1));
         $memories = $this->memoryManager->listForUser($userId, $page);
 
-        $items = array_map(fn($m) => [
+        $items = array_map(fn ($m) => [
             'id' => $m->getId(),
             'content' => $m->getContent(),
             'scope' => $m->getScope(),
@@ -224,6 +225,7 @@ class MemoryApiController extends AbstractController
 
         try {
             $this->memoryManager->update($id, $newText, $userId);
+
             return $this->json(['success' => true, 'message' => 'Souvenir mis à jour.']);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);
@@ -246,6 +248,7 @@ class MemoryApiController extends AbstractController
 
         try {
             $this->memoryManager->forget($id, $userId);
+
             return $this->json(['success' => true, 'message' => 'Souvenir supprimé.']);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);
@@ -276,6 +279,7 @@ class MemoryApiController extends AbstractController
 
         // ConversationOwnerInterface::getId() — compatible UUIDs et entiers
         $id = $user->getId();
-        return $id !== null ? (string) $id : null;
+
+        return null !== $id ? (string) $id : null;
     }
 }

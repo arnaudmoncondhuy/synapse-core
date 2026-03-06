@@ -19,8 +19,8 @@ class LlmClientRegistry
     private array $clientMap = [];
 
     /**
-     * @param iterable<LlmClientInterface> $clients       Clients tagués `synapse.llm_client`
-     * @param ConfigProviderInterface      $configProvider Fournisseur de config DB
+     * @param iterable<LlmClientInterface> $clients         Clients tagués `synapse.llm_client`
+     * @param ConfigProviderInterface      $configProvider  Fournisseur de config DB
      * @param string                       $defaultProvider Provider YAML par défaut (bootstrap)
      */
     public function __construct(
@@ -36,7 +36,7 @@ class LlmClientRegistry
     /**
      * Retourne le client LLM actif selon la configuration DB, avec fallback YAML.
      *
-     * @throws \RuntimeException Si le provider configuré n'est pas disponible.
+     * @throws \RuntimeException si le provider configuré n'est pas disponible
      */
     public function getClient(): LlmClientInterface
     {

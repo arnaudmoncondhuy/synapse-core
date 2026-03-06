@@ -17,14 +17,16 @@ class AssetMapperValidator
     public function __construct(
         private readonly Filesystem $filesystem,
         private readonly KernelInterface $kernel,
-    ) {}
+    ) {
+    }
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $assetsDir = $projectDir . '/assets';
+        $assetsDir = $projectDir.'/assets';
 
         if (!$this->filesystem->exists($assetsDir)) {
             $io->writeln('  <comment>[SKIP]</comment> assets/ directory not found');
+
             return true;
         }
 
@@ -40,7 +42,7 @@ class AssetMapperValidator
             }
 
             $bundle = $bundles[$bundleName];
-            $bundleAssets = $bundle->getPath() . '/assets';
+            $bundleAssets = $bundle->getPath().'/assets';
 
             if (!$this->filesystem->exists($bundleAssets)) {
                 continue;
@@ -48,7 +50,7 @@ class AssetMapperValidator
 
             // Convert bundle name to asset path (e.g., SynapseAdminBundle -> synapse-admin)
             $assetPath = $this->bundleNameToAssetPath($bundleName);
-            $symlinkPath = $assetsDir . '/' . $assetPath;
+            $symlinkPath = $assetsDir.'/'.$assetPath;
 
             if (!$this->filesystem->exists($symlinkPath)) {
                 $io->error(sprintf('[AssetMapper] Missing symlink: assets/%s → %s', $assetPath, $bundleAssets));
@@ -65,7 +67,7 @@ class AssetMapperValidator
                 $realTarget = realpath($target);
                 $realBundleAssets = realpath($bundleAssets);
 
-                if ($realTarget !== false && $realBundleAssets !== false && $realTarget !== $realBundleAssets) {
+                if (false !== $realTarget && false !== $realBundleAssets && $realTarget !== $realBundleAssets) {
                     $io->error(sprintf('[AssetMapper] Broken symlink: assets/%s points to %s (expected %s)', $assetPath, $realTarget, $realBundleAssets));
 
                     if ($fix) {
@@ -93,6 +95,7 @@ class AssetMapperValidator
         // SynapseChatBundle → synapse-chat
         $name = str_replace('Bundle', '', $bundleName);
         $name = str_replace('Synapse', 'synapse', $name);
+
         return strtolower((string) preg_replace('/([a-z])([A-Z])/', '$1-$2', (string) $name));
     }
 }

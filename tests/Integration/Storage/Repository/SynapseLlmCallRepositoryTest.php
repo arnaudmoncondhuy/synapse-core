@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 class SynapseLlmCallRepositoryTest extends TestCase
 {
     /**
-     * Helper: Create a repository with mocked Connection and ManagerRegistry
+     * Helper: Create a repository with mocked Connection and ManagerRegistry.
      */
     private function createRepository(
         \Doctrine\DBAL\Result $mockStatement,
@@ -37,7 +37,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         return new SynapseLlmCallRepository($mockRegistry, $mockMetadata);
     }
 
-    public function testGetGlobalStats_returnsCostsGroupedByCurrency(): void
+    public function testGetGlobalStatsReturnsCostsGroupedByCurrency(): void
     {
         $mockResult = [
             [
@@ -77,7 +77,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertGreaterThan(0, $stats['costs']['USD']);
     }
 
-    public function testGetGlobalStats_returnsZero_whenNoData(): void
+    public function testGetGlobalStatsReturnsZeroWhenNoData(): void
     {
         $mockResult = [];
 
@@ -96,7 +96,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertSame(0, $stats['total_tokens'] ?? 0);
     }
 
-    public function testGetGlobalStats_handlesEurOnly(): void
+    public function testGetGlobalStatsHandlesEurOnly(): void
     {
         $mockResult = [
             [
@@ -125,7 +125,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertArrayNotHasKey('USD', $stats['costs']);
     }
 
-    public function testGetUsageByModel_returnsCurrencyPerModel(): void
+    public function testGetUsageByModelReturnsCurrencyPerModel(): void
     {
         $mockResult = [
             [
@@ -161,7 +161,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertSame('EUR', $usage[1]['currency']);
     }
 
-    public function testGetUsageByModel_returnsEmptyArray_whenNoData(): void
+    public function testGetUsageByModelReturnsEmptyArrayWhenNoData(): void
     {
         $mockResult = [];
 
@@ -179,7 +179,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertEmpty($usage);
     }
 
-    public function testGetDailyUsage_returnsIndexedByDate(): void
+    public function testGetDailyUsageReturnsIndexedByDate(): void
     {
         $mockResult = [
             [
@@ -216,7 +216,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertSame(1000, $daily[0]['total_tokens']);
     }
 
-    public function testGetDailyUsage_returnsEmptyArray_whenNoData(): void
+    public function testGetDailyUsageReturnsEmptyArrayWhenNoData(): void
     {
         $mockResult = [];
 

@@ -10,7 +10,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository pour les presets LLM
+ * Repository pour les presets LLM.
  *
  * Un seul preset peut être actif à la fois (pas de scope).
  *
@@ -33,17 +33,18 @@ class SynapsePresetRepository extends ServiceEntityRepository
     {
         $preset = $this->findOneBy(['isActive' => true]);
 
-        if ($preset !== null) {
+        if (null !== $preset) {
             return $preset;
         }
 
         // Fallback : premier preset
         $preset = $this->findOneBy([], ['id' => 'ASC']);
 
-        if ($preset !== null) {
+        if (null !== $preset) {
             // Auto-activate it
             $preset->setIsActive(true);
             $this->getEntityManager()->flush();
+
             return $preset;
         }
 
@@ -65,7 +66,7 @@ class SynapsePresetRepository extends ServiceEntityRepository
 
         // Désactiver tous les presets
         $em->createQuery(
-            'UPDATE ' . SynapsePreset::class . ' p SET p.isActive = false'
+            'UPDATE '.SynapsePreset::class.' p SET p.isActive = false'
         )->execute();
 
         // Activer le preset cible

@@ -12,7 +12,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Implémentation Doctrine du VectorStore.
- * 
+ *
  * Supporte nativement PostgreSQL + pgvector pour des performances optimales.
  * Offre un fallback PHP pour les autres bases (MySQL, SQLite) avec un avertissement de performance.
  */
@@ -24,7 +24,7 @@ class DoctrineVectorStore implements VectorStoreInterface
     public function __construct(
         private EntityManagerInterface $em,
         private SynapseVectorMemoryRepository $repository,
-        private ?LoggerInterface $logger = null
+        private ?LoggerInterface $logger = null,
     ) {
         $connection = $this->em->getConnection();
         $platform = $connection->getDatabasePlatform()::class;
@@ -98,7 +98,7 @@ class DoctrineVectorStore implements VectorStoreInterface
      */
     private function searchWithPgVector(array $vector, int $limit, array $filters): array
     {
-        $vectorString = '[' . implode(',', $vector) . ']';
+        $vectorString = '['.implode(',', $vector).']';
 
         $whereClauses = [];
         $params = ['vector' => $vectorString, 'limit' => $limit];
@@ -133,7 +133,7 @@ class DoctrineVectorStore implements VectorStoreInterface
             }
         }
 
-        $where = count($whereClauses) > 0 ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
+        $where = count($whereClauses) > 0 ? 'WHERE '.implode(' AND ', $whereClauses) : '';
 
         $sql = "SELECT payload, (1 - (embedding::text::vector <=> :vector::text::vector)) as score 
                 FROM synapse_vector_memory 
@@ -146,9 +146,10 @@ class DoctrineVectorStore implements VectorStoreInterface
 
         return array_map(function ($row) {
             $payload = json_decode($row['payload'], true);
+
             return [
                 'payload' => is_array($payload) ? $payload : [],
-                'score'   => (float) $row['score']
+                'score' => (float) $row['score'],
             ];
         }, $result);
     }
@@ -169,7 +170,7 @@ class DoctrineVectorStore implements VectorStoreInterface
             $criteria['userId'] = $filters['user_id'];
         }
 
-        // Pour le fallback, comme le OR array/Doctrine est complexe sans QueryBuilder, 
+        // Pour le fallback, comme le OR array/Doctrine est complexe sans QueryBuilder,
         // on ramène un scope large et on filtre en PHP pour respecter la logique du VectorStore
         $all = $this->repository->findBy($criteria);
 
@@ -178,17 +179,20 @@ class DoctrineVectorStore implements VectorStoreInterface
         $requestedScope = $filters['scope'] ?? null;
 
         foreach ($all as $item) {
-
             // Logique de filtrage des Scopes en mémoire (PHP)
-            if ($requestedScope !== null) {
-                if ($item->getScope() !== $requestedScope) continue;
-                if ($conversationId && $item->getConversationId() !== $conversationId) continue;
+            if (null !== $requestedScope) {
+                if ($item->getScope() !== $requestedScope) {
+                    continue;
+                }
+                if ($conversationId && $item->getConversationId() !== $conversationId) {
+                    continue;
+                }
             } else {
                 // Recall LLM normal : 'user' autorisé PARTOUT. 'conversation' autorisé UNIQUEMENT si match.
-                if ($item->getScope() === 'conversation' && $item->getConversationId() !== $conversationId) {
+                if ('conversation' === $item->getScope() && $item->getConversationId() !== $conversationId) {
                     continue; // Skip les souvenirs des autres conversations
                 }
-                if ($item->getScope() !== 'user' && $item->getScope() !== 'conversation') {
+                if ('user' !== $item->getScope() && 'conversation' !== $item->getScope()) {
                     continue; // Skip any unknown scope
                 }
             }
@@ -196,11 +200,11 @@ class DoctrineVectorStore implements VectorStoreInterface
             $score = $this->calculateCosineSimilarity($vector, $item->getEmbedding());
             $results[] = [
                 'payload' => $item->getPayload(),
-                'score' => $score
+                'score' => $score,
             ];
         }
 
-        usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($results, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         return array_slice($results, 0, $limit);
     }
@@ -216,7 +220,7 @@ class DoctrineVectorStore implements VectorStoreInterface
         $norm2 = 0.0;
 
         $count = min(count($vec1), count($vec2));
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             $v1 = $vec1[$i] ?? 0.0;
             $v2 = $vec2[$i] ?? 0.0;
             $dotProduct += $v1 * $v2;
@@ -224,7 +228,7 @@ class DoctrineVectorStore implements VectorStoreInterface
             $norm2 += $v2 * $v2;
         }
 
-        if ($norm1 === 0.0 || $norm2 === 0.0) {
+        if (0.0 === $norm1 || 0.0 === $norm2) {
             return 0.0;
         }
 

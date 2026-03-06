@@ -32,10 +32,11 @@ class UpdateVersionCommand extends Command
         $version = "dev 0.{$date}";
 
         $rootPath = dirname(__DIR__, 3);
-        $versionFile = $rootPath . '/VERSION';
+        $versionFile = $rootPath.'/VERSION';
 
-        if (file_put_contents($versionFile, $version . PHP_EOL) === false) {
+        if (false === file_put_contents($versionFile, $version.PHP_EOL)) {
             $io->error(sprintf('Could not write to version file at %s', $versionFile));
+
             return Command::FAILURE;
         }
 

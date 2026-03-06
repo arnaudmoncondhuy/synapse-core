@@ -20,7 +20,8 @@ class ToneRegistry
 {
     public function __construct(
         private SynapseToneRepository $repository,
-    ) {}
+    ) {
+    }
 
     /**
      * Retourne tous les tons actifs, indexés par clé slug.
@@ -33,6 +34,7 @@ class ToneRegistry
         foreach ($this->repository->findAllActive() as $tone) {
             $tones[$tone->getKey()] = $tone->toArray();
         }
+
         return $tones;
     }
 
@@ -57,7 +59,7 @@ class ToneRegistry
     {
         $tone = $this->repository->findByKey($key);
 
-        if ($tone === null || !$tone->isActive()) {
+        if (null === $tone || !$tone->isActive()) {
             return null;
         }
 

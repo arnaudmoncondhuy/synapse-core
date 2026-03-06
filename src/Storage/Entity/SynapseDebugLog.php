@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 
 /**
- * Journaux de debug persistants
+ * Journaux de debug persistants.
  *
  * Stocke les traces d'exécution des appels LLM (requête, réponse, paramètres effectivement envoyés).
  */
@@ -23,25 +23,25 @@ class SynapseDebugLog
     private ?int $id = null;
 
     /**
-     * Identifiant unique du debug (généré lors de l'appel LLM)
+     * Identifiant unique du debug (généré lors de l'appel LLM).
      */
     #[ORM\Column(type: Types::STRING, length: 50, unique: true)]
     private string $debugId;
 
     /**
-     * ID de la conversation (optionnel, pour lier les appels à une conversation)
+     * ID de la conversation (optionnel, pour lier les appels à une conversation).
      */
     #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
     private ?string $conversationId = null;
 
     /**
-     * Timestamp de création
+     * Timestamp de création.
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     /**
-     * Données du debug (JSON)
+     * Données du debug (JSON).
      *
      * Contient :
      * - preset_config : paramètres effectivement envoyés au LLM
@@ -73,6 +73,7 @@ class SynapseDebugLog
     public function setDebugId(string $debugId): self
     {
         $this->debugId = $debugId;
+
         return $this;
     }
 
@@ -84,6 +85,7 @@ class SynapseDebugLog
     public function setConversationId(?string $conversationId): self
     {
         $this->conversationId = $conversationId;
+
         return $this;
     }
 
@@ -95,6 +97,7 @@ class SynapseDebugLog
     public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
         $this->createdAt = $createdAt;
+
         return $this;
     }
 
@@ -112,6 +115,7 @@ class SynapseDebugLog
     public function setData(array $data): self
     {
         $this->data = $data;
+
         return $this;
     }
 }

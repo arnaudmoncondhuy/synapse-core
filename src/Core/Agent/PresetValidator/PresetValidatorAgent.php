@@ -6,11 +6,11 @@ namespace ArnaudMoncondhuy\SynapseCore\Core\Agent\PresetValidator;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
+use ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService;
+use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
-use ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService;
-use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 
 /**
  * Agent de validation de preset LLM.
@@ -28,7 +28,8 @@ class PresetValidatorAgent implements AgentInterface
         private ModelCapabilityRegistry $capabilityRegistry,
         private SynapseProviderRepository $providerRepo,
         private ConfigProviderInterface $configProvider,
-    ) {}
+    ) {
+    }
 
     public function getName(): string
     {
@@ -42,6 +43,7 @@ class PresetValidatorAgent implements AgentInterface
 
     /**
      * @param array{preset: SynapsePreset} $input
+     *
      * @return array<string, mixed>
      */
     public function run(array $input): array
@@ -73,7 +75,7 @@ class PresetValidatorAgent implements AgentInterface
     {
         $report = [];
 
-        for ($i = 1; $i <= 3; $i++) {
+        for ($i = 1; $i <= 3; ++$i) {
             $this->runStep($i, $preset, $report);
         }
 
@@ -94,25 +96,25 @@ class PresetValidatorAgent implements AgentInterface
         $providerName = $preset->getProviderName();
         if (empty($providerName)) {
             $errors[] = 'Aucun provider défini dans le preset';
-            $checks['provider_exists']     = false;
-            $checks['provider_enabled']    = false;
+            $checks['provider_exists'] = false;
+            $checks['provider_enabled'] = false;
             $checks['provider_configured'] = false;
         } else {
             $provider = $this->providerRepo->findByName($providerName);
-            $checks['provider_exists'] = $provider !== null;
+            $checks['provider_exists'] = null !== $provider;
 
-            if ($provider === null) {
+            if (null === $provider) {
                 $errors[] = "Provider \"$providerName\" introuvable en base de données";
-                $checks['provider_enabled']    = false;
+                $checks['provider_enabled'] = false;
                 $checks['provider_configured'] = false;
             } else {
-                $checks['provider_enabled']    = $provider->isEnabled();
+                $checks['provider_enabled'] = $provider->isEnabled();
                 $checks['provider_configured'] = $provider->isConfigured();
 
                 if (!$provider->isEnabled()) {
-                    $errors[] = 'Provider "' . $provider->getLabel() . '" est désactivé';
+                    $errors[] = 'Provider "'.$provider->getLabel().'" est désactivé';
                 } elseif (!$provider->isConfigured()) {
-                    $errors[] = 'Provider "' . $provider->getLabel() . '" non configuré (clé API manquante)';
+                    $errors[] = 'Provider "'.$provider->getLabel().'" non configuré (clé API manquante)';
                 }
             }
         }
@@ -128,16 +130,16 @@ class PresetValidatorAgent implements AgentInterface
 
         $report['config_checks'] = $checks;
         $report['config_errors'] = $errors;
-        $report['config_ok']     = empty($errors);
-        $report['preset_info']   = [
-            'name'               => $preset->getName(),
-            'provider'           => $providerName,
-            'model'              => $model,
-            'streaming_enabled'  => $preset->isStreamingEnabled(),
-            'temperature'        => $preset->getGenerationTemperature(),
-            'top_p'              => $preset->getGenerationTopP(),
-            'top_k'              => $preset->getGenerationTopK(),
-            'max_output_tokens'  => $preset->getGenerationMaxOutputTokens(),
+        $report['config_ok'] = empty($errors);
+        $report['preset_info'] = [
+            'name' => $preset->getName(),
+            'provider' => $providerName,
+            'model' => $model,
+            'streaming_enabled' => $preset->isStreamingEnabled(),
+            'temperature' => $preset->getGenerationTemperature(),
+            'top_p' => $preset->getGenerationTopP(),
+            'top_k' => $preset->getGenerationTopK(),
+            'max_output_tokens' => $preset->getGenerationMaxOutputTokens(),
         ];
     }
 
@@ -148,17 +150,17 @@ class PresetValidatorAgent implements AgentInterface
      */
     private function executeLlmCallStep(SynapsePreset $preset, array &$report): void
     {
-        $result    = [];
+        $result = [];
         $syncError = null;
 
         try {
             $result = $this->chatService->ask(
                 'Dis-moi bonjour en une phrase courte.',
                 [
-                    'preset'    => $preset,
-                    'debug'     => true,
+                    'preset' => $preset,
+                    'debug' => true,
                     'stateless' => true,
-                    'tools'     => [],
+                    'tools' => [],
                     // Pas de 'streaming' forcé : on respecte le réglage réel du preset
                     // pour valider le comportement de streaming déclaré
                 ]
@@ -168,67 +170,67 @@ class PresetValidatorAgent implements AgentInterface
         }
 
         $report['ai_response'] = $result['answer'] ?? null;
-        $report['debug_id']    = $result['debug_id'] ?? null;
-        $report['sync_error']  = $syncError; // Gardé intentionnellement dans le rapport final
+        $report['debug_id'] = $result['debug_id'] ?? null;
+        $report['sync_error'] = $syncError; // Gardé intentionnellement dans le rapport final
 
         // Récupérer les données de debug depuis la DB
         $debugData = [];
         if (!empty($result['debug_id'])) {
-            $debugLog  = $this->debugLogRepo->findByDebugId($result['debug_id']);
+            $debugLog = $this->debugLogRepo->findByDebugId($result['debug_id']);
             $debugData = $debugLog?->getData() ?? [];
         }
 
-        $report['usage_test']      = $debugData['usage'] ?? ($result['usage'] ?? []);
+        $report['usage_test'] = $debugData['usage'] ?? ($result['usage'] ?? []);
         $report['debug_data_sync'] = $debugData;
 
         $report['critical_checks'] = [
             'response_not_empty' => !empty($result['answer']),
-            'debug_saved_in_db'  => !empty($result['debug_id']),
+            'debug_saved_in_db' => !empty($result['debug_id']),
         ];
 
         // ── Comparaison preset déclaré vs paramètres réellement envoyés à l'API ──
         $actualParams = $debugData['preset_config'] ?? [];
-        $rawRequest   = $debugData['raw_request_body'] ?? [];
+        $rawRequest = $debugData['raw_request_body'] ?? [];
 
         // Les paramètres réels peuvent être dans preset_config (config normalisée) ou raw_request_body
-        $actualModel       = $actualParams['model']       ?? $rawRequest['model']       ?? null;
-        $actualTemp        = $actualParams['temperature']  ?? $rawRequest['temperature']  ?? null;
-        $actualTopP        = $actualParams['top_p']        ?? $rawRequest['top_p']        ?? null;
-        $actualStreaming    = $rawRequest['stream']         ?? $actualParams['streaming']  ?? null;
+        $actualModel = $actualParams['model'] ?? $rawRequest['model'] ?? null;
+        $actualTemp = $actualParams['temperature'] ?? $rawRequest['temperature'] ?? null;
+        $actualTopP = $actualParams['top_p'] ?? $rawRequest['top_p'] ?? null;
+        $actualStreaming = $rawRequest['stream'] ?? $actualParams['streaming'] ?? null;
 
-        $expectedTemp        = $preset->getGenerationTemperature();
-        $expectedTopP        = $preset->getGenerationTopP();
-        $expectedStreaming    = $preset->isStreamingEnabled();
+        $expectedTemp = $preset->getGenerationTemperature();
+        $expectedTopP = $preset->getGenerationTopP();
+        $expectedStreaming = $preset->isStreamingEnabled();
 
         $comparison = [];
 
         $comparison['model'] = [
             'expected' => $preset->getModel(),
-            'actual'   => $actualModel,
-            'ok'       => $actualModel !== null && strtolower((string) $actualModel) === strtolower($preset->getModel()),
+            'actual' => $actualModel,
+            'ok' => null !== $actualModel && strtolower((string) $actualModel) === strtolower($preset->getModel()),
         ];
 
-        if ($actualTemp !== null) {
+        if (null !== $actualTemp) {
             $comparison['temperature'] = [
                 'expected' => $expectedTemp,
-                'actual'   => round((float) $actualTemp, 4),
-                'ok'       => abs((float) $actualTemp - $expectedTemp) < 0.001,
+                'actual' => round((float) $actualTemp, 4),
+                'ok' => abs((float) $actualTemp - $expectedTemp) < 0.001,
             ];
         }
 
-        if ($actualTopP !== null) {
+        if (null !== $actualTopP) {
             $comparison['top_p'] = [
                 'expected' => $expectedTopP,
-                'actual'   => round((float) $actualTopP, 4),
-                'ok'       => abs((float) $actualTopP - $expectedTopP) < 0.001,
+                'actual' => round((float) $actualTopP, 4),
+                'ok' => abs((float) $actualTopP - $expectedTopP) < 0.001,
             ];
         }
 
-        if ($actualStreaming !== null) {
+        if (null !== $actualStreaming) {
             $comparison['streaming'] = [
                 'expected' => $expectedStreaming,
-                'actual'   => (bool) $actualStreaming,
-                'ok'       => (bool) $actualStreaming === $expectedStreaming,
+                'actual' => (bool) $actualStreaming,
+                'ok' => (bool) $actualStreaming === $expectedStreaming,
             ];
         }
 
@@ -236,13 +238,13 @@ class PresetValidatorAgent implements AgentInterface
         $caps = $this->capabilityRegistry->getCapabilities($preset->getModel());
         if ($caps->thinking) {
             $providerOptions = $preset->getProviderOptions() ?? [];
-            $thinkingConfig  = $providerOptions['thinking'] ?? null;
-            $actualThinking  = $rawRequest['thinking'] ?? $rawRequest['reasoning_effort'] ?? null;
+            $thinkingConfig = $providerOptions['thinking'] ?? null;
+            $actualThinking = $rawRequest['thinking'] ?? $rawRequest['reasoning_effort'] ?? null;
 
             $comparison['thinking'] = [
-                'expected' => $thinkingConfig !== null ? json_encode($thinkingConfig) : '(non configuré)',
-                'actual'   => $actualThinking !== null ? json_encode($actualThinking) : '(absent de la requête)',
-                'ok'       => ($thinkingConfig === null) === ($actualThinking === null), // Les deux absents = ok
+                'expected' => null !== $thinkingConfig ? json_encode($thinkingConfig) : '(non configuré)',
+                'actual' => null !== $actualThinking ? json_encode($actualThinking) : '(absent de la requête)',
+                'ok' => (null === $thinkingConfig) === (null === $actualThinking), // Les deux absents = ok
             ];
         }
 
@@ -260,55 +262,55 @@ class PresetValidatorAgent implements AgentInterface
         // (normalement géré par le try/finally de ChatService, mais on double la sécurité)
         $this->configProvider->setOverride(null);
 
-        $debugData    = $report['debug_data_sync'] ?? [];
-        $syncError    = $report['sync_error'] ?? null;
-        $syncUsage    = $report['usage_test'] ?? [];
+        $debugData = $report['debug_data_sync'] ?? [];
+        $syncError = $report['sync_error'] ?? null;
+        $syncUsage = $report['usage_test'] ?? [];
         $configErrors = $report['config_errors'] ?? [];
 
         $presetConfig = $preset->toArray();
         unset($presetConfig['provider_credentials']);
-        $presetConfigJson     = json_encode($presetConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $presetConfigJson = json_encode($presetConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         $normalizedParamsJson = json_encode($debugData['preset_config'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        $rawRequestJson       = json_encode($debugData['raw_request_body'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $rawRequestJson = json_encode($debugData['raw_request_body'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $rawResponse = $debugData['raw_api_response'] ?? $debugData['raw_api_chunks'] ?? [];
-        if (empty($rawResponse) && $syncError !== null) {
+        if (empty($rawResponse) && null !== $syncError) {
             $rawResponse = ['error_from_api_client' => $syncError];
         }
         $rawResponseJson = json_encode($rawResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        $caps     = $this->capabilityRegistry->getCapabilities($preset->getModel());
+        $caps = $this->capabilityRegistry->getCapabilities($preset->getModel());
         $capsJson = json_encode([
-            'thinking_supported'          => $caps->thinking,
-            'safety_settings_supported'   => $caps->safetySettings,
-            'top_k_supported'             => $caps->topK,
-            'function_calling_supported'  => $caps->functionCalling,
-            'streaming_supported'         => $caps->streaming,
+            'thinking_supported' => $caps->thinking,
+            'safety_settings_supported' => $caps->safetySettings,
+            'top_k_supported' => $caps->topK,
+            'function_calling_supported' => $caps->functionCalling,
+            'streaming_supported' => $caps->streaming,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $configErrorsText = '';
         if (!empty($configErrors)) {
             $configErrorsText = "## ⚠️ Erreurs de configuration détectées\n"
-                . implode("\n", array_map(fn($e) => "- $e", $configErrors))
-                . "\n\n";
+                .implode("\n", array_map(fn ($e) => "- $e", $configErrors))
+                ."\n\n";
         }
 
         $tokensOk = (($syncUsage['prompt_tokens'] ?? 0) + ($syncUsage['completion_tokens'] ?? 0) + ($syncUsage['thinking_tokens'] ?? 0)) === ($syncUsage['total_tokens'] ?? 0);
 
         $analysisPrompt = sprintf(
             "Tu es un agent de validation du système Synapse LLM. Analyse les données du test d'un preset.\n\n"
-                . "OBJECTIF : Vérifier que les paramètres réellement envoyés à l'API correspondent à ce qui est configuré dans le preset.\n"
-                . "IMPORTANT : Si la réponse brute contient une erreur (ex: 400 Bad Request, 401 Unauthorized), explique la cause probable.\n"
-                . "IMPORTANT : Vérifie les incohérences de capacités entre le preset et le modèle (ex: thinking activé sur un modèle qui ne le supporte pas).\n\n"
-                . "%s"
-                . "## 0. Capacités déclarées du modèle\n```json\n%s\n```\n\n"
-                . "## 1. Configuration du preset (déclarée)\n```json\n%s\n```\n\n"
-                . "## 2. Paramètres normalisés envoyés (debug)\n```json\n%s\n```\n\n"
-                . "## 3. Requête brute envoyée à l'API\n```json\n%s\n```\n\n"
-                . "## 4. Réponse brute reçue de l'API\n```json\n%s\n```\n\n"
-                . "## 5. Consommation tokens\n- Prompt: %d, Completion: %d, Thinking: %d, Total: %d (%s)\n\n"
-                . "Retourne un rapport Markdown concis avec ces sections :\n"
-                . "### ✅ Points conformes\n### ⚠️ Anomalies détectées\n### 💡 Recommandations\n### Conclusion",
+                ."OBJECTIF : Vérifier que les paramètres réellement envoyés à l'API correspondent à ce qui est configuré dans le preset.\n"
+                ."IMPORTANT : Si la réponse brute contient une erreur (ex: 400 Bad Request, 401 Unauthorized), explique la cause probable.\n"
+                ."IMPORTANT : Vérifie les incohérences de capacités entre le preset et le modèle (ex: thinking activé sur un modèle qui ne le supporte pas).\n\n"
+                .'%s'
+                ."## 0. Capacités déclarées du modèle\n```json\n%s\n```\n\n"
+                ."## 1. Configuration du preset (déclarée)\n```json\n%s\n```\n\n"
+                ."## 2. Paramètres normalisés envoyés (debug)\n```json\n%s\n```\n\n"
+                ."## 3. Requête brute envoyée à l'API\n```json\n%s\n```\n\n"
+                ."## 4. Réponse brute reçue de l'API\n```json\n%s\n```\n\n"
+                ."## 5. Consommation tokens\n- Prompt: %d, Completion: %d, Thinking: %d, Total: %d (%s)\n\n"
+                ."Retourne un rapport Markdown concis avec ces sections :\n"
+                ."### ✅ Points conformes\n### ⚠️ Anomalies détectées\n### 💡 Recommandations\n### Conclusion",
             $configErrorsText,
             $capsJson,
             $presetConfigJson,
@@ -326,15 +328,16 @@ class PresetValidatorAgent implements AgentInterface
         try {
             $analysisResult = $this->chatService->ask($analysisPrompt, [
                 'stateless' => true,
-                'debug'     => false,
-                'tools'     => [],
+                'debug' => false,
+                'tools' => [],
                 // Pas de 'preset' : utilise le preset actif pour l'analyse
             ]);
         } catch (\Throwable $e) {
-            $report['analysis'] = 'Analyse IA indisponible : ' . $e->getMessage();
+            $report['analysis'] = 'Analyse IA indisponible : '.$e->getMessage();
             $report['all_critical_ok'] = ($report['config_ok'] ?? true)
                 && !in_array(false, $report['critical_checks'] ?? [], true);
             unset($report['debug_data_sync']);
+
             return;
         }
 
@@ -342,7 +345,7 @@ class PresetValidatorAgent implements AgentInterface
 
         // Statut global : config OK + réponse non vide
         $criticalChecks = $report['critical_checks'] ?? [];
-        $configOk       = $report['config_ok'] ?? true;
+        $configOk = $report['config_ok'] ?? true;
         $report['all_critical_ok'] = $configOk && !in_array(false, $criticalChecks, true);
 
         // Nettoyage des données internes volumineuses (sync_error est intentionnellement gardé)

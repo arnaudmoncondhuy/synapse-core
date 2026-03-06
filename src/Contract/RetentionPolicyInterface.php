@@ -23,9 +23,9 @@ interface RetentionPolicyInterface
     /**
      * Évalue individuellement si une conversation doit être supprimée.
      *
-     * @param SynapseConversation $conversation La conversation à tester.
+     * @param SynapseConversation $conversation la conversation à tester
      *
-     * @return bool True si elle doit être purgée immédiatement.
+     * @return bool true si elle doit être purgée immédiatement
      */
     public function shouldPurge(SynapseConversation $conversation): bool;
 
@@ -39,7 +39,7 @@ interface RetentionPolicyInterface
     /**
      * Hook appelé à la fin d'un processus global de nettoyage.
      *
-     * @param int $purgedCount Le nombre total de conversations supprimées lors de ce cycle.
+     * @param int $purgedCount le nombre total de conversations supprimées lors de ce cycle
      */
     public function afterPurge(int $purgedCount): void;
 }

@@ -19,7 +19,7 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère un log de debug par ID
+     * Récupère un log de debug par ID.
      */
     public function findByDebugId(string $debugId): ?SynapseDebugLog
     {
@@ -27,8 +27,8 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les logs de debug récents
-     * 
+     * Récupère les logs de debug récents.
+     *
      * @return SynapseDebugLog[]
      */
     public function findRecent(int $limit = 50): array
@@ -44,7 +44,7 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Supprime tous les logs de debug
+     * Supprime tous les logs de debug.
      */
     public function clearAll(): int
     {

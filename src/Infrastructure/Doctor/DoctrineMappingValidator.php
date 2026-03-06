@@ -15,14 +15,16 @@ class DoctrineMappingValidator
 {
     public function __construct(
         private readonly Filesystem $filesystem,
-    ) {}
+    ) {
+    }
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $doctrineFile = $projectDir . '/config/packages/doctrine.yaml';
+        $doctrineFile = $projectDir.'/config/packages/doctrine.yaml';
 
         if (!$this->filesystem->exists($doctrineFile)) {
             $io->writeln('  <comment>[SKIP]</comment> Doctrine config not found');
+
             return true;
         }
 
@@ -41,17 +43,18 @@ class DoctrineMappingValidator
             $mappings = $config['doctrine']['orm']['mappings'];
         }
 
-        if ($mappings === null) {
+        if (null === $mappings) {
             $io->error('[Doctrine] No ORM mappings configured.');
             if ($fix) {
                 $doctrineConfig = (isset($config['doctrine']) && is_array($config['doctrine'])) ? $config['doctrine'] : [];
                 $this->addDefaultMappings($doctrineFile, $doctrineConfig, $io);
             }
+
             return false;
         }
 
         $mappings = $config['doctrine']['orm']['mappings'];
-        $entityDir = $projectDir . '/src/Entity';
+        $entityDir = $projectDir.'/src/Entity';
         $isValid = true;
 
         // Check if src/Entity is mapped
@@ -87,7 +90,7 @@ class DoctrineMappingValidator
 
         foreach ($synapseNamespaces as $ns => $expectedPath) {
             try {
-                $testClass = $ns . '\\SynapseConversation';
+                $testClass = $ns.'\\SynapseConversation';
                 if (class_exists($testClass)) {
                     // Bundle is installed, check if mapped
                     $found = false;
@@ -155,7 +158,7 @@ class DoctrineMappingValidator
         foreach ($doctrineConfig['orm']['mappings'] as $mapping) {
             if (
                 is_array($mapping)
-                && isset($mapping['dir']) && $mapping['dir'] === '%kernel.project_dir%/src/Entity'
+                && isset($mapping['dir']) && '%kernel.project_dir%/src/Entity' === $mapping['dir']
             ) {
                 return;
             }

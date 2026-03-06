@@ -38,9 +38,9 @@ interface AgentInterface
     /**
      * Exécute la logique de l'agent avec les paramètres fournis.
      *
-     * @param array<string, mixed> $input Paramètres d'entrée spécifiques à la mission de l'agent.
+     * @param array<string, mixed> $input paramètres d'entrée spécifiques à la mission de l'agent
      *
-     * @return array<string, mixed> Résultat structuré de l'exécution de l'agent.
+     * @return array<string, mixed> résultat structuré de l'exécution de l'agent
      */
     public function run(array $input): array;
 }

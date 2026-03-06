@@ -10,20 +10,21 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 
 /**
  * Service de haut niveau pour le découpage de documents.
- * 
- * Utilise la stratégie de splitter configurée et les paramètres 
+ *
+ * Utilise la stratégie de splitter configurée et les paramètres
  * globaux (taille, overlap) pour fournir des segments prêts à la vectorisation.
  */
 class ChunkingService
 {
     public function __construct(
         private TextSplitterRegistry $splitterRegistry,
-        private SynapseConfigRepository $configRepository
-    ) {}
+        private SynapseConfigRepository $configRepository,
+    ) {
+    }
 
     /**
      * Découpe un texte en utilisant les réglages globaux du bundle.
-     * 
+     *
      * @return string[]
      */
     public function chunkText(string $text, ?int $size = null, ?int $overlap = null, ?string $strategy = null): array
@@ -45,6 +46,7 @@ class ChunkingService
     public function getSplitter(): TextSplitterInterface
     {
         $config = $this->configRepository->getGlobalConfig();
+
         return $this->splitterRegistry->getSplitter($config->getChunkingStrategy());
     }
 }

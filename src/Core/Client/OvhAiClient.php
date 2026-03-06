@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Core\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
-use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmAuthenticationException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
-use ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry;
 use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -35,23 +35,24 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 {
-    private string $model         = 'Gpt-oss-20b';
-    private string $apiKey        = '';
-    private string $endpoint      = 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1';
-    private float  $temperature   = 1.0;
-    private float  $topP          = 0.95;
-    private ?int   $maxTokens     = null;
+    private string $model = 'Gpt-oss-20b';
+    private string $apiKey = '';
+    private string $endpoint = 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1';
+    private float $temperature = 1.0;
+    private float $topP = 0.95;
+    private ?int $maxTokens = null;
     /** @var string[] */
-    private array  $stopSequences = [];
-    private bool   $thinkingEnabled = false;
-    private ?int   $thinkingBudget = null;
+    private array $stopSequences = [];
+    private bool $thinkingEnabled = false;
+    private ?int $thinkingBudget = null;
     private string $reasoningEffort = 'high';  // high, medium, low, minimal
 
     public function __construct(
         private HttpClientInterface $httpClient,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {}
+    ) {
+    }
 
     public function getProviderName(): string
     {
@@ -80,31 +81,31 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $debugOut['actual_request_params'] = [
-            'model'              => $effectiveModel,
-            'provider'           => 'ovh',
-            'temperature'        => $this->temperature,
-            'top_p'              => $this->topP,
-            'top_k'              => null,  // OVH n'expose pas topK
-            'max_output_tokens'  => $this->maxTokens,
-            'thinking_enabled'   => $this->thinkingEnabled,
-            'thinking_budget'    => $this->thinkingBudget,
-            'reasoning_effort'   => $this->thinkingEnabled ? $this->reasoningEffort : null,
-            'safety_enabled'     => false,  // OVH n'a pas de sécurité native
-            'tools_sent'         => !empty($tools) && $caps->functionCalling,
+            'model' => $effectiveModel,
+            'provider' => 'ovh',
+            'temperature' => $this->temperature,
+            'top_p' => $this->topP,
+            'top_k' => null,  // OVH n'expose pas topK
+            'max_output_tokens' => $this->maxTokens,
+            'thinking_enabled' => $this->thinkingEnabled,
+            'thinking_budget' => $this->thinkingBudget,
+            'reasoning_effort' => $this->thinkingEnabled ? $this->reasoningEffort : null,
+            'safety_enabled' => false,  // OVH n'a pas de sécurité native
+            'tools_sent' => !empty($tools) && $caps->functionCalling,
             'system_prompt_sent' => $caps->systemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
-            'context_caching'    => false,  // OVH n'a pas de context caching
+            'context_caching' => false,  // OVH n'a pas de context caching
         ];
         $debugOut['raw_request_body'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($payload);
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/') . '/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
+                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Content-Type' => 'application/json',
                 ],
-                'json'    => $payload,
+                'json' => $payload,
                 'timeout' => 300,
-                'buffer'  => false,
+                'buffer' => false,
             ]);
 
             // Accumulate tool call arguments across chunks (tool calls are streamed incrementally)
@@ -122,6 +123,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $buffer .= $chunk->getContent();
                 } catch (\Throwable $e) {
                     $this->handleException($e);
+
                     return;
                 }
 
@@ -131,7 +133,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $buffer = substr($buffer, $nlPos + 1);
                     $line = rtrim($line, "\r");
 
-                    if ($line === 'data: [DONE]') {
+                    if ('data: [DONE]' === $line) {
                         // Safety net: flush remaining accumulated tool calls if any
                         if (!empty($toolCallsAccumulator)) {
                             yield $this->buildToolCallChunk($toolCallsAccumulator);
@@ -140,7 +142,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                         break;
                     }
 
-                    if ($line === '' || !str_starts_with($line, 'data: ')) {
+                    if ('' === $line || !str_starts_with($line, 'data: ')) {
                         continue;
                     }
 
@@ -154,7 +156,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $rawApiChunks[] = $data;
 
                     $result = $this->processChunk($data, $toolCallsAccumulator);
-                    if ($result !== null) {
+                    if (null !== $result) {
                         yield $result;
                     }
                 }
@@ -162,7 +164,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
             // Handle any remaining buffer content (edge case)
             $remaining = trim($buffer);
-            if ($remaining !== '' && str_starts_with($remaining, 'data: ') && $remaining !== 'data: [DONE]') {
+            if ('' !== $remaining && str_starts_with($remaining, 'data: ') && 'data: [DONE]' !== $remaining) {
                 $jsonStr = substr($remaining, 6);
                 $data = json_decode($jsonStr, true);
                 if (is_array($data)) {
@@ -170,7 +172,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $rawApiChunks[] = $data;
 
                     $result = $this->processChunk($data, $toolCallsAccumulator);
-                    if ($result !== null) {
+                    if (null !== $result) {
                         yield $result;
                     }
                 }
@@ -205,29 +207,29 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $debugOut['actual_request_params'] = [
-            'model'              => $effectiveModel,
-            'provider'           => 'ovh',
-            'temperature'        => $this->temperature,
-            'top_p'              => $this->topP,
-            'top_k'              => null,  // OVH n'expose pas topK
-            'max_output_tokens'  => $this->maxTokens,
-            'thinking_enabled'   => $this->thinkingEnabled,
-            'thinking_budget'    => $this->thinkingBudget,
-            'reasoning_effort'   => $this->thinkingEnabled ? $this->reasoningEffort : null,
-            'safety_enabled'     => false,  // OVH n'a pas de sécurité native
-            'tools_sent'         => !empty($tools) && $caps->functionCalling,
+            'model' => $effectiveModel,
+            'provider' => 'ovh',
+            'temperature' => $this->temperature,
+            'top_p' => $this->topP,
+            'top_k' => null,  // OVH n'expose pas topK
+            'max_output_tokens' => $this->maxTokens,
+            'thinking_enabled' => $this->thinkingEnabled,
+            'thinking_budget' => $this->thinkingBudget,
+            'reasoning_effort' => $this->thinkingEnabled ? $this->reasoningEffort : null,
+            'safety_enabled' => false,  // OVH n'a pas de sécurité native
+            'tools_sent' => !empty($tools) && $caps->functionCalling,
             'system_prompt_sent' => $caps->systemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
-            'context_caching'    => false,  // OVH n'a pas de context caching
+            'context_caching' => false,  // OVH n'a pas de context caching
         ];
         $debugOut['raw_request_body'] = $payload;
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/') . '/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
+                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Content-Type' => 'application/json',
                 ],
-                'json'    => $payload,
+                'json' => $payload,
                 'timeout' => 300,
             ]);
 
@@ -239,6 +241,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             return $this->normalizeCompletionResponse($data);
         } catch (\Throwable $e) {
             $this->handleException($e);
+
             return $this->emptyChunk();
         }
     }
@@ -259,12 +262,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         ];
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/') . '/embeddings', [
+            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/embeddings', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                    'Content-Type'  => 'application/json',
+                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Content-Type' => 'application/json',
                 ],
-                'json'    => $payload,
+                'json' => $payload,
                 'timeout' => 60,
             ]);
 
@@ -273,7 +276,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             $embeddings = [];
             if (isset($data['data']) && is_array($data['data'])) {
                 // OpenAI returns data sorted by index, but it's good practice to ensure it
-                usort($data['data'], fn($a, $b) => ($a['index'] ?? 0) <=> ($b['index'] ?? 0));
+                usort($data['data'], fn ($a, $b) => ($a['index'] ?? 0) <=> ($b['index'] ?? 0));
 
                 foreach ($data['data'] as $item) {
                     if (isset($item['embedding'])) {
@@ -284,15 +287,16 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
             $usage = [
                 'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
-                'total_tokens'  => $data['usage']['total_tokens'] ?? 0,
+                'total_tokens' => $data['usage']['total_tokens'] ?? 0,
             ];
 
             return [
                 'embeddings' => $embeddings,
-                'usage'      => $usage,
+                'usage' => $usage,
             ];
         } catch (\Throwable $e) {
             $this->handleException($e);
+
             return ['embeddings' => [], 'usage' => ['prompt_tokens' => 0, 'total_tokens' => 0]];
         }
     }
@@ -319,15 +323,15 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                 $reasoningTokens = $u['completion_tokens_details']['reasoning_tokens'] ?? 0;
             }
             $normalized['usage'] = [
-                'prompt_tokens'     => $u['prompt_tokens'] ?? 0,
+                'prompt_tokens' => $u['prompt_tokens'] ?? 0,
                 'completion_tokens' => $u['completion_tokens'] ?? 0,
-                'thinking_tokens'   => $reasoningTokens,
-                'total_tokens'      => $u['total_tokens'] ?? 0,
+                'thinking_tokens' => $reasoningTokens,
+                'total_tokens' => $u['total_tokens'] ?? 0,
             ];
         }
 
         $choice = $data['choices'][0] ?? null;
-        if ($choice === null) {
+        if (null === $choice) {
             // Only yield if we have usage data
             return !empty($normalized['usage']) ? $normalized : null;
         }
@@ -336,15 +340,15 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $finishReason = $choice['finish_reason'] ?? null;
 
         // Text content
-        if (isset($delta['content']) && $delta['content'] !== '') {
+        if (isset($delta['content']) && '' !== $delta['content']) {
             $normalized['text'] = $delta['content'];
         }
 
         // Reasoning/Thinking content (OpenAI compatible format)
         // OVH may return reasoning in 'reasoning' or 'reasoning_content' fields
-        if (isset($delta['reasoning']) && $delta['reasoning'] !== '') {
+        if (isset($delta['reasoning']) && '' !== $delta['reasoning']) {
             $normalized['thinking'] = $delta['reasoning'];
-        } elseif (isset($delta['reasoning_content']) && $delta['reasoning_content'] !== '') {
+        } elseif (isset($delta['reasoning_content']) && '' !== $delta['reasoning_content']) {
             $normalized['thinking'] = $delta['reasoning_content'];
         }
 
@@ -368,19 +372,21 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         // When finish_reason is 'tool_calls', all tool call chunks have been received
-        if ($finishReason === 'tool_calls' && !empty($toolCallsAccumulator)) {
+        if ('tool_calls' === $finishReason && !empty($toolCallsAccumulator)) {
             $toolChunk = $this->buildToolCallChunk($toolCallsAccumulator);
             // Merge usage if present in the same chunk
             if (!empty($normalized['usage'])) {
                 $toolChunk['usage'] = $normalized['usage'];
             }
+
             return $toolChunk;
         }
 
         // Skip truly empty chunks (no text, no thinking, no usage, no tool data)
-        $hasContent = $normalized['text'] !== null
-            || $normalized['thinking'] !== null
+        $hasContent = null !== $normalized['text']
+            || null !== $normalized['thinking']
             || !empty($normalized['usage']);
+
         return $hasContent ? $normalized : null;
     }
 
@@ -400,7 +406,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         foreach ($toolCallsAccumulator as $tc) {
             $args = json_decode($tc['args'], true) ?? [];
             $chunk['function_calls'][] = [
-                'id'   => $tc['id'],
+                'id' => $tc['id'],
                 'name' => $tc['name'],
                 'args' => $args,
             ];
@@ -411,7 +417,6 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         return $chunk;
     }
 
-
     /**
      * Convertit les déclarations d'outils Synapse en format OpenAI.
      *
@@ -421,12 +426,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      */
     private function toOpenAiTools(array $tools): array
     {
-        return array_map(fn(array $tool) => [
-            'type'     => 'function',
+        return array_map(fn (array $tool) => [
+            'type' => 'function',
             'function' => [
-                'name'        => $tool['name'],
+                'name' => $tool['name'],
                 'description' => $tool['description'],
-                'parameters'  => $tool['parameters'],
+                'parameters' => $tool['parameters'],
             ],
         ], $tools);
     }
@@ -434,29 +439,27 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     /**
      * Construit le payload de requête OpenAI.
      *
-     * @param string                           $model
-     * @param array<int, array<string, mixed>> $messages
-     * @param array<int, array<string, mixed>> $tools
+     * @param array<int, array<string, mixed>>                             $messages
+     * @param array<int, array<string, mixed>>                             $tools
      * @param \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps
-     * @param bool                             $stream
      *
      * @return array<string, mixed>
      */
     private function buildPayload(string $model, array $messages, array $tools, $caps, bool $stream): array
     {
         $payload = [
-            'model'       => $model,
-            'messages'    => $messages,
+            'model' => $model,
+            'messages' => $messages,
             'temperature' => $this->temperature,
-            'top_p'       => $this->topP,
-            'stream'      => $stream,
+            'top_p' => $this->topP,
+            'stream' => $stream,
         ];
 
         if ($stream) {
             $payload['stream_options'] = ['include_usage' => true];
         }
 
-        if ($this->maxTokens !== null) {
+        if (null !== $this->maxTokens) {
             $payload['max_tokens'] = $this->maxTokens;
         }
 
@@ -497,15 +500,15 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                 $reasoningTokens = $u['completion_tokens_details']['reasoning_tokens'] ?? 0;
             }
             $normalized['usage'] = [
-                'prompt_tokens'     => $u['prompt_tokens'] ?? 0,
+                'prompt_tokens' => $u['prompt_tokens'] ?? 0,
                 'completion_tokens' => $u['completion_tokens'] ?? 0,
-                'thinking_tokens'   => $reasoningTokens,
-                'total_tokens'      => $u['total_tokens'] ?? 0,
+                'thinking_tokens' => $reasoningTokens,
+                'total_tokens' => $u['total_tokens'] ?? 0,
             ];
         }
 
         $choice = $data['choices'][0] ?? null;
-        if ($choice === null) {
+        if (null === $choice) {
             return $normalized;
         }
 
@@ -541,12 +544,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     private function emptyChunk(): array
     {
         return [
-            'text'           => null,
-            'thinking'       => null,
+            'text' => null,
+            'thinking' => null,
             'function_calls' => [],
-            'usage'          => [],
+            'usage' => [],
             'safety_ratings' => [],
-            'blocked'        => false,
+            'blocked' => false,
             'blocked_reason' => null,
         ];
     }
@@ -580,9 +583,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         // Generation Config
         if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
-            $this->temperature   = (float) ($gen['temperature'] ?? $this->temperature);
-            $this->topP          = (float) ($gen['top_p'] ?? $this->topP);
-            $this->maxTokens     = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
+            $this->temperature = (float) ($gen['temperature'] ?? $this->temperature);
+            $this->topP = (float) ($gen['top_p'] ?? $this->topP);
+            $this->maxTokens = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
             if (isset($gen['stop_sequences']) && is_array($gen['stop_sequences'])) {
                 /** @var array<string> $stopSeqs */
                 $stopSeqs = $gen['stop_sequences'];
@@ -594,7 +597,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         if (isset($config['thinking']) && is_array($config['thinking'])) {
             $thinking = $config['thinking'];
             $this->thinkingEnabled = (bool) ($thinking['enabled'] ?? false);
-            $this->thinkingBudget  = isset($thinking['budget']) ? (int) $thinking['budget'] : null;
+            $this->thinkingBudget = isset($thinking['budget']) ? (int) $thinking['budget'] : null;
             $this->reasoningEffort = (string) ($thinking['reasoning_effort'] ?? 'high');
         }
     }
@@ -603,17 +606,17 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     {
         return [
             'api_key' => [
-                'label'    => 'API Key (Bearer Token)',
-                'type'     => 'password',
-                'help'     => 'Token d\'authentification OVH AI Endpoints.',
+                'label' => 'API Key (Bearer Token)',
+                'type' => 'password',
+                'help' => 'Token d\'authentification OVH AI Endpoints.',
                 'placeholder' => 'ovh_...',
                 'required' => true,
             ],
             'endpoint' => [
-                'label'    => 'Endpoint URL',
-                'type'     => 'text',
-                'help'     => 'URL de base de l\'API. Laisser la valeur par défaut sauf cas particulier.',
-                'value'    => 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
+                'label' => 'Endpoint URL',
+                'type' => 'text',
+                'help' => 'URL de base de l\'API. Laisser la valeur par défaut sauf cas particulier.',
+                'value' => 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
                 'required' => true,
             ],
         ];
@@ -630,19 +633,19 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // Test de connexion: faire un appel à la liste des modèles (gratuit)
         try {
-            $response = $this->httpClient->request('GET', rtrim($endpoint, '/') . '/models', [
+            $response = $this->httpClient->request('GET', rtrim($endpoint, '/').'/models', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Authorization' => 'Bearer '.$apiKey,
                     'Accept' => 'application/json',
                 ],
                 'timeout' => 10,
             ]);
 
-            if ($response->getStatusCode() !== 200) {
-                throw new \Exception('Erreur HTTP ' . $response->getStatusCode() . ': ' . $response->getContent(false));
+            if (200 !== $response->getStatusCode()) {
+                throw new \Exception('Erreur HTTP '.$response->getStatusCode().': '.$response->getContent(false));
             }
         } catch (\Exception $e) {
-            throw new \Exception('Impossible de se connecter à OVH: ' . $e->getMessage());
+            throw new \Exception('Impossible de se connecter à OVH: '.$e->getMessage());
         }
     }
 
@@ -664,19 +667,19 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                 if (isset($errorData['message'])) {
                     $message = $errorData['message'];
                 } else {
-                    $message .= ' || OVH Raw Error: ' . $errorBody;
+                    $message .= ' || OVH Raw Error: '.$errorBody;
                 }
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'OVH AI API Error: ' . $message;
+        $fullMsg = 'OVH AI API Error: '.$message;
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
-            429      => new LlmRateLimitException($fullMsg, 0, $e),
+            429 => new LlmRateLimitException($fullMsg, 0, $e),
             500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default  => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
+            default => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
         };
     }
 }

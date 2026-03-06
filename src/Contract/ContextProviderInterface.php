@@ -31,7 +31,7 @@ interface ContextProviderInterface
      * Définit le comportement global de l'IA. Cette instruction est placée
      * en tête de chaque conversation.
      *
-     * @return string Les instructions système pour le LLM.
+     * @return string les instructions système pour le LLM
      */
     public function getSystemPrompt(): string;
 
@@ -41,7 +41,7 @@ interface ContextProviderInterface
      * Ces données sont converties en texte et injectées après le prompt système
      * pour donner au modèle des informations sur l'environnement actuel.
      *
-     * @return array<string, mixed> Tableau clé-valeur de métadonnées.
+     * @return array<string, mixed> tableau clé-valeur de métadonnées
      */
     public function getInitialContext(): array;
 }

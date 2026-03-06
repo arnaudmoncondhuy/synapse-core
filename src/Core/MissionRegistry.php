@@ -18,7 +18,8 @@ class MissionRegistry
 {
     public function __construct(
         private SynapseMissionRepository $repository,
-    ) {}
+    ) {
+    }
 
     /**
      * Récupère toutes les missions actives, indexées par clé.

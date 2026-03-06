@@ -8,7 +8,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Configuration globale Synapse (singleton)
+ * Configuration globale Synapse (singleton).
  *
  * Contient les paramètres applicatifs globaux :
  * - Rétention des données (RGPD)
@@ -27,19 +27,19 @@ class SynapseConfig
     private ?int $id = null;
 
     /**
-     * Nombre de jours de rétention des conversations (RGPD)
+     * Nombre de jours de rétention des conversations (RGPD).
      */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 30])]
     private int $retentionDays = 30;
 
     /**
-     * Langue du contexte pour la génération (ex: 'fr', 'en')
+     * Langue du contexte pour la génération (ex: 'fr', 'en').
      */
     #[ORM\Column(type: Types::STRING, length: 5, options: ['default' => 'fr'])]
     private string $contextLanguage = 'fr';
 
     /**
-     * Prompt système personnalisé
+     * Prompt système personnalisé.
      *
      * S'ajoute au prompt système de base du bundle.
      * Appliqué à tous les presets LLM.
@@ -48,7 +48,7 @@ class SynapseConfig
     private ?string $systemPrompt = null;
 
     /**
-     * Mode debug global : quand activé, tous les appels LLM sont tracés et stockés en DB
+     * Mode debug global : quand activé, tous les appels LLM sont tracés et stockés en DB.
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $debugMode = false;
@@ -117,6 +117,7 @@ class SynapseConfig
     public function setRetentionDays(int $retentionDays): self
     {
         $this->retentionDays = $retentionDays;
+
         return $this;
     }
 
@@ -128,6 +129,7 @@ class SynapseConfig
     public function setContextLanguage(string $contextLanguage): self
     {
         $this->contextLanguage = $contextLanguage;
+
         return $this;
     }
 
@@ -139,6 +141,7 @@ class SynapseConfig
     public function setSystemPrompt(?string $systemPrompt): self
     {
         $this->systemPrompt = $systemPrompt;
+
         return $this;
     }
 
@@ -150,6 +153,7 @@ class SynapseConfig
     public function setDebugMode(bool $debugMode): self
     {
         $this->debugMode = $debugMode;
+
         return $this;
     }
 
@@ -161,6 +165,7 @@ class SynapseConfig
     public function setEmbeddingProvider(?string $embeddingProvider): self
     {
         $this->embeddingProvider = $embeddingProvider;
+
         return $this;
     }
 
@@ -172,6 +177,7 @@ class SynapseConfig
     public function setEmbeddingModel(?string $embeddingModel): self
     {
         $this->embeddingModel = $embeddingModel;
+
         return $this;
     }
 
@@ -183,6 +189,7 @@ class SynapseConfig
     public function setEmbeddingDimension(?int $embeddingDimension): self
     {
         $this->embeddingDimension = $embeddingDimension;
+
         return $this;
     }
 
@@ -194,6 +201,7 @@ class SynapseConfig
     public function setVectorStore(string $vectorStore): self
     {
         $this->vectorStore = $vectorStore;
+
         return $this;
     }
 
@@ -205,6 +213,7 @@ class SynapseConfig
     public function setChunkingStrategy(string $chunkingStrategy): self
     {
         $this->chunkingStrategy = $chunkingStrategy;
+
         return $this;
     }
 
@@ -216,6 +225,7 @@ class SynapseConfig
     public function setChunkSize(int $chunkSize): self
     {
         $this->chunkSize = $chunkSize;
+
         return $this;
     }
 
@@ -227,6 +237,7 @@ class SynapseConfig
     public function setChunkOverlap(int $chunkOverlap): self
     {
         $this->chunkOverlap = $chunkOverlap;
+
         return $this;
     }
 
@@ -238,11 +249,12 @@ class SynapseConfig
     public function setSpendingLimitsEnabled(bool $spendingLimitsEnabled): self
     {
         $this->spendingLimitsEnabled = $spendingLimitsEnabled;
+
         return $this;
     }
 
     /**
-     * Convertit la config globale en tableau
+     * Convertit la config globale en tableau.
      *
      * @return array<string, mixed> Configuration formatée pour DatabaseConfigProvider
      */

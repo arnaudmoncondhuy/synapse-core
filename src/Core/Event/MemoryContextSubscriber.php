@@ -23,7 +23,8 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         private ?TokenStorageInterface $tokenStorage = null,
         private int $maxMemories = 5,
         private ?SynapseProfiler $profiler = null,
-    ) {}
+    ) {
+    }
 
     public static function getSubscribedEvents(): array
     {
@@ -78,37 +79,39 @@ class MemoryContextSubscriber implements EventSubscriberInterface
                 'relevant' => 0,
                 'threshold' => 0.4,
                 'details' => [],
-                'error' => $error ?? null
+                'error' => $error ?? null,
             ];
             $prompt['metadata'] = $metadata;
             $event->setPrompt($prompt);
+
             return;
         }
 
         // Filtrer les résultats trop peu pertinents (seuil de similarité abaissé pour tolérance)
-        $relevant = array_filter($memories, fn($m) => $m['score'] >= 0.4);
+        $relevant = array_filter($memories, fn ($m) => $m['score'] >= 0.4);
 
         // Ajout des informations de matching dans les metadata du prompt pour le Debug
         $metadata['memory_matching'] = [
             'found' => count($memories),
             'relevant' => count($relevant),
             'threshold' => 0.4,
-            'details' => array_map(fn($m) => [
+            'details' => array_map(fn ($m) => [
                 'score' => $m['score'],
-                'content' => substr($m['content'], 0, 50) . '...'
+                'content' => substr($m['content'], 0, 50).'...',
             ], $memories),
-            'error' => null
+            'error' => null,
         ];
         $prompt['metadata'] = $metadata;
 
         if (empty($relevant)) {
             $event->setPrompt($prompt);
+
             return;
         }
 
         // Construire le bloc "mémoire" à injecter dans le système prompt
         $memoryLines = array_map(
-            fn($m) => '- ' . $m['content'],
+            fn ($m) => '- '.$m['content'],
             array_values($relevant)
         );
 
@@ -124,12 +127,12 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         // Chercher le premier message 'system' pour y concaténer la mémoire
         $systemFound = false;
         foreach ($messages as $i => $entry) {
-            if (is_array($entry) && isset($entry['role']) && $entry['role'] === 'system') {
+            if (is_array($entry) && isset($entry['role']) && 'system' === $entry['role']) {
                 /** @var array{role: string, content?: mixed} $entry */
                 $oldContent = is_string($entry['content'] ?? null) ? (string) $entry['content'] : '';
                 $messages[$i] = [
                     'role' => 'system',
-                    'content' => $oldContent . $memoryString
+                    'content' => $oldContent.$memoryString,
                 ];
                 $systemFound = true;
                 break;
@@ -140,7 +143,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         if (!$systemFound) {
             array_unshift($messages, [
                 'role' => 'system',
-                'content' => ltrim($memoryString)
+                'content' => ltrim($memoryString),
             ]);
         }
 
@@ -165,6 +168,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         }
 
         $id = $user->getId();
-        return $id !== null ? (string) $id : null;
+
+        return null !== $id ? (string) $id : null;
     }
 }

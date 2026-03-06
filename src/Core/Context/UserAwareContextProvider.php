@@ -9,7 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 
 /**
- * Fournisseur de contexte avec support utilisateur
+ * Fournisseur de contexte avec support utilisateur.
  *
  * Classe de base abstraite qui structure le prompt système en plusieurs parties:
  * - Identité de base (abstract - défini par le projet)
@@ -24,11 +24,12 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
 {
     public function __construct(
         protected ?Security $security = null,
-        protected string $language = 'fr'
-    ) {}
+        protected string $language = 'fr',
+    ) {
+    }
 
     /**
-     * Construit le prompt système complet en assemblant les différentes parties
+     * Construit le prompt système complet en assemblant les différentes parties.
      */
     final public function getSystemPrompt(): string
     {
@@ -48,7 +49,7 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     }
 
     /**
-     * Fournit le contexte initial pour la conversation
+     * Fournit le contexte initial pour la conversation.
      *
      * @return array<string, mixed>
      */
@@ -68,40 +69,41 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     }
 
     /**
-     * Identité de base de l'assistant (à implémenter par le projet)
+     * Identité de base de l'assistant (à implémenter par le projet).
      *
      * Exemple: "Tu es un assistant virtuel pour [nom de l'application]."
      */
     abstract protected function getBaseIdentity(): string;
 
     /**
-     * Contexte de date/heure
+     * Contexte de date/heure.
      *
      * Override possible pour personnaliser le format
      */
     protected function getDateContext(): string
     {
         $now = new \DateTimeImmutable();
+
         return sprintf(
-            "Nous sommes le %s à %s",
+            'Nous sommes le %s à %s',
             $now->format('d/m/Y'),
             $now->format('H:i')
         );
     }
 
     /**
-     * Contexte utilisateur
+     * Contexte utilisateur.
      *
      * Par défaut affiche simplement l'identifiant.
      * Les projets peuvent override pour ajouter nom, rôle, etc.
      */
     protected function getUserContext(ConversationOwnerInterface $user): string
     {
-        return "Utilisateur connecté : " . $user->getIdentifier();
+        return 'Utilisateur connecté : '.$user->getIdentifier();
     }
 
     /**
-     * Instructions générales pour l'assistant
+     * Instructions générales pour l'assistant.
      *
      * Support multilingue intégré.
      * Override possible pour instructions personnalisées.
@@ -123,12 +125,12 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
             - If you don't know, say so clearly
             - Remain professional and helpful
             EN,
-            default => ''
+            default => '',
         };
     }
 
     /**
-     * Extrait les données utilisateur pour le contexte initial
+     * Extrait les données utilisateur pour le contexte initial.
      *
      * Override possible pour ajouter plus de données.
      *

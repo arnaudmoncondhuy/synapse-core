@@ -15,22 +15,22 @@ interface EncryptionServiceInterface
     /**
      * Chiffre un texte en clair.
      *
-     * @param string $plaintext Le texte original à protéger.
+     * @param string $plaintext le texte original à protéger
      *
-     * @return string Le texte chiffré (souvent encodé en base64 ou hex).
+     * @return string le texte chiffré (souvent encodé en base64 ou hex)
      *
-     * @throws \RuntimeException Si le chiffrement échoue ou si la clé est manquante.
+     * @throws \RuntimeException si le chiffrement échoue ou si la clé est manquante
      */
     public function encrypt(string $plaintext): string;
 
     /**
      * Déchiffre un texte chiffré précédemment.
      *
-     * @param string $ciphertext Le texte sous forme chiffrée.
+     * @param string $ciphertext le texte sous forme chiffrée
      *
-     * @return string Le texte original déchiffré.
+     * @return string le texte original déchiffré
      *
-     * @throws \RuntimeException Si le déchiffrement est impossible (clé incorrecte, corruption).
+     * @throws \RuntimeException si le déchiffrement est impossible (clé incorrecte, corruption)
      */
     public function decrypt(string $ciphertext): string;
 
@@ -40,9 +40,9 @@ interface EncryptionServiceInterface
      * Permet à Synapse de savoir s'il doit tenter un déchiffrement ou traiter la donnée
      * comme étant déjà en clair (utile lors de l'activation du chiffrement sur des données existantes).
      *
-     * @param string $data La chaîne à analyser.
+     * @param string $data la chaîne à analyser
      *
-     * @return bool True si la donnée porte la signature du service de chiffrement.
+     * @return bool true si la donnée porte la signature du service de chiffrement
      */
     public function isEncrypted(string $data): bool;
 }

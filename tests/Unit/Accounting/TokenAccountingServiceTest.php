@@ -13,9 +13,9 @@ use PHPUnit\Framework\TestCase;
 class TokenAccountingServiceTest extends TestCase
 {
     /**
-     * Test calculateCost() — logique pure sans dépendances externes
+     * Test calculateCost() — logique pure sans dépendances externes.
      */
-    public function testCalculateCost_basic(): void
+    public function testCalculateCostBasic(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -26,7 +26,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(1.0, $cost);
     }
 
-    public function testCalculateCost_withCompletionTokens(): void
+    public function testCalculateCostWithCompletionTokens(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -38,7 +38,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(1.5, $cost);
     }
 
-    public function testCalculateCost_withThinkingTokens(): void
+    public function testCalculateCostWithThinkingTokens(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -50,7 +50,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertEqualsWithDelta(0.55, $cost, 0.00001);
     }
 
-    public function testCalculateCost_returnsZero_whenZeroTokens(): void
+    public function testCalculateCostReturnsZeroWhenZeroTokens(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -61,7 +61,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(0.0, $cost);
     }
 
-    public function testCalculateCost_fractionOfMillion(): void
+    public function testCalculateCostFractionOfMillion(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -73,7 +73,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(0.001, $cost);
     }
 
-    public function testCalculateCost_verySmallCost(): void
+    public function testCalculateCostVerySmallCost(): void
     {
         $service = $this->createServiceWithoutDependencies();
 
@@ -87,9 +87,9 @@ class TokenAccountingServiceTest extends TestCase
     }
 
     /**
-     * Test convertToReferenceCurrency() — logique pure
+     * Test convertToReferenceCurrency() — logique pure.
      */
-    public function testConvertToReferenceCurrency_sameCurrency_noConversion(): void
+    public function testConvertToReferenceCurrencySameCurrencyNoConversion(): void
     {
         $service = new TokenAccountingService(
             modelRepo: $this->createMock(SynapseModelRepository::class),
@@ -103,7 +103,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(100.0, $result);
     }
 
-    public function testConvertToReferenceCurrency_withExchangeRate(): void
+    public function testConvertToReferenceCurrencyWithExchangeRate(): void
     {
         $service = new TokenAccountingService(
             modelRepo: $this->createMock(SynapseModelRepository::class),
@@ -116,7 +116,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(0.91, $result);
     }
 
-    public function testConvertToReferenceCurrency_unknownCurrency_returnsOriginal(): void
+    public function testConvertToReferenceCurrencyUnknownCurrencyReturnsOriginal(): void
     {
         $service = new TokenAccountingService(
             modelRepo: $this->createMock(SynapseModelRepository::class),
@@ -130,7 +130,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertSame(50.0, $result);
     }
 
-    public function testConvertToReferenceCurrency_multipleRates(): void
+    public function testConvertToReferenceCurrencyMultipleRates(): void
     {
         $service = new TokenAccountingService(
             modelRepo: $this->createMock(SynapseModelRepository::class),
@@ -149,9 +149,9 @@ class TokenAccountingServiceTest extends TestCase
     }
 
     /**
-     * Test logUsage() avec mocks EntityManager et Repository
+     * Test logUsage() avec mocks EntityManager et Repository.
      */
-    public function testLogUsage_returnsSynapseLlmCall(): void
+    public function testLogUsageReturnsSynapseLlmCall(): void
     {
         $em = $this->createMock(EntityManagerInterface::class);
         $em->expects($this->once())->method('persist');
@@ -178,7 +178,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertInstanceOf(SynapseLlmCall::class, $result);
     }
 
-    public function testLogUsage_callIdIsNotEmpty(): void
+    public function testLogUsageCallIdIsNotEmpty(): void
     {
         $em = $this->createMock(EntityManagerInterface::class);
         $em->expects($this->once())->method('persist');
@@ -206,7 +206,7 @@ class TokenAccountingServiceTest extends TestCase
         $this->assertIsString($llmCall->getCallId());
     }
 
-    public function testLogUsage_persistsToEntityManager(): void
+    public function testLogUsagePersistsToEntityManager(): void
     {
         $em = $this->createMock(EntityManagerInterface::class);
         $em->expects($this->once())->method('persist');
@@ -246,7 +246,7 @@ class TokenAccountingServiceTest extends TestCase
     }
 
     /**
-     * Helper: create a service without mocking for pure logic tests
+     * Helper: create a service without mocking for pure logic tests.
      */
     private function createServiceWithoutDependencies(): TokenAccountingService
     {

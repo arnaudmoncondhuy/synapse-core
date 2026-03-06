@@ -7,4 +7,6 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Exception;
 /**
  * Levée en cas d'erreur d'authentification ou de credentials invalides.
  */
-class LlmAuthenticationException extends LlmException {}
+class LlmAuthenticationException extends LlmException
+{
+}

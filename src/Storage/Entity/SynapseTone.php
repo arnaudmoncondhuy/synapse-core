@@ -109,6 +109,7 @@ class SynapseTone
     public function setKey(string $key): self
     {
         $this->key = $key;
+
         return $this;
     }
 
@@ -120,6 +121,7 @@ class SynapseTone
     public function setEmoji(string $emoji): self
     {
         $this->emoji = $emoji;
+
         return $this;
     }
 
@@ -131,6 +133,7 @@ class SynapseTone
     public function setName(string $name): self
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -142,6 +145,7 @@ class SynapseTone
     public function setDescription(string $description): self
     {
         $this->description = $description;
+
         return $this;
     }
 
@@ -153,6 +157,7 @@ class SynapseTone
     public function setSystemPrompt(string $systemPrompt): self
     {
         $this->systemPrompt = $systemPrompt;
+
         return $this;
     }
 
@@ -164,6 +169,7 @@ class SynapseTone
     public function setIsBuiltin(bool $isBuiltin): self
     {
         $this->isBuiltin = $isBuiltin;
+
         return $this;
     }
 
@@ -175,6 +181,7 @@ class SynapseTone
     public function setIsActive(bool $isActive): self
     {
         $this->isActive = $isActive;
+
         return $this;
     }
 
@@ -186,6 +193,7 @@ class SynapseTone
     public function setSortOrder(int $sortOrder): self
     {
         $this->sortOrder = $sortOrder;
+
         return $this;
     }
 
@@ -208,12 +216,12 @@ class SynapseTone
     public function toArray(): array
     {
         return [
-            'key'         => $this->key,
-            'emoji'       => $this->emoji,
-            'name'        => $this->name,
+            'key' => $this->key,
+            'emoji' => $this->emoji,
+            'name' => $this->name,
             'description' => $this->description,
-            'isBuiltin'   => $this->isBuiltin,
-            'isActive'    => $this->isActive,
+            'isBuiltin' => $this->isBuiltin,
+            'isActive' => $this->isActive,
         ];
     }
 }

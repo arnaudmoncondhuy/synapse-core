@@ -9,7 +9,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository pour la configuration globale Synapse (singleton)
+ * Repository pour la configuration globale Synapse (singleton).
  *
  * Un seul enregistrement dans cette table : les paramètres applicatifs globaux
  * (rétention RGPD, langue du contexte, prompt système personnalisé).
@@ -30,7 +30,7 @@ class SynapseConfigRepository extends ServiceEntityRepository
     {
         $config = $this->findOneBy([]);
 
-        if ($config !== null) {
+        if (null !== $config) {
             return $config;
         }
 

@@ -8,8 +8,8 @@ use ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface;
 
 /**
  * Découpeur de texte à taille fixe.
- * 
- * Découpe le texte brutalement tous les X caractères, 
+ *
+ * Découpe le texte brutalement tous les X caractères,
  * sans tenir compte de la ponctuation ou des mots.
  */
 class FixedSizeTextSplitter implements TextSplitterInterface

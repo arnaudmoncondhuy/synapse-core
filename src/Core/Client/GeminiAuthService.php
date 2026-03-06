@@ -28,7 +28,8 @@ class GeminiAuthService
     public function __construct(
         private HttpClientInterface $httpClient,
         private ?string $serviceAccountJsonPath = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Injecte les credentials depuis un contenu JSON (depuis la DB).
@@ -73,7 +74,7 @@ class GeminiAuthService
         $response = $this->httpClient->request('POST', self::TOKEN_URL, [
             'body' => [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion'  => $jwt,
+                'assertion' => $jwt,
             ],
         ]);
 
@@ -91,12 +92,13 @@ class GeminiAuthService
      * Priorité : DB (setCredentialsJson) > fichier YAML
      *
      * @return array<string, mixed>
+     *
      * @throws \RuntimeException Si aucune source de credentials n'est disponible
      */
     private function loadCredentials(): array
     {
         // Priorité 1 : credentials injectés depuis la DB
-        if ($this->credentialsOverride !== null) {
+        if (null !== $this->credentialsOverride) {
             return $this->credentialsOverride;
         }
 
@@ -106,12 +108,10 @@ class GeminiAuthService
             if (is_array($credentials)) {
                 return $credentials;
             }
-            throw new \RuntimeException('Invalid Service Account JSON file: ' . $this->serviceAccountJsonPath);
+            throw new \RuntimeException('Invalid Service Account JSON file: '.$this->serviceAccountJsonPath);
         }
 
-        throw new \RuntimeException(
-            'Google credentials not configured. Add a Gemini provider in the Synapse admin (Providers → Gemini).'
-        );
+        throw new \RuntimeException('Google credentials not configured. Add a Gemini provider in the Synapse admin (Providers → Gemini).');
     }
 
     /**
@@ -126,17 +126,17 @@ class GeminiAuthService
 
         $now = time();
         $payload = [
-            'iss'   => $credentials['client_email'],
+            'iss' => $credentials['client_email'],
             'scope' => self::SCOPE,
-            'aud'   => self::TOKEN_URL,
-            'iat'   => $now,
-            'exp'   => $now + 3600,
+            'aud' => self::TOKEN_URL,
+            'iat' => $now,
+            'exp' => $now + 3600,
         ];
 
         $header64 = $this->base64UrlEncode((string) json_encode($header));
         $payload64 = $this->base64UrlEncode((string) json_encode($payload));
 
-        $signatureInput = $header64 . '.' . $payload64;
+        $signatureInput = $header64.'.'.$payload64;
 
         openssl_sign(
             $signatureInput,
@@ -145,7 +145,7 @@ class GeminiAuthService
             OPENSSL_ALGO_SHA256
         );
 
-        return $signatureInput . '.' . $this->base64UrlEncode($signature);
+        return $signatureInput.'.'.$this->base64UrlEncode($signature);
     }
 
     private function base64UrlEncode(string $data): string

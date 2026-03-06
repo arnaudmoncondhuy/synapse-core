@@ -54,14 +54,15 @@ class ToolRegistry
      * Retourne les définitions des outils au format standard (OpenAI-like).
      * Prêt à être envoyé au LLM via ChatService.
      *
-     * @param string[]|null $names Si défini, ne retourne que les définitions des outils portant ces noms.
+     * @param string[]|null $names si défini, ne retourne que les définitions des outils portant ces noms
+     *
      * @return array<int, array{name: string, description: string, parameters: array<string, mixed>}>
      */
     public function getDefinitions(?array $names = null): array
     {
         $definitions = [];
         foreach ($this->tools as $name => $tool) {
-            if ($names !== null && !in_array($name, $names, true)) {
+            if (null !== $names && !in_array($name, $names, true)) {
                 continue;
             }
             $definitions[] = [

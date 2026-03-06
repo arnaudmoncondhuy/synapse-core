@@ -7,7 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Security;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 
 /**
- * Service de chiffrement basé sur libsodium
+ * Service de chiffrement basé sur libsodium.
  *
  * Algorithme : sodium_crypto_secretbox (équivalent AES-256-GCM)
  * Format : base64(nonce + ciphertext)
@@ -23,6 +23,7 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
 
     /**
      * @param string $key Clé de chiffrement (32 bytes ou dérivée via hash)
+     *
      * @throws \RuntimeException Si libsodium n'est pas disponible
      */
     public function __construct(string $key)
@@ -37,7 +38,7 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
         }
 
         // Si la clé n'a pas la bonne longueur, on la hash en SHA-256 (32 bytes)
-        $this->key = mb_strlen($key, '8bit') === self::KEY_LENGTH
+        $this->key = self::KEY_LENGTH === mb_strlen($key, '8bit')
             ? $key
             : hash('sha256', $key, true);
     }
@@ -56,14 +57,14 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
             $ciphertext = \sodium_crypto_secretbox($plaintext, $nonce, $this->key);
 
             // Format : base64(nonce + ciphertext)
-            $encrypted = base64_encode($nonce . $ciphertext);
+            $encrypted = base64_encode($nonce.$ciphertext);
 
             // Nettoyer la mémoire
             \sodium_memzero($plaintext);
 
             return $encrypted;
         } catch (\Exception $e) {
-            throw new \RuntimeException('Encryption failed: ' . $e->getMessage(), 0, $e);
+            throw new \RuntimeException('Encryption failed: '.$e->getMessage(), 0, $e);
         }
     }
 
@@ -76,7 +77,7 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
         try {
             // Décoder base64
             $decoded = base64_decode($ciphertext, true);
-            if ($decoded === false) {
+            if (false === $decoded) {
                 throw new \RuntimeException('Invalid base64 encoding');
             }
 
@@ -87,20 +88,20 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
             // Déchiffrer
             $plaintext = \sodium_crypto_secretbox_open($encrypted, $nonce, $this->key);
 
-            if ($plaintext === false) {
+            if (false === $plaintext) {
                 throw new \RuntimeException('Decryption failed (invalid key or corrupted data)');
             }
 
             return $plaintext;
         } catch (\Exception $e) {
-            throw new \RuntimeException('Decryption failed: ' . $e->getMessage(), 0, $e);
+            throw new \RuntimeException('Decryption failed: '.$e->getMessage(), 0, $e);
         }
     }
 
     public function isEncrypted(string $data): bool
     {
         // Vérifier si c'est du base64 valide
-        if (base64_decode($data, true) === false) {
+        if (false === base64_decode($data, true)) {
             return false;
         }
 
@@ -114,7 +115,7 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
     }
 
     /**
-     * Génère une nouvelle clé de chiffrement aléatoire
+     * Génère une nouvelle clé de chiffrement aléatoire.
      *
      * @return string Clé de 32 bytes en base64
      */

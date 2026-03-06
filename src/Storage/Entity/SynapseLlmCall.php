@@ -49,7 +49,7 @@ class SynapseLlmCall
     private string $callId;
 
     /**
-     * Module ou fonctionnalité concernée
+     * Module ou fonctionnalité concernée.
      *
      * Exemples : 'chat', 'title_generation', 'gmail', 'calendar', 'summarization'
      */
@@ -57,7 +57,7 @@ class SynapseLlmCall
     private string $module;
 
     /**
-     * Action spécifique dans le module
+     * Action spécifique dans le module.
      *
      * Exemples : 'chat_turn', 'title_generation', 'email_draft', 'event_suggestion'
      */
@@ -65,7 +65,7 @@ class SynapseLlmCall
     private string $action;
 
     /**
-     * Modèle IA utilisé
+     * Modèle IA utilisé.
      *
      * Exemples : 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'
      */
@@ -73,85 +73,85 @@ class SynapseLlmCall
     private string $model;
 
     /**
-     * Nombre de tokens dans le prompt (input)
+     * Nombre de tokens dans le prompt (input).
      */
     #[ORM\Column(type: Types::INTEGER)]
     private int $promptTokens = 0;
 
     /**
-     * Nombre de tokens dans la complétion (output)
+     * Nombre de tokens dans la complétion (output).
      */
     #[ORM\Column(type: Types::INTEGER)]
     private int $completionTokens = 0;
 
     /**
-     * Nombre de tokens dans le thinking (Gemini 2.5+)
+     * Nombre de tokens dans le thinking (Gemini 2.5+).
      */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $thinkingTokens = 0;
 
     /**
-     * Nombre total de tokens
+     * Nombre total de tokens.
      */
     #[ORM\Column(type: Types::INTEGER)]
     private int $totalTokens = 0;
 
     /**
-     * ID de l'utilisateur concerné (nullable pour tâches système)
+     * ID de l'utilisateur concerné (nullable pour tâches système).
      */
     #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $userId = null;
 
     /**
-     * ID de la conversation concernée (si applicable)
+     * ID de la conversation concernée (si applicable).
      */
     #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
     private ?string $conversationId = null;
 
     /**
-     * ID du preset LLM utilisé (si applicable, pour plafonds par preset)
+     * ID du preset LLM utilisé (si applicable, pour plafonds par preset).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $presetId = null;
 
     /**
-     * ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission)
+     * ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $missionId = null;
 
     /**
-     * Date de création
+     * Date de création.
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     /**
-     * Snapshot du coût dans la devise du modèle au moment de la requête (ex: USD)
+     * Snapshot du coût dans la devise du modèle au moment de la requête (ex: USD).
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 6, nullable: true)]
     private ?float $costModelCurrency = null;
 
     /**
-     * Snapshot du coût converti en devise de référence au moment de la requête (ex: EUR)
+     * Snapshot du coût converti en devise de référence au moment de la requête (ex: EUR).
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 6, nullable: true)]
     private ?float $costReference = null;
 
     /**
-     * Snapshot du tarif input ($/1M tokens) appliqué au moment de la requête
+     * Snapshot du tarif input ($/1M tokens) appliqué au moment de la requête.
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
     private ?float $pricingInput = null;
 
     /**
-     * Snapshot du tarif output ($/1M tokens) appliqué au moment de la requête
+     * Snapshot du tarif output ($/1M tokens) appliqué au moment de la requête.
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
     private ?float $pricingOutput = null;
 
     /**
-     * Devise du snapshot de tarif (USD, EUR…)
+     * Devise du snapshot de tarif (USD, EUR…).
      */
     #[ORM\Column(type: Types::STRING, length: 3, nullable: true)]
     private ?string $pricingCurrency = null;
@@ -190,6 +190,7 @@ class SynapseLlmCall
     public function setModule(string $module): self
     {
         $this->module = $module;
+
         return $this;
     }
 
@@ -201,6 +202,7 @@ class SynapseLlmCall
     public function setAction(string $action): self
     {
         $this->action = $action;
+
         return $this;
     }
 
@@ -212,6 +214,7 @@ class SynapseLlmCall
     public function setModel(string $model): self
     {
         $this->model = $model;
+
         return $this;
     }
 
@@ -223,6 +226,7 @@ class SynapseLlmCall
     public function setPromptTokens(int $promptTokens): self
     {
         $this->promptTokens = $promptTokens;
+
         return $this;
     }
 
@@ -234,6 +238,7 @@ class SynapseLlmCall
     public function setCompletionTokens(int $completionTokens): self
     {
         $this->completionTokens = $completionTokens;
+
         return $this;
     }
 
@@ -245,6 +250,7 @@ class SynapseLlmCall
     public function setThinkingTokens(int $thinkingTokens): self
     {
         $this->thinkingTokens = $thinkingTokens;
+
         return $this;
     }
 
@@ -256,12 +262,14 @@ class SynapseLlmCall
     public function setTotalTokens(int $totalTokens): self
     {
         $this->totalTokens = $totalTokens;
+
         return $this;
     }
 
     public function calculateTotalTokens(): self
     {
         $this->totalTokens = $this->promptTokens + $this->completionTokens + $this->thinkingTokens;
+
         return $this;
     }
 
@@ -273,6 +281,7 @@ class SynapseLlmCall
     public function setUserId(?string $userId): self
     {
         $this->userId = $userId;
+
         return $this;
     }
 
@@ -284,6 +293,7 @@ class SynapseLlmCall
     public function setConversationId(?string $conversationId): self
     {
         $this->conversationId = $conversationId;
+
         return $this;
     }
 
@@ -295,6 +305,7 @@ class SynapseLlmCall
     public function setPresetId(?int $presetId): self
     {
         $this->presetId = $presetId;
+
         return $this;
     }
 
@@ -306,6 +317,7 @@ class SynapseLlmCall
     public function setMissionId(?int $missionId): self
     {
         $this->missionId = $missionId;
+
         return $this;
     }
 
@@ -328,6 +340,7 @@ class SynapseLlmCall
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;
+
         return $this;
     }
 
@@ -338,54 +351,59 @@ class SynapseLlmCall
 
     public function setMetadataValue(string $key, mixed $value): self
     {
-        if ($this->metadata === null) {
+        if (null === $this->metadata) {
             $this->metadata = [];
         }
         $this->metadata[$key] = $value;
+
         return $this;
     }
 
     public function getCostModelCurrency(): ?float
     {
-        return $this->costModelCurrency !== null ? (float) $this->costModelCurrency : null;
+        return null !== $this->costModelCurrency ? (float) $this->costModelCurrency : null;
     }
 
     public function setCostModelCurrency(?float $costModelCurrency): self
     {
         $this->costModelCurrency = $costModelCurrency;
+
         return $this;
     }
 
     public function getCostReference(): ?float
     {
-        return $this->costReference !== null ? (float) $this->costReference : null;
+        return null !== $this->costReference ? (float) $this->costReference : null;
     }
 
     public function setCostReference(?float $costReference): self
     {
         $this->costReference = $costReference;
+
         return $this;
     }
 
     public function getPricingInput(): ?float
     {
-        return $this->pricingInput !== null ? (float) $this->pricingInput : null;
+        return null !== $this->pricingInput ? (float) $this->pricingInput : null;
     }
 
     public function setPricingInput(?float $pricingInput): self
     {
         $this->pricingInput = $pricingInput;
+
         return $this;
     }
 
     public function getPricingOutput(): ?float
     {
-        return $this->pricingOutput !== null ? (float) $this->pricingOutput : null;
+        return null !== $this->pricingOutput ? (float) $this->pricingOutput : null;
     }
 
     public function setPricingOutput(?float $pricingOutput): self
     {
         $this->pricingOutput = $pricingOutput;
+
         return $this;
     }
 
@@ -397,6 +415,7 @@ class SynapseLlmCall
     public function setPricingCurrency(?string $pricingCurrency): self
     {
         $this->pricingCurrency = $pricingCurrency;
+
         return $this;
     }
 }

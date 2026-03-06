@@ -18,9 +18,9 @@ interface PermissionCheckerInterface
     /**
      * Vérifie si l'utilisateur actuel peut accéder au contenu d'une conversation.
      *
-     * @param SynapseConversation $conversation La conversation visée.
+     * @param SynapseConversation $conversation la conversation visée
      *
-     * @return bool True si la consultation est autorisée.
+     * @return bool true si la consultation est autorisée
      */
     public function canView(SynapseConversation $conversation): bool;
 

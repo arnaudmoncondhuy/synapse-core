@@ -79,6 +79,7 @@ class SynapseSpendingLimit
     public function setScope(SpendingLimitScope $scope): self
     {
         $this->scope = $scope;
+
         return $this;
     }
 
@@ -90,6 +91,7 @@ class SynapseSpendingLimit
     public function setScopeId(string $scopeId): self
     {
         $this->scopeId = $scopeId;
+
         return $this;
     }
 
@@ -101,6 +103,7 @@ class SynapseSpendingLimit
     public function setAmount(string $amount): self
     {
         $this->amount = $amount;
+
         return $this;
     }
 
@@ -112,6 +115,7 @@ class SynapseSpendingLimit
     public function setCurrency(string $currency): self
     {
         $this->currency = $currency;
+
         return $this;
     }
 
@@ -123,6 +127,7 @@ class SynapseSpendingLimit
     public function setPeriod(SpendingLimitPeriod $period): self
     {
         $this->period = $period;
+
         return $this;
     }
 
@@ -134,6 +139,7 @@ class SynapseSpendingLimit
     public function setName(?string $name): self
     {
         $this->name = $name;
+
         return $this;
     }
 

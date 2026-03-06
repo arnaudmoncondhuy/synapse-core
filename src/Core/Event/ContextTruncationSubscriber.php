@@ -17,7 +17,8 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
     public function __construct(
         private ContextTruncationService $truncationService,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {}
+    ) {
+    }
 
     public static function getSubscribedEvents(): array
     {
@@ -42,7 +43,7 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
         $contextWindow = $capabilities->contextWindow;
 
         // Si le modèle n'a pas de limite définie, on ne tronque pas
-        if ($contextWindow === null || $contextWindow <= 0) {
+        if (null === $contextWindow || $contextWindow <= 0) {
             return;
         }
 

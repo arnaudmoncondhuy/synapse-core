@@ -35,7 +35,7 @@ interface ConfigProviderInterface
      *         max_output_tokens: ?int,
      *         stop_sequences: array<string>
      *     }
-     * } Configuration structurée pour le client LLM.
+     * } Configuration structurée pour le client LLM
      */
     public function getConfig(): array;
 
@@ -45,7 +45,7 @@ interface ConfigProviderInterface
      * Cet override sera retourné par `getConfig()` à la place de la configuration
      * par défaut ou persistée. Utilisé pour tester des configurations à la volée.
      *
-     * @param array<string, mixed>|null $config La configuration d'override ou null pour la désactiver.
+     * @param array<string, mixed>|null $config la configuration d'override ou null pour la désactiver
      */
     public function setOverride(?array $config): void;
 
@@ -55,9 +55,9 @@ interface ConfigProviderInterface
      * Contrairement à `getConfig()`, cette méthode ne dépend pas de l'état global
      * mais extrait la configuration depuis une entité Preset donnée.
      *
-     * @param SynapsePreset $preset L'entité preset à analyser.
+     * @param SynapsePreset $preset L'entité preset à analyser
      *
-     * @return array<string, mixed> Configuration extraite du preset.
+     * @return array<string, mixed> configuration extraite du preset
      */
     public function getConfigForPreset(SynapsePreset $preset): array;
 }

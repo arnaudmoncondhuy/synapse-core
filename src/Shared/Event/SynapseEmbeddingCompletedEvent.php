@@ -18,8 +18,9 @@ class SynapseEmbeddingCompletedEvent extends Event
         private readonly string $model,
         private readonly string $provider,
         private readonly int $promptTokens,
-        private readonly int $totalTokens
-    ) {}
+        private readonly int $totalTokens,
+    ) {
+    }
 
     public function getModel(): string
     {

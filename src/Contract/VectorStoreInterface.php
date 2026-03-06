@@ -15,19 +15,19 @@ interface VectorStoreInterface
     /**
      * Enregistre un vecteur d'embedding et ses métadonnées associées.
      *
-     * @param array<int, float>    $vector  Le vecteur numérique généré par le modèle d'embedding.
-     * @param array<string, mixed> $payload Métadonnées (texte original, identifiants, source).
+     * @param array<int, float>    $vector  le vecteur numérique généré par le modèle d'embedding
+     * @param array<string, mixed> $payload métadonnées (texte original, identifiants, source)
      */
     public function saveMemory(array $vector, array $payload): void;
 
     /**
      * Effectue une recherche de similitude (Nearest Neighbors).
      *
-     * @param array<int, float>    $vector  Le vecteur de requête (recherche).
-     * @param int                  $limit   Nombre maximum de résultats à retourner.
+     * @param array<int, float>    $vector  le vecteur de requête (recherche)
+     * @param int                  $limit   nombre maximum de résultats à retourner
      * @param array<string, mixed> $filters filtres additionnels (ex: ['document_id' => '...']).
      *
-     * @return array<int, array{payload: array<string, mixed>, score: float}> Liste des résultats triés par pertinence (score).
+     * @return array<int, array{payload: array<string, mixed>, score: float}> liste des résultats triés par pertinence (score)
      */
     public function searchSimilar(array $vector, int $limit = 5, array $filters = []): array;
 }

@@ -32,9 +32,10 @@ class VectorStoreRegistry
         if (!isset($this->vectorStores[$alias])) {
             // Fallback sur doctrine si l'alias n'est pas trouvé
             $fallback = $this->vectorStores['doctrine'] ?? reset($this->vectorStores);
-            if ($fallback === false) {
+            if (false === $fallback) {
                 throw new \LogicException('No vector stores registered.');
             }
+
             return $fallback;
         }
 

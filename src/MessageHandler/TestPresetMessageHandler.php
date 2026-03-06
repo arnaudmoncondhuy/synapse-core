@@ -18,7 +18,8 @@ class TestPresetMessageHandler
         private PresetValidatorAgent $agent,
         private SynapsePresetRepository $presetRepository,
         private CacheInterface $cache,
-    ) {}
+    ) {
+    }
 
     public function __invoke(TestPresetMessage $message): void
     {
@@ -29,32 +30,40 @@ class TestPresetMessageHandler
         $preset = $this->presetRepository->find($id);
         if (!$preset) {
             $this->cache->delete($cacheKey);
+
             return;
         }
 
         // --- PROGRESSIVE EXECUTION (Consistent with Polling) ---
-        for ($step = 1; $step <= 3; $step++) {
+        for ($step = 1; $step <= 3; ++$step) {
             // Acquisition du verrou
             $this->cache->get($lockKey, function (ItemInterface $item) {
                 $item->expiresAfter(60);
+
                 return true;
             });
 
             try {
-                $data = $this->cache->get($cacheKey, fn() => null);
+                $data = $this->cache->get($cacheKey, fn () => null);
 
                 // Skip if step already completed (by this handler previously or by polling)
                 if ($data) {
-                    if ($step === 1 && ($data['progress'] ?? 0) >= 33) continue;
-                    if ($step === 2 && ($data['progress'] ?? 0) >= 66) continue;
-                    if ($step === 3 && ($data['progress'] ?? 0) >= 100) continue;
+                    if (1 === $step && ($data['progress'] ?? 0) >= 33) {
+                        continue;
+                    }
+                    if (2 === $step && ($data['progress'] ?? 0) >= 66) {
+                        continue;
+                    }
+                    if (3 === $step && ($data['progress'] ?? 0) >= 100) {
+                        continue;
+                    }
                 }
 
                 $report = $data['report'] ?? [];
                 $this->agent->runStep($step, $preset, $report);
 
                 $newData = [
-                    'status' => ($step === 3) ? 'completed' : 'processing',
+                    'status' => (3 === $step) ? 'completed' : 'processing',
                     'progress' => match ($step) {
                         1 => 33,
                         2 => 66,
@@ -66,6 +75,7 @@ class TestPresetMessageHandler
                 $this->cache->delete($cacheKey);
                 $this->cache->get($cacheKey, function (ItemInterface $item) use ($newData) {
                     $item->expiresAfter(3600);
+
                     return $newData;
                 });
             } finally {

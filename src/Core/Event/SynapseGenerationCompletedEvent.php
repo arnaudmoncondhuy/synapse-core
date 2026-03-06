@@ -27,15 +27,16 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseGenerationCompletedEvent extends Event
 {
     /**
-     * @param string               $fullResponse La réponse textuelle complète générée.
-     * @param array<string, mixed> $usage        Consommation finale des tokens (total).
-     * @param string|null          $debugId      ID de debug associé si le mode debug était actif.
+     * @param string               $fullResponse la réponse textuelle complète générée
+     * @param array<string, mixed> $usage        consommation finale des tokens (total)
+     * @param string|null          $debugId      ID de debug associé si le mode debug était actif
      */
     public function __construct(
         private string $fullResponse,
         private array $usage = [],
         private ?string $debugId = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Retourne le texte complet de la réponse IA.

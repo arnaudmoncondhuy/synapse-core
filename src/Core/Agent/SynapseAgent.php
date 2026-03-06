@@ -9,7 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
 
 /**
  * Représente une instance d'agent IA configurée et prête à l'emploi.
- * 
+ *
  * Cette classe est "Stateless" : elle ne persiste rien en base de données.
  * Elle wrappe le ChatService avec un preset virtuel.
  */
@@ -23,25 +23,26 @@ class SynapseAgent
         private SynapsePreset $preset,
         private ?string $systemPrompt = null,
         private array $allowedTools = [],
-        private int $maxTurns = 5
-    ) {}
+        private int $maxTurns = 5,
+    ) {
+    }
 
     /**
      * Exécute une requête auprès de l'agent.
      *
-     * @param string        $message Le message de l'utilisateur
+     * @param string                           $message Le message de l'utilisateur
      * @param array<int, array<string, mixed>> $history Historique optionnel (OpenAI format)
-     * @param callable|null $onToken Callback pour le streaming de tokens
-     * @param array<string, mixed> $options Options supplémentaires pour la requête
-     * 
+     * @param callable|null                    $onToken Callback pour le streaming de tokens
+     * @param array<string, mixed>             $options Options supplémentaires pour la requête
+     *
      * @return array<string, mixed> Résultat normalisé Synapse
      */
     public function ask(string $message, array $history = [], ?callable $onToken = null, array $options = []): array
     {
         $options = array_merge([
             'stateless' => true,
-            'preset'    => $this->preset,
-            'history'   => $history,
+            'preset' => $this->preset,
+            'history' => $history,
             'max_turns' => $this->maxTurns,
         ], $options);
 

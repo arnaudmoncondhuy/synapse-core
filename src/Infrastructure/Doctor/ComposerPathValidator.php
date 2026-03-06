@@ -15,11 +15,12 @@ class ComposerPathValidator
 {
     public function __construct(
         private readonly Filesystem $filesystem,
-    ) {}
+    ) {
+    }
 
     public function validate(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
-        $composerFile = $projectDir . '/composer.json';
+        $composerFile = $projectDir.'/composer.json';
 
         if (!$this->filesystem->exists($composerFile)) {
             return true;
@@ -33,6 +34,7 @@ class ComposerPathValidator
 
         if (!isset($composer['repositories'])) {
             $io->writeln('  <info>[OK]</info> Composer (Packagist, production mode)');
+
             return true;
         }
 
@@ -56,10 +58,12 @@ class ComposerPathValidator
         if ($hasPathRepo) {
             $io->writeln(sprintf('  <comment>[DEV]</comment> Composer (path repositories: %s)', implode(', ', $pathRepos)));
             $io->writeln('         This is development mode. For production, use Packagist instead.');
+
             return true;
         }
 
         $io->writeln('  <info>[OK]</info> Composer (Packagist, production mode)');
+
         return true;
     }
 }

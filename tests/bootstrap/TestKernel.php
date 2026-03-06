@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests;
 
-use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\DoctrineBundle\DoctrineBundle;
+use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Kernel;
@@ -39,7 +39,7 @@ class TestKernel extends Kernel
                         'SynapseCore' => [
                             'type' => 'attribute',
                             'is_bundle' => false,
-                            'dir' => \dirname(__DIR__) . '/../../src/Storage/Entity',
+                            'dir' => \dirname(__DIR__).'/../../src/Storage/Entity',
                             'prefix' => 'ArnaudMoncondhuy\SynapseCore\Storage\Entity',
                         ],
                     ],

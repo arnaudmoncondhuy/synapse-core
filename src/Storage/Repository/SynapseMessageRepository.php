@@ -7,12 +7,12 @@ namespace ArnaudMoncondhuy\SynapseCore\Storage\Repository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Repository pour l'entité SynapseMessage
+ * Repository pour l'entité SynapseMessage.
  *
  * @template T of SynapseMessage
+ *
  * @extends ServiceEntityRepository<T>
  *
  * Note : Ce repository est abstrait car SynapseMessage est une MappedSuperclass.
@@ -21,10 +21,11 @@ use Doctrine\Persistence\ManagerRegistry;
 abstract class SynapseMessageRepository extends ServiceEntityRepository
 {
     /**
-     * Trouve les messages d'une conversation
+     * Trouve les messages d'une conversation.
      *
      * @param SynapseConversation $conversation SynapseConversation
-     * @param int $limit Nombre maximum de messages (0 = illimité)
+     * @param int                 $limit        Nombre maximum de messages (0 = illimité)
+     *
      * @return SynapseMessage[] Liste des messages
      */
     public function findByConversation(SynapseConversation $conversation, int $limit = 0): array
@@ -45,7 +46,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     }
 
     /**
-     * Compte le nombre total de messages pour aujourd'hui
+     * Compte le nombre total de messages pour aujourd'hui.
      *
      * @return int Nombre de messages
      */
@@ -62,7 +63,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les statistiques d'utilisation des tokens par jour (7 derniers jours)
+     * Récupère les statistiques d'utilisation des tokens par jour (7 derniers jours).
      *
      * @return array<string, int> [date => total_tokens]
      */
@@ -82,16 +83,17 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
 
         $stats = [];
         foreach ($results as $row) {
-            $stats[$row['day']] = (int)$row['total'];
+            $stats[$row['day']] = (int) $row['total'];
         }
 
         return $stats;
     }
 
     /**
-     * Trouve les messages avec un mauvais feedback
+     * Trouve les messages avec un mauvais feedback.
      *
      * @param int $limit Limite
+     *
      * @return SynapseMessage[] Messages
      */
     public function findNegativeFeedback(int $limit = 50): array
@@ -108,9 +110,10 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve les messages bloqués par la sécurité
+     * Trouve les messages bloqués par la sécurité.
      *
      * @param int $limit Limite
+     *
      * @return SynapseMessage[] Messages
      */
     public function findBlocked(int $limit = 50): array
@@ -127,7 +130,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     }
 
     /**
-     * Calcule la répartition des rôles sur le dernier mois
+     * Calcule la répartition des rôles sur le dernier mois.
      *
      * @return array<string, int> [role => count]
      */
@@ -155,7 +158,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
             } elseif ($roleVal instanceof \UnitEnum) {
                 $role = $roleVal->name;
             }
-            $dist[$role] = (int)$row['count'];
+            $dist[$role] = (int) $row['count'];
         }
 
         return $dist;

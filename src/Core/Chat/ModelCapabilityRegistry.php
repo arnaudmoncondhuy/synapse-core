@@ -31,18 +31,18 @@ class ModelCapabilityRegistry
     {
         // Essayer d'abord le chemin dans Infrastructure (après refactorisation)
         // __DIR__ = src/Core/Chat, donc dirname(__DIR__, 3) = bundle root
-        $configDir = dirname(__DIR__, 3) . '/src/Infrastructure/Resources/config/models';
+        $configDir = dirname(__DIR__, 3).'/src/Infrastructure/Resources/config/models';
 
         // Fallback vers Core/Resources (ancien chemin)
         if (!is_dir($configDir)) {
-            $configDir = dirname(__DIR__, 3) . '/src/Core/Resources/config/models';
+            $configDir = dirname(__DIR__, 3).'/src/Core/Resources/config/models';
         }
 
         if (!is_dir($configDir)) {
             return;
         }
 
-        $files = glob($configDir . '/*.yaml');
+        $files = glob($configDir.'/*.yaml');
         if (!$files) {
             return;
         }
@@ -64,17 +64,17 @@ class ModelCapabilityRegistry
      * Capacités par défaut pour les modèles non référencés.
      */
     private const DEFAULTS = [
-        'provider'        => 'unknown',
-        'type'            => 'chat',
-        'thinking'        => false,
+        'provider' => 'unknown',
+        'type' => 'chat',
+        'thinking' => false,
         'safety_settings' => false,
-        'top_k'           => false,
+        'top_k' => false,
         'function_calling' => true,
-        'streaming'       => true,
-        'system_prompt'   => true,
-        'context_window'  => null,
-        'pricing_input'   => null,
-        'pricing_output'  => null,
+        'streaming' => true,
+        'system_prompt' => true,
+        'context_window' => null,
+        'pricing_input' => null,
+        'pricing_output' => null,
     ];
 
     /**
@@ -109,6 +109,7 @@ class ModelCapabilityRegistry
 
     /**
      * Liste tous les modèles référencés dans le registre.
+     *
      * @return string[]
      */
     public function getKnownModels(): array
@@ -118,6 +119,7 @@ class ModelCapabilityRegistry
 
     /**
      * Liste les modèles disponibles pour un provider donné.
+     *
      * @return string[]
      */
     public function getModelsForProvider(string $provider): array
@@ -128,6 +130,7 @@ class ModelCapabilityRegistry
                 $result[] = $modelId;
             }
         }
+
         return $result;
     }
 

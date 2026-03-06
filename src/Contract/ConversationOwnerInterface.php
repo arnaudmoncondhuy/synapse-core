@@ -52,7 +52,7 @@ interface ConversationOwnerInterface
      * Cet identifiant est utilisé principalement pour l'affichage dans l'interface d'administration
      * de Synapse, les logs d'audit et le suivi de consommation.
      *
-     * @return string Un identifiant tel que l'email, le pseudo ou le nom complet.
+     * @return string un identifiant tel que l'email, le pseudo ou le nom complet
      */
     public function getIdentifier(): string;
 }

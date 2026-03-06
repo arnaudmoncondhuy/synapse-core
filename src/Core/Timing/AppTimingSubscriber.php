@@ -15,8 +15,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
 class AppTimingSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private SynapseProfiler $profiler
-    ) {}
+        private SynapseProfiler $profiler,
+    ) {
+    }
 
     public static function getSubscribedEvents(): array
     {

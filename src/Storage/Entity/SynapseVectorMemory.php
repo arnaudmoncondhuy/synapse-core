@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Entité pour le stockage des mémoires vectorielles (RAG).
- * 
+ *
  * Cette entité est conçue pour être agnostique :
  * - Le 'embedding' est stocké sous forme de JSON par défaut.
  * - Sur PostgreSQL, il est fortement recommandé de convertir cette colonne en type 'vector' via une migration.

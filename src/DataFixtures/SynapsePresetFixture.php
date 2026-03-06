@@ -41,7 +41,7 @@ class SynapsePresetFixture extends Fixture
 
         foreach ($presets as $data) {
             // Idempotent : vérifie l'existence par nom
-            if ($manager->getRepository(SynapsePreset::class)->findOneBy(['name' => $data['name']]) !== null) {
+            if (null !== $manager->getRepository(SynapsePreset::class)->findOneBy(['name' => $data['name']])) {
                 continue;
             }
 

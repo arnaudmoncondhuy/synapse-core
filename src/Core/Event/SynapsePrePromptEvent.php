@@ -38,7 +38,6 @@ class SynapsePrePromptEvent extends Event
     private array $config;
 
     /**
-     * @param string               $message
      * @param array<string, mixed> $options
      * @param array<string, mixed> $prompt
      * @param array<string, mixed> $config
@@ -90,6 +89,7 @@ class SynapsePrePromptEvent extends Event
     public function setPrompt(array $prompt): self
     {
         $this->prompt = $prompt;
+
         return $this;
     }
 
@@ -111,6 +111,7 @@ class SynapsePrePromptEvent extends Event
     public function setConfig(array $config): self
     {
         $this->config = $config;
+
         return $this;
     }
 }

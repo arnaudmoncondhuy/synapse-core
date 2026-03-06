@@ -7,14 +7,14 @@ namespace ArnaudMoncondhuy\SynapseCore\Core;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 /**
- * Fournisseur de configuration dynamique depuis la BDD
+ * Fournisseur de configuration dynamique depuis la BDD.
  *
  * Fusionne :
  * - Le preset LLM actif (SynapsePreset)
@@ -41,7 +41,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private PresetValidator $presetValidator,
         private ?CacheInterface $cache = null,
         private ?EncryptionServiceInterface $encryptionService = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Récupère la configuration fusionnée (preset actif + config globale + credentials provider).
@@ -69,18 +70,19 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *         budget: int,
      *         reasoning_effort: string
      *     }
-     * } Configuration structurée pour le client LLM.
+     * } Configuration structurée pour le client LLM
      */
     public function getConfig(): array
     {
         // Si un override est défini (test de preset), le retourner sans passer par le cache
-        if ($this->configOverride !== null) {
+        if (null !== $this->configOverride) {
             return $this->configOverride;
         }
 
-        if ($this->cache !== null) {
+        if (null !== $this->cache) {
             return $this->cache->get(self::CACHE_KEY, function (ItemInterface $item) {
                 $item->expiresAfter(self::CACHE_TTL);
+
                 return $this->loadConfig();
             });
         }
@@ -120,7 +122,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
         $provider = $this->providerRepo->findByName($providerName);
 
-        if ($provider !== null && $provider->isEnabled()) {
+        if (null !== $provider && $provider->isEnabled()) {
             $config['provider_credentials'] = $this->decryptCredentials($provider->getCredentials());
         } else {
             $config['provider_credentials'] = [];
@@ -133,11 +135,11 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     }
 
     /**
-     * Invalide le cache de configuration
+     * Invalide le cache de configuration.
      */
     public function clearCache(): void
     {
-        if ($this->cache !== null) {
+        if (null !== $this->cache) {
             $this->cache->delete(self::CACHE_KEY);
         }
     }
@@ -154,7 +156,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      */
     private function decryptCredentials(array $credentials): array
     {
-        if ($this->encryptionService === null) {
+        if (null === $this->encryptionService) {
             return $credentials;
         }
 
@@ -224,7 +226,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
         $provider = $this->providerRepo->findByName($providerName);
 
-        if ($provider !== null && $provider->isEnabled()) {
+        if (null !== $provider && $provider->isEnabled()) {
             $config['provider_credentials'] = $this->decryptCredentials($provider->getCredentials());
         } else {
             $config['provider_credentials'] = [];

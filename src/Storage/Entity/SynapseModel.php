@@ -27,21 +27,21 @@ class SynapseModel
 
     /**
      * Slug du provider auquel appartient ce modèle.
-     * Ex : 'gemini', 'ovh'
+     * Ex : 'gemini', 'ovh'.
      */
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $providerName = '';
 
     /**
      * Identifiant exact du modèle tel qu'envoyé à l'API.
-     * Ex : 'gemini-2.5-flash', 'Gpt-oss-20b'
+     * Ex : 'gemini-2.5-flash', 'Gpt-oss-20b'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $modelId = '';
 
     /**
      * Nom affiché dans l'admin.
-     * Ex : 'Gemini 2.5 Flash (Thinking)', 'GPT OSS 20B'
+     * Ex : 'Gemini 2.5 Flash (Thinking)', 'GPT OSS 20B'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $label = '';
@@ -91,6 +91,7 @@ class SynapseModel
     public function setProviderName(string $providerName): self
     {
         $this->providerName = $providerName;
+
         return $this;
     }
 
@@ -102,6 +103,7 @@ class SynapseModel
     public function setModelId(string $modelId): self
     {
         $this->modelId = $modelId;
+
         return $this;
     }
 
@@ -113,6 +115,7 @@ class SynapseModel
     public function setLabel(string $label): self
     {
         $this->label = $label;
+
         return $this;
     }
 
@@ -124,6 +127,7 @@ class SynapseModel
     public function setIsEnabled(bool $isEnabled): self
     {
         $this->isEnabled = $isEnabled;
+
         return $this;
     }
 
@@ -135,6 +139,7 @@ class SynapseModel
     public function setPricingInput(?float $pricingInput): self
     {
         $this->pricingInput = $pricingInput;
+
         return $this;
     }
 
@@ -146,6 +151,7 @@ class SynapseModel
     public function setPricingOutput(?float $pricingOutput): self
     {
         $this->pricingOutput = $pricingOutput;
+
         return $this;
     }
 
@@ -157,6 +163,7 @@ class SynapseModel
     public function setCurrency(string $currency): self
     {
         $this->currency = $currency;
+
         return $this;
     }
 
@@ -168,6 +175,7 @@ class SynapseModel
     public function setSortOrder(int $sortOrder): self
     {
         $this->sortOrder = $sortOrder;
+
         return $this;
     }
 }

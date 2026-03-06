@@ -32,6 +32,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array{request_count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int, costs: array<string, float>}
      */
     public function getGlobalStats(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -67,22 +68,23 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $costs[$row['currency']] = (float) $row['cost'];
         }
 
-        /** @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $globalResult */
+        /* @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $globalResult */
         return [
-            'request_count'     => (int) ($globalResult['request_count'] ?? 0),
-            'prompt_tokens'     => (int) ($globalResult['prompt_tokens'] ?? 0),
+            'request_count' => (int) ($globalResult['request_count'] ?? 0),
+            'prompt_tokens' => (int) ($globalResult['prompt_tokens'] ?? 0),
             'completion_tokens' => (int) ($globalResult['completion_tokens'] ?? 0),
-            'thinking_tokens'   => (int) ($globalResult['thinking_tokens'] ?? 0),
-            'total_tokens'      => (int) ($globalResult['total_tokens'] ?? 0),
-            'costs'             => $costs,  // array: 'EUR' => X, 'USD' => Y
+            'thinking_tokens' => (int) ($globalResult['thinking_tokens'] ?? 0),
+            'total_tokens' => (int) ($globalResult['total_tokens'] ?? 0),
+            'costs' => $costs,  // array: 'EUR' => X, 'USD' => Y
         ];
     }
 
     /**
-     * Récupère les statistiques des tâches automatisées (hors conversations)
+     * Récupère les statistiques des tâches automatisées (hors conversations).
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array<string, array{module: string, action: string, model: string, count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Stats par module/action
      */
     public function getAutomatedTaskStats(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -110,16 +112,16 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $stats = [];
         foreach ($results as $result) {
-            $key = $result['module'] . ':' . $result['action'];
+            $key = $result['module'].':'.$result['action'];
             $stats[$key] = [
-                'module'            => $result['module'],
-                'action'            => $result['action'],
-                'model'             => $result['model'],
-                'count'             => (int) $result['count'],
-                'prompt_tokens'     => (int) $result['prompt_tokens'],
+                'module' => $result['module'],
+                'action' => $result['action'],
+                'model' => $result['model'],
+                'count' => (int) $result['count'],
+                'prompt_tokens' => (int) $result['prompt_tokens'],
                 'completion_tokens' => (int) $result['completion_tokens'],
-                'thinking_tokens'   => (int) $result['thinking_tokens'],
-                'total_tokens'      => (int) $result['total_tokens'],
+                'thinking_tokens' => (int) $result['thinking_tokens'],
+                'total_tokens' => (int) $result['total_tokens'],
             ];
         }
 
@@ -127,10 +129,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les statistiques des conversations (appels liés à une conversation)
+     * Récupère les statistiques des conversations (appels liés à une conversation).
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array{count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}
      */
     public function getConversationStats(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -152,21 +155,22 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $result = [];
         }
 
-        /** @var array{count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $result */
+        /* @var array{count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $result */
         return [
-            'count'             => (int) ($result['count'] ?? 0),
-            'prompt_tokens'     => (int) ($result['prompt_tokens'] ?? 0),
+            'count' => (int) ($result['count'] ?? 0),
+            'prompt_tokens' => (int) ($result['prompt_tokens'] ?? 0),
             'completion_tokens' => (int) ($result['completion_tokens'] ?? 0),
-            'thinking_tokens'   => (int) ($result['thinking_tokens'] ?? 0),
-            'total_tokens'      => (int) ($result['total_tokens'] ?? 0),
+            'thinking_tokens' => (int) ($result['thinking_tokens'] ?? 0),
+            'total_tokens' => (int) ($result['total_tokens'] ?? 0),
         ];
     }
 
     /**
-     * Récupère l'usage quotidien (série temporelle)
+     * Récupère l'usage quotidien (série temporelle).
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array<string, array{date: string, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Usage par jour
      */
     public function getDailyUsage(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -189,13 +193,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $daily = [];
         foreach ($results as $result) {
-            $date = (string)($result['date'] ?? '');
+            $date = (string) ($result['date'] ?? '');
             $daily[$date] = [
-                'date'              => $date,
-                'prompt_tokens'     => (int) ($result['prompt_tokens'] ?? 0),
+                'date' => $date,
+                'prompt_tokens' => (int) ($result['prompt_tokens'] ?? 0),
                 'completion_tokens' => (int) ($result['completion_tokens'] ?? 0),
-                'thinking_tokens'   => (int) ($result['thinking_tokens'] ?? 0),
-                'total_tokens'      => (int) ($result['total_tokens'] ?? 0),
+                'thinking_tokens' => (int) ($result['thinking_tokens'] ?? 0),
+                'total_tokens' => (int) ($result['total_tokens'] ?? 0),
             ];
         }
 
@@ -203,10 +207,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère l'usage par module
+     * Récupère l'usage par module.
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array<string, array{count: int, total_tokens: int}> Usage par module
      */
     public function getUsageByModule(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -231,7 +236,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         foreach ($results as $result) {
             $module = (string) ($result['module'] ?? 'unknown');
             $usage[$module] = [
-                'count'        => (int) ($result['count'] ?? 0),
+                'count' => (int) ($result['count'] ?? 0),
                 'total_tokens' => (int) ($result['total_tokens'] ?? 0),
             ];
         }
@@ -240,10 +245,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère l'usage par modèle (avec coûts et devise)
+     * Récupère l'usage par modèle (avec coûts et devise).
      *
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end   Date de fin
+     *
      * @return array<string, array{count: int, total_tokens: int, cost: float, currency: string}> Usage par modèle
      */
     public function getUsageByModel(\DateTimeInterface $start, \DateTimeInterface $end): array
@@ -268,9 +274,9 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         foreach ($results as $result) {
             $modelId = (string) ($result['model'] ?? 'unknown');
             $usage[$modelId] = [
-                'count'    => (int) ($result['count'] ?? 0),
+                'count' => (int) ($result['count'] ?? 0),
                 'total_tokens' => (int) ($result['total_tokens'] ?? 0),
-                'cost'     => (float) ($result['cost'] ?? 0.0),
+                'cost' => (float) ($result['cost'] ?? 0.0),
                 'currency' => (string) ($result['pricing_currency'] ?? 'N/A'),
             ];
         }
@@ -299,12 +305,12 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $usage = [];
         foreach ($results as $row) {
-            $userId = isset($row['user_id']) && is_string($row['user_id']) ? $row['user_id'] : (isset($row['user_id']) ? (string)$row['user_id'] : '');
+            $userId = isset($row['user_id']) && is_string($row['user_id']) ? $row['user_id'] : (isset($row['user_id']) ? (string) $row['user_id'] : '');
             $usage[] = [
-                'user_id'      => $userId,
-                'count'        => (int) ($row['cnt'] ?? 0),
+                'user_id' => $userId,
+                'count' => (int) ($row['cnt'] ?? 0),
                 'total_tokens' => (int) ($row['total_tokens'] ?? 0),
-                'cost'         => (float) ($row['cost'] ?? 0.0),
+                'cost' => (float) ($row['cost'] ?? 0.0),
             ];
         }
 
@@ -333,10 +339,10 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $usage = [];
         foreach ($results as $row) {
             $usage[] = [
-                'preset_id'    => (int) ($row['preset_id'] ?? 0),
-                'count'        => (int) ($row['cnt'] ?? 0),
+                'preset_id' => (int) ($row['preset_id'] ?? 0),
+                'count' => (int) ($row['cnt'] ?? 0),
                 'total_tokens' => (int) ($row['total_tokens'] ?? 0),
-                'cost'         => (float) ($row['cost'] ?? 0.0),
+                'cost' => (float) ($row['cost'] ?? 0.0),
             ];
         }
 
@@ -365,10 +371,10 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $usage = [];
         foreach ($results as $row) {
             $usage[] = [
-                'mission_id'   => (int) ($row['mission_id'] ?? 0),
-                'count'        => (int) ($row['cnt'] ?? 0),
+                'mission_id' => (int) ($row['mission_id'] ?? 0),
+                'count' => (int) ($row['cnt'] ?? 0),
                 'total_tokens' => (int) ($row['total_tokens'] ?? 0),
-                'cost'         => (float) ($row['cost'] ?? 0.0),
+                'cost' => (float) ($row['cost'] ?? 0.0),
             ];
         }
 
@@ -425,34 +431,34 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $totalTokens += (int) ($row['total_tokens'] ?? 0);
 
             $rowCurrency = $row['pricing_currency'] ?? null;
-            if ($currency === null && is_string($rowCurrency)) {
+            if (null === $currency && is_string($rowCurrency)) {
                 $currency = $rowCurrency;
             }
 
             $turns[] = [
-                'call_id'           => (string) ($row['call_id'] ?? ''),
-                'created_at'        => (string) ($row['created_at'] ?? ''),
-                'model'             => (string) ($row['model'] ?? ''),
-                'prompt_tokens'     => (int) ($row['prompt_tokens'] ?? 0),
+                'call_id' => (string) ($row['call_id'] ?? ''),
+                'created_at' => (string) ($row['created_at'] ?? ''),
+                'model' => (string) ($row['model'] ?? ''),
+                'prompt_tokens' => (int) ($row['prompt_tokens'] ?? 0),
                 'completion_tokens' => (int) ($row['completion_tokens'] ?? 0),
-                'thinking_tokens'   => (int) ($row['thinking_tokens'] ?? 0),
-                'total_tokens'      => (int) ($row['total_tokens'] ?? 0),
-                'cost'              => $cost,
-                'pricing_input'     => isset($row['pricing_input']) && is_numeric($row['pricing_input']) ? (float) $row['pricing_input'] : null,
-                'pricing_output'    => isset($row['pricing_output']) && is_numeric($row['pricing_output']) ? (float) $row['pricing_output'] : null,
+                'thinking_tokens' => (int) ($row['thinking_tokens'] ?? 0),
+                'total_tokens' => (int) ($row['total_tokens'] ?? 0),
+                'cost' => $cost,
+                'pricing_input' => isset($row['pricing_input']) && is_numeric($row['pricing_input']) ? (float) $row['pricing_input'] : null,
+                'pricing_output' => isset($row['pricing_output']) && is_numeric($row['pricing_output']) ? (float) $row['pricing_output'] : null,
             ];
         }
 
         return [
-            'conversation_id'   => $conversationId,
-            'turn_count'        => count($turns),
-            'prompt_tokens'     => $totalPrompt,
+            'conversation_id' => $conversationId,
+            'turn_count' => count($turns),
+            'prompt_tokens' => $totalPrompt,
             'completion_tokens' => $totalCompletion,
-            'thinking_tokens'   => $totalThinking,
-            'total_tokens'      => $totalTokens,
-            'cost'              => round($totalCost, 6),
-            'currency'          => $currency ?? 'N/A',
-            'turns'             => $turns,
+            'thinking_tokens' => $totalThinking,
+            'total_tokens' => $totalTokens,
+            'cost' => round($totalCost, 6),
+            'currency' => $currency ?? 'N/A',
+            'turns' => $turns,
         ];
     }
 
@@ -468,9 +474,9 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $column = match ($scope) {
-            'user'    => 'user_id',
+            'user' => 'user_id',
             'mission' => 'mission_id',
-            default   => 'preset_id',
+            default => 'preset_id',
         };
 
         $result = $conn->executeQuery(
@@ -482,7 +488,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             return 0.0;
         }
 
-        /** @var array{total?: string|int|float} $result */
+        /* @var array{total?: string|int|float} $result */
         return (float) ($result['total'] ?? 0.0);
     }
 }

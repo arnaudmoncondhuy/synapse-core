@@ -7,4 +7,6 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Exception;
 /**
  * Levée en cas de dépassement des limites de débit de l'API (429).
  */
-class LlmRateLimitException extends LlmException {}
+class LlmRateLimitException extends LlmException
+{
+}

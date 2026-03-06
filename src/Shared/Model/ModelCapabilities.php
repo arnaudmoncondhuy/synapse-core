@@ -57,25 +57,27 @@ class ModelCapabilities
 
         /** ID technique optionnel (ex: ID MaaS pour Vertex) */
         public readonly ?string $modelId = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Vérifie si le modèle supporte une capacité donnée.
      *
      * @param string $capability Capacité à vérifier (valeurs acceptées : 'thinking', 'safety_settings', 'top_k',
-     *                            'function_calling', 'streaming', 'system_prompt')
+     *                           'function_calling', 'streaming', 'system_prompt')
+     *
      * @return bool true si supportée, false sinon (y compris pour les capacités inconnues)
      */
     public function supports(string $capability): bool
     {
         return match ($capability) {
-            'thinking'        => $this->thinking,
+            'thinking' => $this->thinking,
             'safety_settings' => $this->safetySettings,
-            'top_k'           => $this->topK,
+            'top_k' => $this->topK,
             'function_calling' => $this->functionCalling,
-            'streaming'       => $this->streaming,
-            'system_prompt'   => $this->systemPrompt,
-            default           => false,
+            'streaming' => $this->streaming,
+            'system_prompt' => $this->systemPrompt,
+            default => false,
         };
     }
 }

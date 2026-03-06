@@ -18,7 +18,7 @@ class InMemoryVectorStore implements VectorStoreInterface
     public function saveMemory(array $vector, array $payload): void
     {
         $this->storage[] = [
-            'vector'  => $vector,
+            'vector' => $vector,
             'payload' => $payload,
         ];
     }
@@ -34,12 +34,12 @@ class InMemoryVectorStore implements VectorStoreInterface
             $score = $this->calculateCosineSimilarity($vector, $item['vector']);
             $results[] = [
                 'payload' => $item['payload'],
-                'score'   => $score,
+                'score' => $score,
             ];
         }
 
         // Tri par score décroissant
-        usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($results, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         return array_slice($results, 0, $limit);
     }
@@ -57,7 +57,7 @@ class InMemoryVectorStore implements VectorStoreInterface
         $norm2 = 0.0;
 
         $count = count($vec1);
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             $v1 = $vec1[$i] ?? 0.0;
             $v2 = $vec2[$i] ?? 0.0;
             $dotProduct += $v1 * $v2;
@@ -65,7 +65,7 @@ class InMemoryVectorStore implements VectorStoreInterface
             $norm2 += $v2 * $v2;
         }
 
-        if ($norm1 === 0.0 || $norm2 === 0.0) {
+        if (0.0 === $norm1 || 0.0 === $norm2) {
             return 0.0;
         }
 

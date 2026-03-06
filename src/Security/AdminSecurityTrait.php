@@ -6,8 +6,8 @@ namespace ArnaudMoncondhuy\SynapseCore\Security;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * Trait pour centraliser la sécurité dans les contrôleurs d'administration.

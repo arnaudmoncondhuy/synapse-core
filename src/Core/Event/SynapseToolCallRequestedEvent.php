@@ -13,7 +13,7 @@ use Symfony\Contracts\EventDispatcher\Event;
  * et émet cet événement. Les écouteurs (subscribers) sont chargés d'exécuter
  * la logique métier et de renvoyer le résultat via `setToolResult()`.
  *
- * @see \ArnaudMoncondhuy\SynapseCore\Core\Event\ToolExecutionSubscriber
+ * @see ToolExecutionSubscriber
  */
 class SynapseToolCallRequestedEvent extends Event
 {
@@ -24,7 +24,7 @@ class SynapseToolCallRequestedEvent extends Event
     private array $results = [];
 
     /**
-     * @param array<int, array{id: string, name: string, args: array<string, mixed>}> $toolCalls Liste des appels d'outils demandés par le LLM.
+     * @param array<int, array{id: string, name: string, args: array<string, mixed>}> $toolCalls liste des appels d'outils demandés par le LLM
      */
     public function __construct(array $toolCalls)
     {
@@ -44,12 +44,13 @@ class SynapseToolCallRequestedEvent extends Event
     /**
      * Enregistre le résultat de l'exécution d'un outil.
      *
-     * @param string $toolName Nom technique de l'outil.
-     * @param mixed  $result   Donnée renvoyée par l'application (sera JSON-sérialisée pour le LLM).
+     * @param string $toolName nom technique de l'outil
+     * @param mixed  $result   donnée renvoyée par l'application (sera JSON-sérialisée pour le LLM)
      */
     public function setToolResult(string $toolName, mixed $result): self
     {
         $this->results[$toolName] = $result;
+
         return $this;
     }
 
