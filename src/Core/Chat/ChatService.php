@@ -42,8 +42,7 @@ class ChatService
         private SynapseProfiler $profiler,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager $conversationManager = null,
         private ?\ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Point d'entrée principal pour envoyer un message à l'IA.
@@ -110,7 +109,9 @@ class ChatService
         // ── DISPATCH PRE-PROMPT EVENT ──
         // ContextBuilderSubscriber will populate prompt, config, and tool definitions
         $prePromptEvent = $this->dispatcher->dispatch(new SynapsePrePromptEvent($message, $askOptions));
+        /** @var array{contents: array<int, array<string, mixed>>, toolDefinitions?: array<int, array<string, mixed>>} $prompt */
         $prompt = $prePromptEvent->getPrompt();
+        /** @var array<string, mixed> $config */
         $config = $prePromptEvent->getConfig();
 
         // Support preset override
@@ -264,7 +265,7 @@ class ChatService
                             }
                             $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
                             $modelToolCalls[] = [
-                                'id' => is_string($fc['id'] ?? null) ? (string) $fc['id'] : 'call_'.bin2hex(random_bytes(6)),
+                                'id' => is_string($fc['id'] ?? null) ? (string) $fc['id'] : 'call_' . bin2hex(random_bytes(6)),
                                 'type' => 'function',
                                 'function' => [
                                     'name' => $name,
@@ -313,12 +314,12 @@ class ChatService
                     // Add tool responses to prompt for next iteration (one message per tool)
                     foreach ($modelToolCalls as $tc) {
                         $toolName = $tc['function']['name'];
-                        $this->profiler->start('Tool', 'Tool Execution: '.$toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
+                        $this->profiler->start('Tool', 'Tool Execution: ' . $toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
 
                         $toolResult = $toolResults[$toolName] ?? null;
 
                         if ($onStatusUpdate) {
-                            $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:'.$toolName);
+                            $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:' . $toolName);
                         }
 
                         if (null !== $toolResult) {
@@ -334,7 +335,7 @@ class ChatService
                             }
                         }
 
-                        $this->profiler->stop('Tool', 'Tool Execution: '.$toolName, $turn);
+                        $this->profiler->stop('Tool', 'Tool Execution: ' . $toolName, $turn);
                     }
 
                     // Continuer la boucle : le LLM reçoit le résultat de l'outil et peut enchaîner avec sa réponse (ex. "Bonjour Arnaud, comment puis-je vous aider ?")
@@ -387,7 +388,7 @@ class ChatService
             ));
 
             /** @var array<int, array<string, mixed>> $finalSafetyRatingsArray */
-            $finalSafetyRatingsArray = is_array($finalSafetyRatings) ? $finalSafetyRatings : [];
+            $finalSafetyRatingsArray = $finalSafetyRatings;
 
             return [
                 'answer' => $fullTextAccumulator,

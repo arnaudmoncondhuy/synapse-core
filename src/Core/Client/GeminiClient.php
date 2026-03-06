@@ -51,8 +51,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         private GeminiAuthService $geminiAuthService,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {
-    }
+    ) {}
 
     public function getProviderName(): string
     {
@@ -78,7 +77,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         $effectiveModel = $model ?? $this->model;
         $url = $this->buildVertexUrl(self::VERTEX_URL, $effectiveModel);
-        $payload = $this->buildPayload($contents, $tools, $effectiveModel, $options['thinking'] ?? null);
+        /** @var array<string, mixed>|null $thinkingOverride */
+        $thinkingOverride = is_array($options['thinking'] ?? null) ? $options['thinking'] : null;
+        $payload = $this->buildPayload($contents, $tools, $effectiveModel, $thinkingOverride);
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
@@ -143,7 +144,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Intégrer la dimension de sortie si requise
         if (isset($options['output_dimensionality'])) {
             $payload['parameters'] = [
-                'outputDimensionality' => (int) $options['output_dimensionality'],
+                'outputDimensionality' => is_numeric($options['output_dimensionality'] ?? null) ? (int) $options['output_dimensionality'] : 768,
             ];
         }
 
@@ -159,8 +160,16 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $embeddings = [];
             if (isset($data['predictions']) && is_array($data['predictions'])) {
                 foreach ($data['predictions'] as $prediction) {
-                    if (isset($prediction['embeddings']['values'])) {
-                        $embeddings[] = $prediction['embeddings']['values'];
+                    if (is_array($prediction)) {
+                        $embData = $prediction['embeddings'] ?? null;
+                        if (is_array($embData)) {
+                            $vals = $embData['values'] ?? null;
+                            if (is_array($vals)) {
+                                /** @var list<float> $valsFloat */
+                                $valsFloat = $vals;
+                                $embeddings[] = $valsFloat;
+                            }
+                        }
                     }
                 }
             }
@@ -288,7 +297,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     if (JSON_ERROR_NONE === json_last_error() && is_array($jsonData)) {
                         // Capture le chunk brut AVANT normalisation (pour debug)
                         $rawApiChunks[] = $jsonData;
-                        yield $this->normalizeChunk($jsonData);
+                        /** @var array<string, mixed> $rawChunk */
+                        $rawChunk = $jsonData;
+                        yield $this->normalizeChunk($rawChunk);
                         $buffer = substr($buffer, $objEnd + 1);
                     } else {
                         $buffer = substr($buffer, 1);
@@ -317,49 +328,73 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         $normalized = $this->emptyChunk();
 
         if (isset($rawChunk['usageMetadata'])) {
-            $u = $rawChunk['usageMetadata'];
+            /** @var array<string, mixed> $u */
+            $u = is_array($rawChunk['usageMetadata']) ? $rawChunk['usageMetadata'] : [];
             $normalized['usage'] = [
-                'prompt_tokens' => $u['promptTokenCount'] ?? 0,
-                'completion_tokens' => $u['candidatesTokenCount'] ?? 0,
-                'thinking_tokens' => $u['thoughtsTokenCount'] ?? 0,
-                'total_tokens' => $u['totalTokenCount'] ?? 0,
+                'prompt_tokens' => is_numeric($u['promptTokenCount'] ?? null) ? (int) $u['promptTokenCount'] : 0,
+                'completion_tokens' => is_numeric($u['candidatesTokenCount'] ?? null) ? (int) $u['candidatesTokenCount'] : 0,
+                'thinking_tokens' => is_numeric($u['thoughtsTokenCount'] ?? null) ? (int) $u['thoughtsTokenCount'] : 0,
+                'total_tokens' => is_numeric($u['totalTokenCount'] ?? null) ? (int) $u['totalTokenCount'] : 0,
             ];
         }
 
-        $candidate = $rawChunk['candidates'][0] ?? [];
+        /** @var array<string, mixed> $candidate */
+        $candidate = is_array($rawChunk['candidates'] ?? null) ? ($rawChunk['candidates'][0] ?? []) : [];
+        if (!is_array($candidate)) {
+            $candidate = [];
+        }
 
-        if (isset($candidate['safetyRatings'])) {
+        if (isset($candidate['safetyRatings']) && is_array($candidate['safetyRatings'])) {
             $normalized['safety_ratings'] = $candidate['safetyRatings'];
             foreach ($candidate['safetyRatings'] as $rating) {
-                if ($rating['blocked'] ?? false) {
+                if (is_array($rating) && ($rating['blocked'] ?? false)) {
                     $normalized['blocked'] = true;
-                    $normalized['blocked_reason'] = $this->getHarmCategoryLabel($rating['category'] ?? 'UNKNOWN');
+                    $normalized['blocked_reason'] = $this->getHarmCategoryLabel(is_string($rating['category'] ?? null) ? (string) $rating['category'] : 'UNKNOWN');
                     break;
                 }
             }
         }
 
-        $parts = $candidate['content']['parts'] ?? [];
+        $parts = (is_array($candidate['content'] ?? null) && is_array($candidate['content']['parts'] ?? null)) ? $candidate['content']['parts'] : [];
         $textParts = [];
         $thinkingParts = [];
 
-        foreach ($parts as $part) {
-            $isThinking = isset($part['thought']) && true === $part['thought'];
+        if (is_array($parts) && !empty($parts)) {
+            foreach ($parts as $part) {
 
-            if ($isThinking) {
-                if (isset($part['thinkingContent'])) {
-                    $thinkingParts[] = $part['thinkingContent'];
-                } elseif (isset($part['text'])) {
-                    $thinkingParts[] = $part['text'];
+                /** @var array<string, mixed> $part */
+                if (!is_array($part)) {
+                    continue;
                 }
-            } elseif (isset($part['text'])) {
-                $textParts[] = $part['text'];
-            } elseif (isset($part['functionCall'])) {
-                $normalized['function_calls'][] = [
-                    'id' => 'call_'.substr(md5($part['functionCall']['name'].count($normalized['function_calls'])), 0, 12),
-                    'name' => $part['functionCall']['name'],
-                    'args' => $part['functionCall']['args'] ?? [],
-                ];
+                $isThinking = isset($part['thought']) && true === $part['thought'];
+
+                if ($isThinking) {
+                    $thinkingContent = $part['thinkingContent'] ?? null;
+                    if (isset($thinkingContent)) {
+                        $thinkingParts[] = (string) $thinkingContent;
+                    } else {
+                        $textPart = $part['text'] ?? null;
+                        if (isset($textPart)) {
+                            $thinkingParts[] = (string) $textPart;
+                        }
+                    }
+                } else {
+                    $textPart = $part['text'] ?? null;
+                    if (isset($textPart)) {
+                        $textParts[] = (string) $textPart;
+                    }
+                }
+                if (isset($part['functionCall']) && is_array($part['functionCall'])) {
+                    $fcName = is_string($part['functionCall']['name'] ?? null) ? (string) $part['functionCall']['name'] : 'unknown';
+                    $fcCount = is_array($normalized['function_calls']) ? count($normalized['function_calls']) : 0;
+                    /** @var array<string, mixed> $fc */
+                    $fc = [
+                        'id' => 'call_' . substr(md5($fcName . $fcCount), 0, 12),
+                        'name' => $fcName,
+                        'args' => is_array($part['functionCall']['args'] ?? null) ? $part['functionCall']['args'] : [],
+                    ];
+                    $normalized['function_calls'][] = $fc;
+                }
             }
         }
 
@@ -423,21 +458,21 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     {
         $config = $this->configProvider->getConfig();
 
-        if (!empty($config['model'])) {
+        if (!empty($config['model']) && is_string($config['model'])) {
             $this->model = $config['model'];
         }
 
         // Provider credentials (SynapseProvider en DB)
-        if (!empty($config['provider_credentials'])) {
-            $creds = $config['provider_credentials'];
+        $creds = is_array($config['provider_credentials'] ?? null) ? $config['provider_credentials'] : [];
 
-            if (!empty($creds['project_id'])) {
+        if (!empty($creds)) {
+            if (!empty($creds['project_id']) && is_string($creds['project_id'])) {
                 $this->vertexProjectId = $creds['project_id'];
             }
-            if (!empty($creds['region'])) {
+            if (!empty($creds['region']) && is_string($creds['region'])) {
                 $this->vertexRegion = $creds['region'];
             }
-            if (!empty($creds['service_account_json'])) {
+            if (!empty($creds['service_account_json']) && is_string($creds['service_account_json'])) {
                 $this->geminiAuthService->setCredentialsJson($creds['service_account_json']);
             }
         }
@@ -462,9 +497,15 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // Generation Config
         if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
-            $this->generationTemperature = (float) ($gen['temperature'] ?? $this->generationTemperature);
-            $this->generationTopP = (float) ($gen['top_p'] ?? $this->generationTopP);
-            $this->generationTopK = (int) ($gen['top_k'] ?? $this->generationTopK);
+            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) {
+                $this->generationTemperature = (float) $gen['temperature'];
+            }
+            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) {
+                $this->generationTopP = (float) $gen['top_p'];
+            }
+            if (isset($gen['top_k']) && is_numeric($gen['top_k'])) {
+                $this->generationTopK = (int) $gen['top_k'];
+            }
             $this->generationMaxOutputTokens = !empty($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : null;
         }
     }
@@ -555,7 +596,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 $content = $msg['content'] ?? '';
                 $geminiMessages[] = [
                     'role' => 'user',
-                    'parts' => [['text' => (string) $content]],
+                    'parts' => [['text' => is_scalar($content) ? (string) $content : json_encode($content)]],
                 ];
             } elseif ('assistant' === $role) {
                 $parts = [];
@@ -566,14 +607,20 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 }
 
                 // Add function calls if present
-                foreach ($msg['tool_calls'] ?? [] as $tc) {
-                    $args = json_decode($tc['function']['arguments'] ?? '{}', true) ?? [];
-                    $parts[] = [
-                        'functionCall' => [
-                            'name' => $tc['function']['name'],
-                            'args' => !empty($args) ? $args : (object) [],
-                        ],
-                    ];
+                /** @var array<int, array<string, mixed>> $toolCalls */
+                $toolCalls = is_array($msg['tool_calls'] ?? null) ? $msg['tool_calls'] : [];
+                foreach ($toolCalls as $tc) {
+                    $tcFunction = is_array($tc['function'] ?? null) ? $tc['function'] : [];
+                    $argsStr = is_string($tcFunction['arguments'] ?? null) ? (string) $tcFunction['arguments'] : '{}';
+                    $args = json_decode((string) $argsStr, true) ?? [];
+                    if (!empty($tcFunction['name'])) {
+                        $parts[] = [
+                            'functionCall' => [
+                                'name' => (string) $tcFunction['name'],
+                                'args' => !empty($args) && is_array($args) ? $args : (object) [],
+                            ],
+                        ];
+                    }
                 }
 
                 if (!empty($parts)) {
@@ -584,10 +631,10 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 }
             } elseif ('tool' === $role) {
                 // Find the function name from the corresponding tool_call_id in previous assistant messages
-                $toolName = $this->resolveFunctionName($geminiMessages, $msg['tool_call_id'] ?? '');
+                $toolName = $this->resolveFunctionName($geminiMessages, (string) ($msg['tool_call_id'] ?? ''));
 
                 if (!empty($toolName)) {
-                    $response = json_decode($msg['content'] ?? '{}', true);
+                    $response = json_decode(is_scalar($msg['content'] ?? null) ? (string) ($msg['content'] ?? '{}') : '{}', true);
                     if (!is_array($response)) {
                         $response = ['content' => $msg['content']];
                     }
@@ -622,9 +669,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         // In practice, for Gemini which doesn't use IDs, we can extract the last function call name
         foreach (array_reverse($geminiMessages) as $msg) {
             if (($msg['role'] ?? '') === 'model') {
-                foreach ($msg['parts'] ?? [] as $part) {
-                    if (isset($part['functionCall'])) {
-                        return $part['functionCall']['name'];
+                $parts = is_array($msg['parts'] ?? null) ? $msg['parts'] : [];
+                foreach ($parts as $part) {
+
+                    /** @var array<string, mixed> $part */
+                    if (is_array($part) && isset($part['functionCall']) && is_array($part['functionCall'])) {
+                        return is_scalar($part['functionCall']['name'] ?? null) ? (string) $part['functionCall']['name'] : '';
                     }
                 }
             }
@@ -646,6 +696,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         array $contents,
         array $tools,
         string $effectiveModel,
+        /** @var array<string, mixed>|null $thinkingConfigOverrideVar */
         ?array $thinkingConfigOverride,
     ): array {
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
@@ -712,7 +763,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function buildVertexHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer '.$this->geminiAuthService->getAccessToken(),
+            'Authorization' => 'Bearer ' . $this->geminiAuthService->getAccessToken(),
             'Content-Type' => 'application/json',
         ];
     }
@@ -826,7 +877,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         ];
 
-        return array_map(fn ($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
+        return array_map(fn($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
     }
 
     public function getCredentialFields(): array
@@ -878,7 +929,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             throw new \Exception('Service Account JSON manquant');
         }
 
-        $json = json_decode($jsonStr, true);
+        /** @var string $jsonStrStr */
+        $jsonStrStr = (string) $jsonStr;
+        $json = json_decode($jsonStrStr, true);
         if (!is_array($json) || empty($json['project_id'])) {
             throw new \Exception('Service Account JSON invalide');
         }
@@ -913,12 +966,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $statusCode = $e->getResponse()->getStatusCode();
             try {
                 $errorBody = $e->getResponse()->getContent(false);
-                $message .= ' || Google Error: '.$errorBody;
+                $message .= ' || Google Error: ' . $errorBody;
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'Gemini API Error: '.$message;
+        $fullMsg = 'Gemini API Error: ' . $message;
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),

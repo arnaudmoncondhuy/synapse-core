@@ -35,8 +35,7 @@ class TokenAccountingService
         private ?CacheItemPoolInterface $cache = null,
         private ?EventDispatcherInterface $dispatcher = null,
         private ?ModelCapabilityRegistry $capabilityRegistry = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Log l'usage de tokens pour une action IA.
@@ -143,7 +142,8 @@ class TokenAccountingService
         $keys = $this->getSpendingCacheKeysForRecord($userId, $presetId, $now);
         foreach ($keys as $key => $ttlSeconds) {
             $item = $this->cache->getItem($key);
-            $current = $item->isHit() ? (float) $item->get() : 0.0;
+            $val = $item->get();
+            $current = $item->isHit() && is_numeric($val) ? (float) $val : 0.0;
             $item->set(round($current + $amountInReference, 6));
             $item->expiresAfter($ttlSeconds);
             $this->cache->save($item);
@@ -159,16 +159,16 @@ class TokenAccountingService
         $date = $at->format('Y-m-d');
         $month = $at->format('Y-m');
         if (null !== $userId) {
-            $keys[self::CACHE_PREFIX.'user_'.$userId.'_sliding_day'] = 90000;   // 25h
-            $keys[self::CACHE_PREFIX.'user_'.$userId.'_sliding_month'] = 2678400; // 31d
-            $keys[self::CACHE_PREFIX.'user_'.$userId.'_calendar_day_'.$date] = 172800;   // 2d
-            $keys[self::CACHE_PREFIX.'user_'.$userId.'_calendar_month_'.$month] = 5184000; // 60d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_day'] = 90000;   // 25h
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_month'] = 2678400; // 31d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_day_' . $date] = 172800;   // 2d
+            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_month_' . $month] = 5184000; // 60d
         }
         if (null !== $presetId) {
-            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_sliding_day'] = 90000;
-            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_sliding_month'] = 2678400;
-            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_calendar_day_'.$date] = 172800;
-            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_calendar_month_'.$month] = 5184000;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_day'] = 90000;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_month'] = 2678400;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_day_' . $date] = 172800;
+            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_month_' . $month] = 5184000;
         }
 
         return $keys;
@@ -177,8 +177,8 @@ class TokenAccountingService
     /**
      * Calcule le coût estimé d'un usage dans la devise du modèle.
      *
-     * @param array<string, int>   $usage   Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
-     * @param array<string, mixed> $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
+     * @param array<string, int>                                $usage   Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
+     * @param array{input: float, output: float, currency: string} $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
      *
      * @return float Coût dans la devise du modèle
      */
@@ -188,8 +188,8 @@ class TokenAccountingService
         $completionTokens = $usage['completion_tokens'] ?? 0;
         $thinkingTokens = $usage['thinking_tokens'] ?? 0;
 
-        $inputCost = ($promptTokens / 1_000_000) * ($pricing['input'] ?? 0);
-        $outputCost = (($completionTokens + $thinkingTokens) / 1_000_000) * ($pricing['output'] ?? 0);
+        $inputCost = ($promptTokens / 1_000_000) * $pricing['input'];
+        $outputCost = (($completionTokens + $thinkingTokens) / 1_000_000) * $pricing['output'];
 
         return round($inputCost + $outputCost, 6);
     }
@@ -203,7 +203,7 @@ class TokenAccountingService
             return $amount;
         }
         $rate = $this->currencyRates[$fromCurrency] ?? null;
-        if (null === $rate) {
+        if (null === $rate || !is_numeric($rate)) {
             return $amount; // Pas de taux = pas de conversion (audit en devise d'origine)
         }
 

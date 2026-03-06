@@ -48,6 +48,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
              WHERE created_at >= :start AND created_at <= :end',
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         );
+        /** @var array<string, mixed>|false $globalResult */
         $globalResult = $resultSet->fetchAssociative();
         if (!is_array($globalResult)) {
             $globalResult = [];
@@ -70,11 +71,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         /* @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $globalResult */
         return [
-            'request_count' => (int) ($globalResult['request_count'] ?? 0),
-            'prompt_tokens' => (int) ($globalResult['prompt_tokens'] ?? 0),
-            'completion_tokens' => (int) ($globalResult['completion_tokens'] ?? 0),
-            'thinking_tokens' => (int) ($globalResult['thinking_tokens'] ?? 0),
-            'total_tokens' => (int) ($globalResult['total_tokens'] ?? 0),
+            'request_count' => is_numeric($globalResult['request_count'] ?? null) ? (int) $globalResult['request_count'] : 0,
+            'prompt_tokens' => is_numeric($globalResult['prompt_tokens'] ?? null) ? (int) $globalResult['prompt_tokens'] : 0,
+            'completion_tokens' => is_numeric($globalResult['completion_tokens'] ?? null) ? (int) $globalResult['completion_tokens'] : 0,
+            'thinking_tokens' => is_numeric($globalResult['thinking_tokens'] ?? null) ? (int) $globalResult['thinking_tokens'] : 0,
+            'total_tokens' => is_numeric($globalResult['total_tokens'] ?? null) ? (int) $globalResult['total_tokens'] : 0,
             'costs' => $costs,  // array: 'EUR' => X, 'USD' => Y
         ];
     }
@@ -112,7 +113,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $stats = [];
         foreach ($results as $result) {
-            $key = $result['module'].':'.$result['action'];
+            $key = $result['module'] . ':' . $result['action'];
             $stats[$key] = [
                 'module' => $result['module'],
                 'action' => $result['action'],
@@ -150,6 +151,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
              WHERE conversation_id IS NOT NULL AND created_at >= :start AND created_at <= :end',
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         );
+        /** @var array<string, mixed>|false $result */
         $result = $resultSet->fetchAssociative();
         if (!is_array($result)) {
             $result = [];
@@ -157,11 +159,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         /* @var array{count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $result */
         return [
-            'count' => (int) ($result['count'] ?? 0),
-            'prompt_tokens' => (int) ($result['prompt_tokens'] ?? 0),
-            'completion_tokens' => (int) ($result['completion_tokens'] ?? 0),
-            'thinking_tokens' => (int) ($result['thinking_tokens'] ?? 0),
-            'total_tokens' => (int) ($result['total_tokens'] ?? 0),
+            'count' => is_numeric($result['count'] ?? null) ? (int) $result['count'] : 0,
+            'prompt_tokens' => is_numeric($result['prompt_tokens'] ?? null) ? (int) $result['prompt_tokens'] : 0,
+            'completion_tokens' => is_numeric($result['completion_tokens'] ?? null) ? (int) $result['completion_tokens'] : 0,
+            'thinking_tokens' => is_numeric($result['thinking_tokens'] ?? null) ? (int) $result['thinking_tokens'] : 0,
+            'total_tokens' => is_numeric($result['total_tokens'] ?? null) ? (int) $result['total_tokens'] : 0,
         ];
     }
 
@@ -488,7 +490,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             return 0.0;
         }
 
-        /* @var array{total?: string|int|float} $result */
-        return (float) ($result['total'] ?? 0.0);
+        $total = $result['total'] ?? 0.0;
+        return is_numeric($total) ? (float) $total : 0.0;
     }
 }

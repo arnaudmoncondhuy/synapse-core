@@ -41,36 +41,14 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private PresetValidator $presetValidator,
         private ?CacheInterface $cache = null,
         private ?EncryptionServiceInterface $encryptionService = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Récupère la configuration fusionnée (preset actif + config globale + credentials provider).
      *
      * Si un override est défini (via setOverride()), retourne cet override au lieu du preset actif.
      *
-     * @return array{
-     *     model: string,
-     *     provider: string,
-     *     provider_credentials: array<string, mixed>,
-     *     safety_settings: array{
-     *         enabled: bool,
-     *         default_threshold: string,
-     *         thresholds: array<string, string>
-     *     },
-     *     generation_config: array{
-     *         temperature: float,
-     *         top_p: float,
-     *         top_k: int,
-     *         max_output_tokens: ?int,
-     *         stop_sequences: array<string>
-     *     },
-     *     thinking: array{
-     *         enabled: bool,
-     *         budget: int,
-     *         reasoning_effort: string
-     *     }
-     * } Configuration structurée pour le client LLM
+     * @return array<string, mixed> Configuration structurée pour le client LLM
      */
     public function getConfig(): array
     {
@@ -176,28 +154,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      * Si aucun preset valide n'existe, retourne une configuration par défaut
      * (pour permettre la création du premier preset).
      *
-     * @return array{
-     *     model: string,
-     *     provider: string,
-     *     provider_credentials: array<string, mixed>,
-     *     safety_settings: array{
-     *         enabled: bool,
-     *         default_threshold: string,
-     *         thresholds: array<string, string>
-     *     },
-     *     generation_config: array{
-     *         temperature: float,
-     *         top_p: float,
-     *         top_k: int,
-     *         max_output_tokens: ?int,
-     *         stop_sequences: array<string>
-     *     },
-     *     thinking: array{
-     *         enabled: bool,
-     *         budget: int,
-     *         reasoning_effort: string
-     *     }
-     * }
+     * @return array<string, mixed>
      */
     private function loadConfig(): array
     {
@@ -232,7 +189,10 @@ class DatabaseConfigProvider implements ConfigProviderInterface
             $config['provider_credentials'] = [];
         }
 
-        return $config;
+        /** @var array{model: string, provider: string, provider_credentials: array<string, mixed>, safety_settings: array{enabled: bool, default_threshold: string, thresholds: array<string, string>}, generation_config: array{temperature: float, top_p: float, top_k: int, max_output_tokens: int|null, stop_sequences: array<string>}, thinking: array{enabled: bool, budget: int, reasoning_effort: string}} $finalConfig */
+        $finalConfig = $config;
+
+        return $finalConfig;
     }
 
     /**

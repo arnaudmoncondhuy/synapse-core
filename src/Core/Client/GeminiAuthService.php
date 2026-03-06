@@ -28,8 +28,7 @@ class GeminiAuthService
     public function __construct(
         private HttpClientInterface $httpClient,
         private ?string $serviceAccountJsonPath = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Injecte les credentials depuis un contenu JSON (depuis la DB).
@@ -43,10 +42,12 @@ class GeminiAuthService
         }
 
         // Invalider le cache si les credentials ont changé
-        if ($this->credentialsOverride !== $credentials) {
+        if (is_array($credentials) && $this->credentialsOverride !== $credentials) {
             $this->cachedToken = null;
             $this->tokenExpiry = null;
-            $this->credentialsOverride = $credentials;
+            /** @var array<string, mixed>|null $credArray */
+            $credArray = is_array($credentials) ? $credentials : null;
+            $this->credentialsOverride = $credArray;
         }
     }
 
@@ -103,12 +104,13 @@ class GeminiAuthService
         }
 
         // Priorité 2 : fichier JSON (chemin YAML)
-        if ($this->serviceAccountJsonPath && file_exists($this->serviceAccountJsonPath)) {
+        if (is_string($this->serviceAccountJsonPath) && file_exists($this->serviceAccountJsonPath)) {
             $credentials = json_decode((string) file_get_contents($this->serviceAccountJsonPath), true);
             if (is_array($credentials)) {
+                /** @var array<string, mixed> $credentials */
                 return $credentials;
             }
-            throw new \RuntimeException('Invalid Service Account JSON file: '.$this->serviceAccountJsonPath);
+            throw new \RuntimeException('Invalid Service Account JSON file: ' . $this->serviceAccountJsonPath);
         }
 
         throw new \RuntimeException('Google credentials not configured. Add a Gemini provider in the Synapse admin (Providers → Gemini).');
@@ -136,16 +138,16 @@ class GeminiAuthService
         $header64 = $this->base64UrlEncode((string) json_encode($header));
         $payload64 = $this->base64UrlEncode((string) json_encode($payload));
 
-        $signatureInput = $header64.'.'.$payload64;
+        $signatureInput = $header64 . '.' . $payload64;
 
         openssl_sign(
             $signatureInput,
             $signature,
-            $credentials['private_key'],
+            (string) ($credentials['private_key'] ?? ''),
             OPENSSL_ALGO_SHA256
         );
 
-        return $signatureInput.'.'.$this->base64UrlEncode($signature);
+        return $signatureInput . '.' . $this->base64UrlEncode($signature);
     }
 
     private function base64UrlEncode(string $data): string

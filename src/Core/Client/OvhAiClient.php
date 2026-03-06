@@ -51,8 +51,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         private HttpClientInterface $httpClient,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {
-    }
+    ) {}
 
     public function getProviderName(): string
     {
@@ -98,9 +97,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $debugOut['raw_request_body'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($payload);
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -109,7 +108,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             ]);
 
             // Accumulate tool call arguments across chunks (tool calls are streamed incrementally)
-            $toolCallsAccumulator = []; // index => ['id' => '', 'name' => '', 'args' => '']
+            /** @var array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
+            $toolCallsAccumulator = [];
             $buffer = '';
             $rawApiChunks = []; // Capturer tous les chunks bruts de l'API pour le debug
             $streamingComplete = false;
@@ -136,6 +136,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     if ('data: [DONE]' === $line) {
                         // Safety net: flush remaining accumulated tool calls if any
                         if (!empty($toolCallsAccumulator)) {
+                            /** @var array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
                             yield $this->buildToolCallChunk($toolCallsAccumulator);
                         }
                         $streamingComplete = true;
@@ -155,7 +156,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     // Capturer les chunks bruts AVANT normalisation (vrai debug)
                     $rawApiChunks[] = $data;
 
-                    $result = $this->processChunk($data, $toolCallsAccumulator);
+                    /** @var array<string, mixed> $rawChunk */
+                    $rawChunk = $data;
+                    $result = $this->processChunk($rawChunk, $toolCallsAccumulator);
                     if (null !== $result) {
                         yield $result;
                     }
@@ -171,7 +174,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     // Capturer le dernier chunk brut aussi
                     $rawApiChunks[] = $data;
 
-                    $result = $this->processChunk($data, $toolCallsAccumulator);
+                    /** @var array<string, mixed> $rawChunk2 */
+                    $rawChunk2 = $data;
+                    $result = $this->processChunk($rawChunk2, $toolCallsAccumulator);
                     if (null !== $result) {
                         yield $result;
                     }
@@ -224,9 +229,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $debugOut['raw_request_body'] = $payload;
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -262,9 +267,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         ];
 
         try {
-            $response = $this->httpClient->request('POST', rtrim($this->endpoint, '/').'/embeddings', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/embeddings', [
                 'headers' => [
-                    'Authorization' => 'Bearer '.$this->apiKey,
+                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -276,18 +281,26 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             $embeddings = [];
             if (isset($data['data']) && is_array($data['data'])) {
                 // OpenAI returns data sorted by index, but it's good practice to ensure it
-                usort($data['data'], fn ($a, $b) => ($a['index'] ?? 0) <=> ($b['index'] ?? 0));
+                /** @var array<int, array<string, mixed>> $dataList */
+                $dataList = $data['data'];
+                usort($dataList, function (array $a, array $b) {
+                    $idxA = isset($a['index']) && is_numeric($a['index']) ? (int) $a['index'] : 0;
+                    $idxB = isset($b['index']) && is_numeric($b['index']) ? (int) $b['index'] : 0;
+                    return $idxA <=> $idxB;
+                });
 
-                foreach ($data['data'] as $item) {
-                    if (isset($item['embedding'])) {
-                        $embeddings[] = $item['embedding'];
+                foreach ($dataList as $item) {
+                    if (is_array($item) && isset($item['embedding']) && is_array($item['embedding'])) {
+                        /** @var list<float> $vals */
+                        $vals = $item['embedding'];
+                        $embeddings[] = $vals;
                     }
                 }
             }
 
             $usage = [
-                'prompt_tokens' => $data['usage']['prompt_tokens'] ?? 0,
-                'total_tokens' => $data['usage']['total_tokens'] ?? 0,
+                'prompt_tokens' => is_numeric($data['usage']['prompt_tokens'] ?? null) ? (int) $data['usage']['prompt_tokens'] : 0,
+                'total_tokens' => is_numeric($data['usage']['total_tokens'] ?? null) ? (int) $data['usage']['total_tokens'] : 0,
             ];
 
             return [
@@ -330,42 +343,51 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             ];
         }
 
-        $choice = $data['choices'][0] ?? null;
+        $choices = is_array($data['choices'] ?? null) ? $data['choices'] : [];
+        $choice = is_array($choices[0] ?? null) ? $choices[0] : null;
         if (null === $choice) {
             // Only yield if we have usage data
             return !empty($normalized['usage']) ? $normalized : null;
         }
 
-        $delta = $choice['delta'] ?? [];
-        $finishReason = $choice['finish_reason'] ?? null;
+        $delta = is_array($choice['delta'] ?? null) ? $choice['delta'] : [];
+        $finishReason = is_string($choice['finish_reason'] ?? null) ? (string) $choice['finish_reason'] : null;
 
         // Text content
-        if (isset($delta['content']) && '' !== $delta['content']) {
-            $normalized['text'] = $delta['content'];
+        if (isset($delta['content']) && is_string($delta['content']) && '' !== $delta['content']) {
+            $normalized['text'] = (string) $delta['content'];
         }
 
         // Reasoning/Thinking content (OpenAI compatible format)
         // OVH may return reasoning in 'reasoning' or 'reasoning_content' fields
-        if (isset($delta['reasoning']) && '' !== $delta['reasoning']) {
-            $normalized['thinking'] = $delta['reasoning'];
-        } elseif (isset($delta['reasoning_content']) && '' !== $delta['reasoning_content']) {
-            $normalized['thinking'] = $delta['reasoning_content'];
+        if (isset($delta['reasoning']) && is_string($delta['reasoning']) && '' !== $delta['reasoning']) {
+            $normalized['thinking'] = (string) $delta['reasoning'];
+        } elseif (isset($delta['reasoning_content']) && is_string($delta['reasoning_content']) && '' !== $delta['reasoning_content']) {
+            $normalized['thinking'] = (string) $delta['reasoning_content'];
         }
 
         // Tool calls (streamed incrementally — name in first chunk, args accumulated)
-        if (isset($delta['tool_calls'])) {
+        if (isset($delta['tool_calls']) && is_array($delta['tool_calls'])) {
             foreach ($delta['tool_calls'] as $tc) {
-                $idx = $tc['index'] ?? 0;
+
+                /** @var array<string, mixed> $tc */
+                if (!is_array($tc)) {
+                    continue;
+                }
+                $idxMixed = $tc['index'] ?? 0;
+                $idx = is_numeric($idxMixed) ? (int) $idxMixed : 0;
                 if (!isset($toolCallsAccumulator[$idx])) {
                     $toolCallsAccumulator[$idx] = ['id' => '', 'name' => '', 'args' => ''];
                 }
-                if (!empty($tc['id'])) {
+                if (!empty($tc['id']) && is_string($tc['id'])) {
                     $toolCallsAccumulator[$idx]['id'] = (string) $tc['id'];
                 }
-                if (!empty($tc['function']['name'] ?? '')) {
-                    $toolCallsAccumulator[$idx]['name'] = (string) $tc['function']['name'];
+                if (is_array($tc['function'] ?? null) && !empty($tc['function']['name'] ?? '')) {
+                    /** @var array<string, mixed> $func */
+                    $func = is_array($tc['function'] ?? null) ? $tc['function'] : [];
+                    $toolCallsAccumulator[$idx]['name'] = is_string($func['name'] ?? null) ? (string) $func['name'] : '';
                 }
-                if (isset($tc['function']['arguments'])) {
+                if (is_array($tc['function'] ?? null) && isset($tc['function']['arguments']) && is_scalar($tc['function']['arguments'])) {
                     $toolCallsAccumulator[$idx]['args'] .= (string) $tc['function']['arguments'];
                 }
             }
@@ -373,6 +395,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // When finish_reason is 'tool_calls', all tool call chunks have been received
         if ('tool_calls' === $finishReason && !empty($toolCallsAccumulator)) {
+            /** @var array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
             $toolChunk = $this->buildToolCallChunk($toolCallsAccumulator);
             // Merge usage if present in the same chunk
             if (!empty($normalized['usage'])) {
@@ -398,16 +421,23 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @return array<string, mixed>
      */
+    /** @param array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
+    /** @param array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator
+     *  @return array<string, mixed>
+     */
     private function buildToolCallChunk(array &$toolCallsAccumulator): array
     {
         $chunk = $this->emptyChunk();
 
         ksort($toolCallsAccumulator);
         foreach ($toolCallsAccumulator as $tc) {
-            $args = json_decode($tc['args'], true) ?? [];
+            /** @var array{id: string, name: string, args: string} $tcArray */
+            $tcArray = $tc;
+            $argsRaw = json_decode((string) $tcArray['args'], true);
+            $args = is_array($argsRaw) ? $argsRaw : [];
             $chunk['function_calls'][] = [
-                'id' => $tc['id'],
-                'name' => $tc['name'],
+                'id' => (string) $tcArray['id'],
+                'name' => (string) $tcArray['name'],
                 'args' => $args,
             ];
         }
@@ -426,7 +456,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      */
     private function toOpenAiTools(array $tools): array
     {
-        return array_map(fn (array $tool) => [
+        return array_map(fn(array $tool) => [
             'type' => 'function',
             'function' => [
                 'name' => $tool['name'],
@@ -445,7 +475,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @return array<string, mixed>
      */
-    private function buildPayload(string $model, array $messages, array $tools, $caps, bool $stream): array
+    private function buildPayload(string $model, array $messages, array $tools, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps, bool $stream): array
     {
         $payload = [
             'model' => $model,
@@ -507,29 +537,41 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             ];
         }
 
-        $choice = $data['choices'][0] ?? null;
+        $choices = is_array($data['choices'] ?? null) ? $data['choices'] : [];
+        $choice = is_array($choices[0] ?? null) ? $choices[0] : null;
         if (null === $choice) {
             return $normalized;
         }
 
-        $message = $choice['message'] ?? [];
+        /** @var array<string, mixed> $message */
+        $message = is_array($choice['message'] ?? null) ? $choice['message'] : [];
 
-        if (!empty($message['content'])) {
-            $normalized['text'] = $message['content'];
+        if (!empty($message['content']) && is_string($message['content'])) {
+            $normalized['text'] = (string) $message['content'];
         }
 
         // OVH retourne le reasoning dans message.reasoning_content (mode synchrone)
-        if (!empty($message['reasoning_content'])) {
-            $normalized['thinking'] = $message['reasoning_content'];
+        if (!empty($message['reasoning_content']) && is_string($message['reasoning_content'])) {
+            $normalized['thinking'] = (string) $message['reasoning_content'];
         }
 
-        if (!empty($message['tool_calls'])) {
+        if (!empty($message['tool_calls']) && is_array($message['tool_calls'])) {
             foreach ($message['tool_calls'] as $tc) {
-                $args = json_decode($tc['function']['arguments'] ?? '{}', true) ?? [];
-                $normalized['function_calls'][] = [
-                    'name' => $tc['function']['name'],
-                    'args' => $args,
-                ];
+
+                /** @var array<string, mixed> $tc */
+
+                $function = is_array($tc['function'] ?? null) ? $tc['function'] : [];
+                $argsStr = is_string($function['arguments'] ?? null) ? (string) $function['arguments'] : '{}';
+                $argsRaw2 = json_decode((string) $argsStr, true);
+                $args = is_array($argsRaw2) ? $argsRaw2 : [];
+                if (!empty($function['name'])) {
+                    /** @var array<string, mixed> $funcData */
+                    $funcData = is_array($tc['function'] ?? null) ? $tc['function'] : [];
+                    $normalized['function_calls'][] = [
+                        'name' => is_string($funcData['name'] ?? null) ? (string) $funcData['name'] : 'unknown',
+                        'args' => is_array($args) ? $args : [],
+                    ];
+                }
             }
         }
 
@@ -565,26 +607,26 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $config = $this->configProvider->getConfig();
 
         if (!empty($config['model'])) {
-            $this->model = $config['model'];
+            $this->model = is_string($config['model'] ?? null) ? (string) $config['model'] : '';
         }
 
         // Provider credentials (SynapseProvider en DB)
-        if (!empty($config['provider_credentials'])) {
-            $creds = $config['provider_credentials'];
+        $creds = is_array($config['provider_credentials'] ?? null) ? $config['provider_credentials'] : [];
 
-            if (!empty($creds['api_key'])) {
-                $this->apiKey = $creds['api_key'];
+        if (!empty($creds)) {
+            if (!empty($creds['api_key']) && is_string($creds['api_key'])) {
+                $this->apiKey = (string) $creds['api_key'];
             }
-            if (!empty($creds['endpoint'])) {
-                $this->endpoint = $creds['endpoint'];
+            if (!empty($creds['endpoint']) && is_string($creds['endpoint'])) {
+                $this->endpoint = (string) $creds['endpoint'];
             }
         }
 
         // Generation Config
         if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
-            $this->temperature = (float) ($gen['temperature'] ?? $this->temperature);
-            $this->topP = (float) ($gen['top_p'] ?? $this->topP);
+            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) { $this->temperature = (float) $gen['temperature']; }
+            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) { $this->topP = (float) $gen['top_p']; }
             $this->maxTokens = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
             if (isset($gen['stop_sequences']) && is_array($gen['stop_sequences'])) {
                 /** @var array<string> $stopSeqs */
@@ -633,19 +675,23 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // Test de connexion: faire un appel à la liste des modèles (gratuit)
         try {
-            $response = $this->httpClient->request('GET', rtrim($endpoint, '/').'/models', [
+            /** @var string $apiKeyStr */
+            $apiKeyStr = $apiKey;
+            /** @var string $endpointStr */
+            $endpointStr = $endpoint;
+            $response = $this->httpClient->request('GET', rtrim($endpointStr, '/') . '/models', [
                 'headers' => [
-                    'Authorization' => 'Bearer '.$apiKey,
+                    'Authorization' => 'Bearer ' . $apiKeyStr,
                     'Accept' => 'application/json',
                 ],
                 'timeout' => 10,
             ]);
 
             if (200 !== $response->getStatusCode()) {
-                throw new \Exception('Erreur HTTP '.$response->getStatusCode().': '.$response->getContent(false));
+                throw new \Exception('Erreur HTTP ' . $response->getStatusCode() . ': ' . $response->getContent(false));
             }
         } catch (\Exception $e) {
-            throw new \Exception('Impossible de se connecter à OVH: '.$e->getMessage());
+            throw new \Exception('Impossible de se connecter à OVH: ' . $e->getMessage());
         }
     }
 
@@ -664,22 +710,22 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             try {
                 $errorBody = $e->getResponse()->getContent(false);
                 $errorData = json_decode($errorBody, true);
-                if (isset($errorData['message'])) {
-                    $message = $errorData['message'];
+                if (is_array($errorData) && isset($errorData['message'])) {
+                    $message = (string) $errorData['message'];
                 } else {
-                    $message .= ' || OVH Raw Error: '.$errorBody;
+                    $message .= ' || OVH Raw Error: ' . $errorBody;
                 }
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'OVH AI API Error: '.$message;
+        $fullMsg = 'OVH AI API Error: ' . ((string) $message);
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
             429 => new LlmRateLimitException($fullMsg, 0, $e),
             500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
+            default => (str_contains(strtolower((string) $message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
         };
     }
 }

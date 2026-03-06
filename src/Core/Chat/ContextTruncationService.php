@@ -106,7 +106,8 @@ class ContextTruncationService
      */
     private function estimateTokens(array $message): int
     {
-        $text = $message['content'] ?? '';
+        $content = $message['content'] ?? '';
+        $text = is_string($content) ? $content : (is_array($content) ? (string) json_encode($content) : (string) $content);
 
         if (isset($message['tool_calls'])) {
             $text .= json_encode($message['tool_calls'], JSON_UNESCAPED_UNICODE);

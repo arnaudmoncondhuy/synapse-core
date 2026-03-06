@@ -19,51 +19,13 @@ use Symfony\Contracts\Cache\ItemInterface;
  */
 class DebugLogSubscriber implements EventSubscriberInterface
 {
-    /**
-     * @var array{
-     *     system_prompt?: string|null,
-     *     config?: array<string, mixed>,
-     *     preset_config?: array{
-     *         model: string|null,
-     *         provider: string|null,
-     *         temperature: mixed,
-     *         top_p: mixed,
-     *         top_k: mixed,
-     *         max_output_tokens: mixed,
-     *         thinking_enabled: bool,
-     *         thinking_budget: mixed,
-     *         safety_enabled: bool,
-     *         safety_thresholds: array<mixed>,
-     *         safety_default_threshold: string|null,
-     *         tools_sent: bool,
-     *         streaming_enabled: bool
-     *     },
-     *     history?: array<int, array<string, mixed>>,
-     *     history_size?: int,
-     *     prompt_metadata?: array<string, mixed>,
-     *     turns?: array<int, array{turn: int, text: string, thinking: string, function_calls: array<mixed>, usage: array<mixed>, safety_ratings: array<mixed>}>,
-     *     tool_executions?: array<int, array<string, mixed>>,
-     *     tool_definitions?: array<int, array<string, mixed>>,
-     *     raw_request_body?: mixed,
-     *     raw_response?: array<int, array<string, mixed>>,
-     *     raw_api_chunks?: array<int, array<string, mixed>>,
-     *     raw_api_response?: mixed,
-     *     model?: string,
-     *     provider?: string,
-     *     usage?: array<string, mixed>,
-     *     safety?: array<mixed>,
-     *     timings?: array<string, mixed>,
-     *     created_at?: \DateTimeImmutable,
-     *     tool_usage?: array<int, array<string, mixed>>
-     * }
-     */
+    /** @var array<string, mixed> */
     private array $debugAccumulator = [];
 
     public function __construct(
         private SynapseDebugLoggerInterface $debugLogger,
         private CacheInterface $cache,
-    ) {
-    }
+    ) {}
 
     public static function getSubscribedEvents(): array
     {
@@ -84,7 +46,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         // Extract system instruction from contents (first message with role: 'system')
         $systemInstruction = null;
         $contents = $event->getPrompt();
-        $messages = is_array($contents['contents'] ?? null) ? $contents['contents'] : (is_array($contents) ? $contents : []);
+        $messages = is_array($contents['contents'] ?? null) ? $contents['contents'] : (isset($contents[0]) && is_array($contents[0]) ? $contents : []);
         if (!empty($messages) && is_array($messages[0] ?? null) && ($messages[0]['role'] ?? '') === 'system') {
             $systemInstruction = is_string($messages[0]['content'] ?? null) ? (string) $messages[0]['content'] : null;
         }
@@ -118,7 +80,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $promptMetadataRaw = $prompt['metadata'] ?? [];
         $promptMetadata = is_array($promptMetadataRaw) ? $promptMetadataRaw : [];
 
-        $this->debugAccumulator = [
+        /** @var array<string, mixed> $accumulatorData */
+        $accumulatorData = [
             'system_prompt' => $systemInstruction,
             'config' => $config,
             'preset_config' => $presetConfig,
@@ -127,12 +90,13 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'prompt_metadata' => $promptMetadata,
             'turns' => [],
             'tool_executions' => [],
-            'tool_definitions' => is_array($toolDefinitions) ? $toolDefinitions : [],
+            'tool_definitions' => array_values(array_filter(is_array($toolDefinitions) ? $toolDefinitions : [], fn($v) => is_array($v))),
             'raw_request_body' => null,
             'raw_response' => [],
             'raw_api_chunks' => [],
             'raw_api_response' => null,
         ];
+        $this->debugAccumulator = $accumulatorData;
     }
 
     public function onChunkReceived(SynapseChunkReceivedEvent $event): void
@@ -165,15 +129,15 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $turnData = $this->debugAccumulator['turns'][$turn];
 
         // Accumulate text and thinking
-        if (!empty($chunk['text']) && is_string($chunk['text'])) {
+        if (!empty($chunk['text'])) {
             $turnData['text'] .= (string) $chunk['text'];
         }
-        if (!empty($chunk['thinking']) && is_string($chunk['thinking'])) {
+        if (!empty($chunk['thinking'])) {
             $turnData['thinking'] .= (string) $chunk['thinking'];
         }
 
         // Accumulate function calls
-        if (!empty($chunk['function_calls']) && is_array($chunk['function_calls'])) {
+        if (!empty($chunk['function_calls'])) {
             $functionCalls = $chunk['function_calls'];
             $turnData['function_calls'] = array_merge(
                 $turnData['function_calls'],
@@ -182,7 +146,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         }
 
         // Merge usage stats
-        if (!empty($chunk['usage']) && is_array($chunk['usage'])) {
+        if (!empty($chunk['usage'])) {
             $turnData['usage'] = array_merge(
                 $turnData['usage'],
                 $chunk['usage']
@@ -190,7 +154,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         }
 
         // Merge safety ratings
-        if (!empty($chunk['safety_ratings']) && is_array($chunk['safety_ratings'])) {
+        if (!empty($chunk['safety_ratings'])) {
             $turnData['safety_ratings'] = array_merge(
                 $turnData['safety_ratings'],
                 $chunk['safety_ratings']
@@ -203,7 +167,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
     public function onToolCallCompleted(SynapseToolCallCompletedEvent $event): void
     {
         $toolCallDataRaw = $event->getToolCallData();
-        $toolCallData = is_array($toolCallDataRaw) ? $toolCallDataRaw : [];
+        $toolCallData = is_array($toolCallDataRaw) ? (array) $toolCallDataRaw : [];
         $functionData = is_array($toolCallData['function'] ?? null) ? $toolCallData['function'] : [];
 
         $this->debugAccumulator['tool_executions'][] = [
@@ -222,7 +186,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
     {
         // Only log if debug mode is enabled
         if (!$event->isDebugMode()) {
-            $this->debugAccumulator = [];
+            /** @var array<string, mixed> $accumulatorData */
+            $accumulatorData = [];
 
             return;
         }
@@ -261,7 +226,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'token_usage' => $event->getUsage(),
             'safety_ratings' => $event->getSafety(),
             'timings' => $event->getTimings(),
-            'thinking_enabled' => $this->debugAccumulator['config']['thinking_enabled'] ?? false,
+            'thinking_enabled' => (isset($this->debugAccumulator['config']) && is_array($this->debugAccumulator['config'])) ? ($this->debugAccumulator['config']['thinking_enabled'] ?? false) : false,
         ];
 
         // Pass COMPLETE debug data (not just metadata) for template rendering
@@ -276,6 +241,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         });
 
         // Clean up
-        $this->debugAccumulator = [];
+        /** @var array<string, mixed> $accumulatorData */
+        $accumulatorData = [];
     }
 }

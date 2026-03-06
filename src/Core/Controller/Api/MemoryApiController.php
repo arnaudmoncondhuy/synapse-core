@@ -46,17 +46,18 @@ class MemoryApiController extends AbstractController
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
+        /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
-        $fact = $data['fact'] ?? null;
+        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : '';;
 
         if (empty($fact)) {
             return $this->json(['error' => 'Le fait à retenir est requis.'], 400);
         }
 
-        $scopeRaw = $data['scope'] ?? 'user';
+        $scopeRaw = is_string($data['scope'] ?? null) ? (string) $data['scope'] : 'user';
         $scope = MemoryScope::tryFrom($scopeRaw) ?? MemoryScope::USER;
-        $conversationId = $data['conversation_id'] ?? null;
-        $category = $data['category'] ?? 'other';
+        $conversationId = is_string($data['conversation_id'] ?? null) ? (string) $data['conversation_id'] : null;
+        $category = is_string($data['category'] ?? null) ? (string) $data['category'] : 'other';
 
         // Récupérer l'identifiant de l'utilisateur courant
         $userId = $this->getUserId();
@@ -106,9 +107,10 @@ class MemoryApiController extends AbstractController
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
+        /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
-        $conversationId = $data['conversation_id'] ?? null;
-        $fact = $data['fact'] ?? 'une information';
+        $conversationId = is_string($data['conversation_id'] ?? null) ? (string) $data['conversation_id'] : null;
+        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : 'une information';
 
         // Loopback : Ajouter un message de rejet à la conversation
         $feedbackMessage = null;
@@ -178,8 +180,9 @@ class MemoryApiController extends AbstractController
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
+        /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
-        $fact = trim($data['fact'] ?? '');
+        $fact = trim(is_string($data['fact'] ?? null) ? (string) $data['fact'] : '');
 
         if (empty($fact)) {
             return $this->json(['error' => 'Le texte du souvenir est requis.'], 400);
@@ -214,8 +217,9 @@ class MemoryApiController extends AbstractController
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
+        /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
-        $newText = trim($data['fact'] ?? '');
+        $newText = trim(is_string($data['fact'] ?? null) ? (string) $data['fact'] : '');
 
         if (empty($newText)) {
             return $this->json(['error' => 'Le nouveau texte est requis.'], 400);

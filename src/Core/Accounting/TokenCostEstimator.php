@@ -35,12 +35,20 @@ class TokenCostEstimator
     {
         $config = $this->configProvider->getConfig();
         $effectiveModel = $model ?? $config['model'] ?? 'unknown';
-        $maxOutputTokens = $maxOutput ?? $config['generation_config']['max_output_tokens'] ?? self::DEFAULT_MAX_OUTPUT_TOKENS;
+        $genConfig = is_array($config['generation_config'] ?? null) ? $config['generation_config'] : [];
+        $maxOutputTokens = $maxOutput ?? (is_numeric($genConfig['max_output_tokens'] ?? null) ? (int) $genConfig['max_output_tokens'] : self::DEFAULT_MAX_OUTPUT_TOKENS);
 
         $promptTokens = $this->contextTruncationService->estimateTokensForContents($contents);
 
         $pricingMap = $this->modelRepo->findAllPricingMap();
-        $pricing = $pricingMap[$effectiveModel] ?? ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
+        /** @var array{input: float, output: float, currency: string} $pricing */
+        $pricing = isset($pricingMap[$effectiveModel]) && is_array($pricingMap[$effectiveModel]) 
+            ? [
+                'input' => (float) ($pricingMap[$effectiveModel]['input'] ?? 0.0),
+                'output' => (float) ($pricingMap[$effectiveModel]['output'] ?? 0.0),
+                'currency' => is_string($pricingMap[$effectiveModel]['currency'] ?? null) ? (string) $pricingMap[$effectiveModel]['currency'] : 'USD',
+            ] 
+            : ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
 
         $usage = [
             'prompt_tokens' => $promptTokens,

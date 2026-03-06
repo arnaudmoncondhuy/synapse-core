@@ -19,23 +19,7 @@ interface ConfigProviderInterface
     /**
      * Retourne la configuration dynamique active.
      *
-     * @return array{
-     *     model: string,
-     *     provider: string,
-     *     provider_credentials: array<string, mixed>,
-     *     safety_settings: array{
-     *         enabled: bool,
-     *         default_threshold: string,
-     *         thresholds: array<string, string>
-     *     },
-     *     generation_config: array{
-     *         temperature: float,
-     *         top_p: float,
-     *         top_k: int,
-     *         max_output_tokens: ?int,
-     *         stop_sequences: array<string>
-     *     }
-     * } Configuration structurée pour le client LLM
+     * @return array<string, mixed> Configuration structurée pour le client LLM
      */
     public function getConfig(): array;
 

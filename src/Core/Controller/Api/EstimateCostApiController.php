@@ -25,22 +25,21 @@ class EstimateCostApiController extends AbstractController
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?MessageFormatter $messageFormatter = null,
-    ) {
-    }
+    ) {}
 
     #[Route('/estimate-cost', name: 'synapse_api_estimate_cost', methods: ['POST'])]
     public function estimateCost(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true) ?? [];
-        $modelId = (string) ($data['model_id'] ?? 'default');
+        $payload = json_decode($request->getContent(), true);
+        $data = is_array($payload) ? $payload : [];
+        $modelId = is_string($data['model_id'] ?? null) ? (string) $data['model_id'] : 'default';
 
         if (!$this->permissionChecker->canCreateConversation()) {
             return $this->json(['error' => 'Access denied.'], 403);
         }
 
-        $data = json_decode($request->getContent(), true) ?? [];
-        $message = trim((string) ($data['message'] ?? ''));
-        $conversationId = $data['conversation_id'] ?? null;
+        $message = trim((string) (is_string($data['message'] ?? null) ? (string) $data['message'] : ''));
+        $conversationId = is_string($data['conversation_id'] ?? null) ? (string) $data['conversation_id'] : null;
 
         $contents = [];
 

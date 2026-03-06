@@ -91,7 +91,9 @@ class SpendingLimitChecker
         if (null !== $this->cache) {
             $item = $this->cache->getItem($key);
             if ($item->isHit()) {
-                return (float) $item->get();
+                $val = $item->get();
+
+                return is_numeric($val) ? (float) $val : 0.0;
             }
         }
 
@@ -109,11 +111,11 @@ class SpendingLimitChecker
 
     private function buildCacheKey(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start): string
     {
-        $base = self::CACHE_PREFIX.$scope.':'.$scopeId.':'.$period->value;
+        $base = self::CACHE_PREFIX . $scope . ':' . $scopeId . ':' . $period->value;
 
         return match ($period) {
-            SpendingLimitPeriod::CALENDAR_DAY => $base.':'.$start->format('Y-m-d'),
-            SpendingLimitPeriod::CALENDAR_MONTH => $base.':'.$start->format('Y-m'),
+            SpendingLimitPeriod::CALENDAR_DAY => $base . ':' . $start->format('Y-m-d'),
+            SpendingLimitPeriod::CALENDAR_MONTH => $base . ':' . $start->format('Y-m'),
             default => $base,
         };
     }
@@ -129,7 +131,7 @@ class SpendingLimitChecker
 
         return match ($period) {
             SpendingLimitPeriod::SLIDING_DAY => [
-                $now->modify('-'.$this->slidingDayHours.' hours'),
+                $now->modify('-' . $this->slidingDayHours . ' hours'),
                 $now,
             ],
             SpendingLimitPeriod::SLIDING_MONTH => [

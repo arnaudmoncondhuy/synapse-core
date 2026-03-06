@@ -24,8 +24,7 @@ class SynapseAgent
         private ?string $systemPrompt = null,
         private array $allowedTools = [],
         private int $maxTurns = 5,
-    ) {
-    }
+    ) {}
 
     /**
      * Exécute une requête auprès de l'agent.
@@ -54,7 +53,10 @@ class SynapseAgent
             $options['tools_override'] = $this->allowedTools;
         }
 
-        return $this->chatService->ask($message, $options, null, $onToken);
+        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapsePreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $chatOptions */
+        $chatOptions = $options;
+
+        return $this->chatService->ask($message, $chatOptions, null, $onToken);
     }
 
     /**

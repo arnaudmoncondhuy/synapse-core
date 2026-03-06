@@ -31,18 +31,18 @@ class ModelCapabilityRegistry
     {
         // Essayer d'abord le chemin dans Infrastructure (après refactorisation)
         // __DIR__ = src/Core/Chat, donc dirname(__DIR__, 3) = bundle root
-        $configDir = dirname(__DIR__, 3).'/src/Infrastructure/Resources/config/models';
+        $configDir = dirname(__DIR__, 3) . '/src/Infrastructure/Resources/config/models';
 
         // Fallback vers Core/Resources (ancien chemin)
         if (!is_dir($configDir)) {
-            $configDir = dirname(__DIR__, 3).'/src/Core/Resources/config/models';
+            $configDir = dirname(__DIR__, 3) . '/src/Core/Resources/config/models';
         }
 
         if (!is_dir($configDir)) {
             return;
         }
 
-        $files = glob($configDir.'/*.yaml');
+        $files = glob($configDir . '/*.yaml');
         if (!$files) {
             return;
         }
@@ -50,8 +50,10 @@ class ModelCapabilityRegistry
         foreach ($files as $file) {
             try {
                 $config = Yaml::parseFile($file);
-                if (isset($config['models']) && is_array($config['models'])) {
-                    $this->models = array_merge($this->models, $config['models']);
+                if (is_array($config) && isset($config['models']) && is_array($config['models'])) {
+                    /** @var array<string, array<string, mixed>> $models */
+                    $models = $config['models'];
+                    $this->models = array_merge($this->models, $models);
                 }
             } catch (\Throwable $e) {
                 // En cas d'erreur sur un fichier, on continue pour ne pas bloquer tout le registre
@@ -82,23 +84,25 @@ class ModelCapabilityRegistry
      */
     public function getCapabilities(string $model): ModelCapabilities
     {
-        $data = $this->models[$model] ?? self::DEFAULTS;
+        $raw = $this->models[$model] ?? self::DEFAULTS;
+        /** @var array<string, mixed> $data */
+        $data = is_array($raw) ? $raw : self::DEFAULTS;
 
         return new ModelCapabilities(
             model: $model,
-            provider: $data['provider'],
-            type: $data['type'] ?? 'chat',
-            thinking: $data['thinking'] ?? false,
-            safetySettings: $data['safety_settings'] ?? false,
-            topK: $data['top_k'] ?? false,
-            functionCalling: $data['function_calling'] ?? true,
-            streaming: $data['streaming'] ?? true,
-            systemPrompt: $data['system_prompt'] ?? true,
-            contextWindow: isset($data['context_window']) ? (int) $data['context_window'] : null,
-            pricingInput: isset($data['pricing_input']) ? (float) $data['pricing_input'] : null,
-            pricingOutput: isset($data['pricing_output']) ? (float) $data['pricing_output'] : null,
-            modelId: $data['model_id'] ?? null,
-            dimensions: $data['dimensions'] ?? [],
+            provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
+            type: is_string($data['type'] ?? null) ? (string) $data['type'] : 'chat',
+            thinking: (bool) ($data['thinking'] ?? false),
+            safetySettings: (bool) ($data['safety_settings'] ?? false),
+            topK: (bool) ($data['top_k'] ?? false),
+            functionCalling: (bool) ($data['function_calling'] ?? true),
+            streaming: (bool) ($data['streaming'] ?? true),
+            systemPrompt: (bool) ($data['system_prompt'] ?? true),
+            contextWindow: is_numeric($data['context_window'] ?? null) ? (int) $data['context_window'] : null,
+            pricingInput: is_numeric($data['pricing_input'] ?? null) ? (float) $data['pricing_input'] : null,
+            pricingOutput: is_numeric($data['pricing_output'] ?? null) ? (float) $data['pricing_output'] : null,
+            modelId: isset($data['model_id']) && is_string($data['model_id']) ? (string) $data['model_id'] : null,
+            dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
         );
     }
 
