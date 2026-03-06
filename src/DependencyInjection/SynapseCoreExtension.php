@@ -79,7 +79,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                             'SynapseCore' => [
                                 'type' => 'attribute',
                                 'is_bundle' => false,
-                                'dir' => dirname(__DIR__, 2) . '/Storage/Entity',
+                                'dir' => \dirname(__DIR__) . '/Storage/Entity',
                                 'prefix' => 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Entity',
                                 'alias' => 'Synapse',
                             ],
