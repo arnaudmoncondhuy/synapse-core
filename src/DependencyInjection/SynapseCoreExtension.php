@@ -79,7 +79,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                             'SynapseCore' => [
                                 'type' => 'attribute',
                                 'is_bundle' => false,
-                                'dir' => dirname(__DIR__, 2).'/Storage/Entity',
+                                'dir' => dirname(__DIR__, 2) . '/Storage/Entity',
                                 'prefix' => 'ArnaudMoncondhuy\\SynapseCore\\Storage\\Entity',
                                 'alias' => 'Synapse',
                             ],
@@ -128,7 +128,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.chat_api_prefix', $config['routing']['chat_api_prefix'] ?? '/synapse/api');
 
         // ── Version ──────────────────────────────────────────────────────────
-        $versionFile = __DIR__.'/../../../VERSION';
+        $versionFile = __DIR__ . '/../../../VERSION';
         $version = is_file($versionFile) ? trim((string) file_get_contents($versionFile)) : 'dev';
         $container->setParameter('synapse.version', $version);
 
@@ -147,7 +147,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         }
 
         // ── Chargement des services ───────────────────────────────────────────
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../../config'));
+        $loader = new YamlFileLoader($container, new FileLocator(\dirname(__DIR__, 1) . '/../config'));
 
         // Load core services (always loaded)
         $loader->load('core.yaml');
