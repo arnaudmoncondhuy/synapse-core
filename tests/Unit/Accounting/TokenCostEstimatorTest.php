@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Accounting;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
-use ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenAccountingService;
-use ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenCostEstimator;
-use ArnaudMoncondhuy\SynapseCore\Core\Chat\ContextTruncationService;
+use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
+use ArnaudMoncondhuy\SynapseCore\Accounting\TokenCostEstimator;
+use ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use PHPUnit\Framework\TestCase;
 

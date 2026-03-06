@@ -11,7 +11,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Contract;
  * que le modèle IA pourra appeler dynamiquement au cours d'une conversation.
  * Ces outils permettent au LLM d'interagir avec le système externe (ex: base de données, API, calculs).
  *
- * @see \ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry
+ * @see \ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry
  *
  * @example
  * ```php

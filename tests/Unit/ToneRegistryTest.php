@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit;
 
-use ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry;
+use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseTone;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository;
 use PHPUnit\Framework\TestCase;

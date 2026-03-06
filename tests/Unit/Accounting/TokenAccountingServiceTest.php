@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Accounting;
 
-use ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenAccountingService;
+use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use Doctrine\ORM\EntityManagerInterface;

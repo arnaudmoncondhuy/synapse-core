@@ -26,7 +26,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Contract;
  * ]
  * ```
  *
- * @see \ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService
+ * @see \ArnaudMoncondhuy\SynapseCore\Engine\ChatService
  */
 interface LlmClientInterface
 {

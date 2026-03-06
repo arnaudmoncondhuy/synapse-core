@@ -6,25 +6,25 @@ services:
     # ── Core Services ───────────────────────────────────────────────────────────
     # Controllers registered here: MemoryApiController, CsrfController, EstimateCostApiController
     # Chat-specific controllers (ChatApiController, ConversationApiController, ResetController) are in synapse-chat/config/chat.yaml
-    ArnaudMoncondhuy\SynapseCore\Core\Controller\Api\:
+    ArnaudMoncondhuy\SynapseCore\Controller\Api\:
         resource: '../src/Core/Controller/Api/'
         tags: ['controller.service_arguments']
 
-    ArnaudMoncondhuy\SynapseCore\Core\Manager\:
+    ArnaudMoncondhuy\SynapseCore\Manager\:
         resource: '../src/Core/Manager/'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Accounting\:
+    ArnaudMoncondhuy\SynapseCore\Accounting\:
         resource: '../src/Core/Accounting/'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Accounting\TokenAccountingService:
+    ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService:
         arguments:
             $referenceCurrency: '%synapse.token_tracking.reference_currency%'
             $currencyRates: '%synapse.token_tracking.currency_rates%'
 
-    ArnaudMoncondhuy\SynapseCore\Infrastructure\Command\:
+    ArnaudMoncondhuy\SynapseCore\Command\:
         resource: '../src/Infrastructure/Command/'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Timing\:
+    ArnaudMoncondhuy\SynapseCore\Timing\:
         resource: '../src/Core/Timing/'
 
     # ── Compatibility alias : TokenUsageRepository → LlmCallRepository ───────
@@ -33,7 +33,7 @@ services:
 
     # ── Route Loader ─────────────────────────────────────────────────────────
     # Permet: resource: . / type: synapse dans routes.yaml (charge Admin + Chat auto)
-    ArnaudMoncondhuy\SynapseCore\Infrastructure\Routing\SynapseRoutesLoader:
+    ArnaudMoncondhuy\SynapseCore\Routing\SynapseRoutesLoader:
         tags:
             - { name: routing.loader }
 
@@ -41,80 +41,80 @@ services:
         resource: '../src/MessageHandler/'
 
     # ── Infra : Google Vertex AI ──────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Client\GeminiAuthService:
+    ArnaudMoncondhuy\SynapseCore\Client\GeminiAuthService:
         # $serviceAccountJsonPath defaults to null — credentials injected at runtime from DB
         # Keep this declaration for potential fallback to YAML file path in future use
 
-    ArnaudMoncondhuy\SynapseCore\Core\Client\GeminiClient:
+    ArnaudMoncondhuy\SynapseCore\Client\GeminiClient:
         arguments:
             $httpClient: '@http_client'
-            $geminiAuthService: '@ArnaudMoncondhuy\SynapseCore\Core\Client\GeminiAuthService'
+            $geminiAuthService: '@ArnaudMoncondhuy\SynapseCore\Client\GeminiAuthService'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
-            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry'
+            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry'
         tags:
             - { name: synapse.llm_client }
 
     # ── Infra : OVH AI Endpoints ──────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Client\OvhAiClient:
+    ArnaudMoncondhuy\SynapseCore\Client\OvhAiClient:
         arguments:
             $httpClient: '@http_client'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
-            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry'
+            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry'
         tags:
             - { name: synapse.llm_client }
 
     # ── Registre des clients LLM ──────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\LlmClientRegistry:
+    ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry:
         arguments:
             $clients: !tagged_iterator synapse.llm_client
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
             $defaultProvider: 'gemini'
 
     # ── Registre des capacités par modèle ────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry: ~
+    ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry: ~
 
     # ── Chat (estimation tokens, troncature contexte) ───────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\ContextTruncationService: ~
+    ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService: ~
 
     # ── Registre des outils ──────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry:
+    ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry:
         arguments:
             $tools: !tagged_iterator synapse.tool
 
     # ── Registre des splitters (Chunking) ────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chunking\TextSplitterRegistry:
+    ArnaudMoncondhuy\SynapseCore\Chunking\TextSplitterRegistry:
         arguments:
             $splitters: !tagged_iterator { tag: synapse.text_splitter, index_by: alias }
 
     # ── Registre des Vector Stores ───────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\VectorStore\VectorStoreRegistry:
+    ArnaudMoncondhuy\SynapseCore\VectorStore\VectorStoreRegistry:
         arguments:
             $vectorStores: !tagged_iterator { tag: synapse.vector_store, index_by: alias }
 
-    ArnaudMoncondhuy\SynapseCore\Core\VectorStore\DynamicVectorStore:
+    ArnaudMoncondhuy\SynapseCore\VectorStore\DynamicVectorStore:
         arguments:
-            $registry: '@ArnaudMoncondhuy\SynapseCore\Core\VectorStore\VectorStoreRegistry'
+            $registry: '@ArnaudMoncondhuy\SynapseCore\VectorStore\VectorStoreRegistry'
             $configRepository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
 
 
     # ── Default implementations (can be overridden by user) ──────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\PresetValidator:
+    ArnaudMoncondhuy\SynapseCore\PresetValidator:
         arguments:
             $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
-            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ModelCapabilityRegistry'
+            $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry'
             $em: '@doctrine.orm.entity_manager'
 
-    ArnaudMoncondhuy\SynapseCore\Core\DatabaseConfigProvider:
+    ArnaudMoncondhuy\SynapseCore\DatabaseConfigProvider:
         arguments:
             $presetRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository'
             $globalConfigRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
-            $presetValidator: '@ArnaudMoncondhuy\SynapseCore\Core\PresetValidator'
+            $presetValidator: '@ArnaudMoncondhuy\SynapseCore\PresetValidator'
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Impl\DefaultContextProvider: ~
+    ArnaudMoncondhuy\SynapseCore\Impl\DefaultContextProvider: ~
 
-    ArnaudMoncondhuy\SynapseCore\Core\Context\UserAwareContextProvider:
+    ArnaudMoncondhuy\SynapseCore\Context\UserAwareContextProvider:
         arguments:
             $language: '%synapse.context.language%'
 
@@ -122,56 +122,56 @@ services:
         arguments:
             $adminRole: '%synapse.security.admin_role%'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Formatter\MessageFormatter:
+    ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter:
         arguments:
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
 
     # ── Interface aliases (use default implementations) ───────────────────────
     ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface:
-        alias: ArnaudMoncondhuy\SynapseCore\Core\DatabaseConfigProvider
+        alias: ArnaudMoncondhuy\SynapseCore\DatabaseConfigProvider
 
     ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface:
-        alias: ArnaudMoncondhuy\SynapseCore\Core\Impl\DefaultContextProvider
+        alias: ArnaudMoncondhuy\SynapseCore\Impl\DefaultContextProvider
 
     ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface:
         alias: ArnaudMoncondhuy\SynapseCore\Security\DefaultPermissionChecker
 
     ArnaudMoncondhuy\SynapseCore\Contract\MessageFormatterInterface:
-        alias: ArnaudMoncondhuy\SynapseCore\Core\Formatter\MessageFormatter
+        alias: ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter
 
     # ── Logic ─────────────────────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\VectorStore\NullVectorStore:
+    ArnaudMoncondhuy\SynapseCore\VectorStore\NullVectorStore:
         tags: [{ name: synapse.vector_store, alias: null }]
-    ArnaudMoncondhuy\SynapseCore\Core\VectorStore\InMemoryVectorStore:
+    ArnaudMoncondhuy\SynapseCore\VectorStore\InMemoryVectorStore:
         tags: [{ name: synapse.vector_store, alias: in_memory }]
-    ArnaudMoncondhuy\SynapseCore\Core\VectorStore\DoctrineVectorStore:
+    ArnaudMoncondhuy\SynapseCore\VectorStore\DoctrineVectorStore:
         arguments:
             $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseVectorMemoryRepository'
             $logger: '@?logger'
         tags: [{ name: synapse.vector_store, alias: doctrine }]
 
     ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface:
-        alias: ArnaudMoncondhuy\SynapseCore\Core\VectorStore\DynamicVectorStore
+        alias: ArnaudMoncondhuy\SynapseCore\VectorStore\DynamicVectorStore
 
-    ArnaudMoncondhuy\SynapseCore\Core\Chunking\RecursiveTextSplitter:
+    ArnaudMoncondhuy\SynapseCore\Chunking\RecursiveTextSplitter:
         tags: [{ name: synapse.text_splitter, alias: recursive }]
-    ArnaudMoncondhuy\SynapseCore\Core\Chunking\FixedSizeTextSplitter:
+    ArnaudMoncondhuy\SynapseCore\Chunking\FixedSizeTextSplitter:
         tags: [{ name: synapse.text_splitter, alias: fixed }]
 
     ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface:
-        alias: ArnaudMoncondhuy\SynapseCore\Core\Chunking\RecursiveTextSplitter
+        alias: ArnaudMoncondhuy\SynapseCore\Chunking\RecursiveTextSplitter
 
-    ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry:
+    ArnaudMoncondhuy\SynapseCore\ToneRegistry:
         arguments:
             $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository'
 
-    ArnaudMoncondhuy\SynapseCore\Core\MissionRegistry:
+    ArnaudMoncondhuy\SynapseCore\MissionRegistry:
         arguments:
             $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\PromptBuilder:
+    ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder:
         arguments:
-            $toneRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\ToneRegistry'
+            $toneRegistry: '@ArnaudMoncondhuy\SynapseCore\ToneRegistry'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
 
     # ── DataFixtures (optionnel — requiert doctrine/doctrine-fixtures-bundle) ───
@@ -180,30 +180,30 @@ services:
     # dans les environnements prod sans DataFixtures installées.
 
     # ── Main service ──────────────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Chat\ChatService:
+    ArnaudMoncondhuy\SynapseCore\Engine\ChatService:
         arguments:
-            $llmRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\LlmClientRegistry'
+            $llmRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
             $dispatcher: '@event_dispatcher'
 
-    ArnaudMoncondhuy\SynapseCore\Core\Service\EmbeddingService:
+    ArnaudMoncondhuy\SynapseCore\Service\EmbeddingService:
         arguments:
             $clients: !tagged_iterator synapse.llm_client
 
-    ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager:
+    ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager:
         arguments:
             $em: '@doctrine.orm.entity_manager'
 
     # ── Agents ────────────────────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Agent\PresetValidator\PresetValidatorAgent:
+    ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent:
         autowire: true
         autoconfigure: true
 
-    ArnaudMoncondhuy\SynapseCore\Core\Agent\SynapseAgentBuilder:
+    ArnaudMoncondhuy\SynapseCore\Agent\SynapseAgentBuilder:
         autowire: true
         autoconfigure: true
 
-    ArnaudMoncondhuy\SynapseCore\Core\Service\ChunkingService: ~
+    ArnaudMoncondhuy\SynapseCore\Service\ChunkingService: ~
 
     # ── Repositories (required by core services) ──────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository:
@@ -216,7 +216,7 @@ services:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']
 
-    ArnaudMoncondhuy\SynapseCore\Core\Accounting\SpendingLimitChecker:
+    ArnaudMoncondhuy\SynapseCore\Accounting\SpendingLimitChecker:
         arguments:
             $configRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $slidingDayHours: '%synapse.token_tracking.sliding_day_hours%'
@@ -274,28 +274,28 @@ services:
         alias: ArnaudMoncondhuy\SynapseCore\Storage\Logger\MonologDebugLogger
 
     # ── Event Subscribers ──────────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Event\ContextBuilderSubscriber:
+    ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber:
         autowire: true
         autoconfigure: true
         public: false
 
-    ArnaudMoncondhuy\SynapseCore\Core\Event\ToolExecutionSubscriber:
+    ArnaudMoncondhuy\SynapseCore\Event\ToolExecutionSubscriber:
         arguments:
-            $toolRegistry: '@ArnaudMoncondhuy\SynapseCore\Core\Chat\ToolRegistry'
+            $toolRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry'
         autowire: true
         autoconfigure: true
         public: false
 
-    ArnaudMoncondhuy\SynapseCore\Core\Event\DebugLogSubscriber:
+    ArnaudMoncondhuy\SynapseCore\Event\DebugLogSubscriber:
         autowire: true
         autoconfigure: true
         public: false
 
-    ArnaudMoncondhuy\SynapseCore\Core\Event\MemoryContextSubscriber:
+    ArnaudMoncondhuy\SynapseCore\Event\MemoryContextSubscriber:
         autowire: true
         autoconfigure: true
         public: false
 
     # ── Memory Tools ─────────────────────────────────────────────────────────
-    ArnaudMoncondhuy\SynapseCore\Core\Memory\Tool\ProposeMemoryTool:
+    ArnaudMoncondhuy\SynapseCore\Memory\Tool\ProposeMemoryTool:
         tags: [{ name: synapse.tool }]

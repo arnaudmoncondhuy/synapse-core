@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Formatter;
 
-use ArnaudMoncondhuy\SynapseCore\Core\Formatter\MessageFormatter;
+use ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
 use PHPUnit\Framework\TestCase;

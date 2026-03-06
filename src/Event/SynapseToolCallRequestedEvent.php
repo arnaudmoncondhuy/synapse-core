@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ArnaudMoncondhuy\SynapseCore\Event;
+
+use Symfony\Contracts\EventDispatcher\Event;
+
+/**
+ * Événement déclenché lorsque le LLM demande l'exécution d'un ou plusieurs outils.
+ *
+ * C'est le cœur du "Function Calling". Synapse décompose la demande du modèle
+ * et émet cet événement. Les écouteurs (subscribers) sont chargés d'exécuter
+ * la logique métier et de renvoyer le résultat via `setToolResult()`.
+ *
+ * @see ToolExecutionSubscriber
+ */
+class SynapseToolCallRequestedEvent extends Event
+{
+    /** @var array<int, array{id: string, name: string, args: array<string, mixed>}> */
+    private array $toolCalls;
+
+    /** @var array<string, mixed> */
+    private array $results = [];
+
+    /**
+     * @param array<int, array{id: string, name: string, args: array<string, mixed>}> $toolCalls liste des appels d'outils demandés par le LLM
+     */
+    public function __construct(array $toolCalls)
+    {
+        $this->toolCalls = $toolCalls;
+    }
+
+    /**
+     * Retourne la liste des outils que le modèle souhaite appeler.
+     *
+     * @return array<int, array{id: string, name: string, args: array<string, mixed>}>
+     */
+    public function getToolCalls(): array
+    {
+        return $this->toolCalls;
+    }
+
+    /**
+     * Enregistre le résultat de l'exécution d'un outil.
+     *
+     * @param string $toolName nom technique de l'outil
+     * @param mixed  $result   donnée renvoyée par l'application (sera JSON-sérialisée pour le LLM)
+     */
+    public function setToolResult(string $toolName, mixed $result): self
+    {
+        $this->results[$toolName] = $result;
+
+        return $this;
+    }
+
+    /**
+     * Retourne l'ensemble des résultats collectés.
+     *
+     * @return array<string, mixed>
+     */
+    public function getResults(): array
+    {
+        return $this->results;
+    }
+
+    /**
+     * Vérifie si tous les outils demandés ont reçu une réponse de l'application.
+     */
+    public function areAllResultsRegistered(): bool
+    {
+        return count($this->results) === count($this->toolCalls);
+    }
+}

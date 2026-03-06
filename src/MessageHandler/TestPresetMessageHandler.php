@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\MessageHandler;
 
-use ArnaudMoncondhuy\SynapseCore\Core\Agent\PresetValidator\PresetValidatorAgent;
+use ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent;
 use ArnaudMoncondhuy\SynapseCore\Message\TestPresetMessage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
