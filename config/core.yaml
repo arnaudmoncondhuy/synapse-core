@@ -11,10 +11,10 @@ services:
         tags: ['controller.service_arguments']
 
     ArnaudMoncondhuy\SynapseCore\Manager\:
-        resource: '../src/Core/Manager/'
+        resource: '../src/Manager/'
 
     ArnaudMoncondhuy\SynapseCore\Accounting\:
-        resource: '../src/Core/Accounting/'
+        resource: '../src/Accounting/'
 
     ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService:
         arguments:
@@ -22,10 +22,10 @@ services:
             $currencyRates: '%synapse.token_tracking.currency_rates%'
 
     ArnaudMoncondhuy\SynapseCore\Command\:
-        resource: '../src/Infrastructure/Command/'
+        resource: '../src/Command/'
 
     ArnaudMoncondhuy\SynapseCore\Timing\:
-        resource: '../src/Core/Timing/'
+        resource: '../src/Timing/'
 
     # ── Compatibility alias : TokenUsageRepository → LlmCallRepository ───────
     ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseTokenUsageRepository:
