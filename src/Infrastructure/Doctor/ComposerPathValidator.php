@@ -37,12 +37,19 @@ class ComposerPathValidator
         }
 
         $hasPathRepo = false;
+        /** @var list<string> $pathRepos */
         $pathRepos = [];
 
-        foreach ($composer['repositories'] as $repo) {
-            if (($repo['type'] ?? null) === 'path') {
+        $repositories = $composer['repositories'];
+        if (!is_array($repositories)) {
+            $repositories = [];
+        }
+
+        foreach ($repositories as $repo) {
+            if (is_array($repo) && ($repo['type'] ?? null) === 'path') {
                 $hasPathRepo = true;
-                $pathRepos[] = $repo['url'] ?? 'unknown';
+                $url = $repo['url'] ?? 'unknown';
+                $pathRepos[] = is_string($url) ? $url : 'unknown';
             }
         }
 

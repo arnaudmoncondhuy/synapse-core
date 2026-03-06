@@ -61,7 +61,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         if (isset($options['system_prompt']) && is_string($options['system_prompt'])) {
             $systemMessage = ['role' => 'system', 'content' => $options['system_prompt']];
         } else {
-            $toneKey = $options['tone'] ?? null;
+            $toneKeyMixed = $options['tone'] ?? null;
+            $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
             $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
         }
 
@@ -82,22 +83,28 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // ── Load history ──
-        $isStateless = $options['stateless'] ?? false;
+        $isStateless = (bool) ($options['stateless'] ?? false);
         $contents = [];
 
         if ($isStateless) {
             // Stateless mode: Use provided history in options or empty list
-            $providedHistory = $options['history'] ?? [];
+            $providedHistoryRaw = $options['history'] ?? [];
+            $providedHistory = is_array($providedHistoryRaw) ? $providedHistoryRaw : [];
             if (!empty($providedHistory)) {
-                $contents = $this->sanitizeHistoryForNewTurn($providedHistory);
+                /** @var array<int, array<string, mixed>> $typedHistory */
+                $typedHistory = $providedHistory;
+                $contents = $this->sanitizeHistoryForNewTurn($typedHistory);
             }
             if (!empty($message)) {
                 $contents[] = ['role' => 'user', 'content' => TextUtil::sanitizeUtf8($message)];
             }
         } else {
             // Stateful mode: load history from DB/Handler + add current message
-            $rawHistory = $options['history'] ?? [];
-            $contents = $this->sanitizeHistoryForNewTurn($rawHistory);
+            $rawHistoryRaw = $options['history'] ?? [];
+            $rawHistory = is_array($rawHistoryRaw) ? $rawHistoryRaw : [];
+            /** @var array<int, array<string, mixed>> $typedHistory */
+            $typedHistory = $rawHistory;
+            $contents = $this->sanitizeHistoryForNewTurn($typedHistory);
             if (!empty($message)) {
                 $contents[] = ['role' => 'user', 'content' => TextUtil::sanitizeUtf8($message)];
             }
@@ -115,8 +122,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // Support preset override (for testing or AgentBuilder) - takes precedence over mission preset
-        if (isset($options['preset'])) {
-            $config = $this->configProvider->getConfigForPreset($options['preset']);
+        $presetOption = $options['preset'] ?? null;
+        if ($presetOption instanceof \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset) {
+            $config = $this->configProvider->getConfigForPreset($presetOption);
         }
 
         // Expose mission_id in config for spending limits and token accounting
@@ -129,10 +137,16 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
 
         // ── Build complete prompt (system message + history) ──
         // System instruction is now the first message in contents (OpenAI canonical format)
-        $toolsOverride = $options['tools_override'] ?? null;
+        $toolsOptionRaw = $options['tools'] ?? null;
+        /** @var list<string>|null $toolsOption */
+        $toolsOption = is_array($toolsOptionRaw) ? array_values(array_filter($toolsOptionRaw, 'is_string')) : (is_string($toolsOptionRaw) ? [$toolsOptionRaw] : null);
+        $toolsOverrideRaw = $options['tools_override'] ?? null;
+        /** @var list<string>|null $toolsOverride */
+        $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
+
         $toolDefinitions = $toolsOverride !== null
             ? $this->toolRegistry->getDefinitions($toolsOverride)
-            : ($options['tools'] ?? $this->toolRegistry->getDefinitions());
+            : (is_array($toolsOption) ? $this->toolRegistry->getDefinitions($toolsOption) : $this->toolRegistry->getDefinitions());
 
         $prompt = [
             'contents'        => array_merge([$systemMessage], $contents),
@@ -159,7 +173,10 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $sanitized = [];
 
         foreach ($history as $message) {
-            $role = $message['role'] ?? '';
+            if (!is_array($message)) {
+                continue;
+            }
+            $role = is_string($message['role'] ?? null) ? (string) $message['role'] : '';
 
             // Validate known roles
             if (!in_array($role, ['user', 'assistant', 'tool'], true)) {
@@ -167,29 +184,32 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             }
 
             if ($role === 'user' || $role === 'assistant') {
-                $content = $message['content'] ?? '';
+                $contentRaw = $message['content'] ?? '';
+                $content = is_string($contentRaw) ? $contentRaw : null;
 
                 // Skip user messages with non-string content
-                if ($role === 'user' && !is_string($content)) {
+                if ($role === 'user' && $content === null) {
                     continue;
                 }
 
+                /** @var array{role: string, content: string|null, tool_calls?: array<mixed>} $entry */
                 $entry = [
                     'role'    => $role,
-                    'content' => is_string($content) ? TextUtil::sanitizeUtf8($content) : $content,
+                    'content' => $content !== null ? TextUtil::sanitizeUtf8($content) : null,
                 ];
 
                 // Preserve tool_calls for assistant messages
-                if (!empty($message['tool_calls'])) {
-                    $entry['tool_calls'] = $message['tool_calls'];
+                $toolCalls = $message['tool_calls'] ?? null;
+                if (is_array($toolCalls) && !empty($toolCalls)) {
+                    $entry['tool_calls'] = $toolCalls;
                 }
 
                 $sanitized[] = $entry;
             } elseif ($role === 'tool') {
                 $sanitized[] = [
                     'role'         => 'tool',
-                    'tool_call_id' => $message['tool_call_id'] ?? '',
-                    'content'      => TextUtil::sanitizeUtf8($message['content'] ?? ''),
+                    'tool_call_id' => is_string($message['tool_call_id'] ?? null) ? (string) $message['tool_call_id'] : '',
+                    'content'      => TextUtil::sanitizeUtf8(is_string($message['content'] ?? null) ? (string) $message['content'] : ''),
                 ];
             }
         }

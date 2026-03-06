@@ -32,10 +32,20 @@ class DoctrineMappingValidator
             return true;
         }
 
-        if (!isset($config['doctrine']['orm']['mappings'])) {
+        $mappings = null;
+        if (
+            isset($config['doctrine']) && is_array($config['doctrine'])
+            && isset($config['doctrine']['orm']) && is_array($config['doctrine']['orm'])
+            && isset($config['doctrine']['orm']['mappings']) && is_array($config['doctrine']['orm']['mappings'])
+        ) {
+            $mappings = $config['doctrine']['orm']['mappings'];
+        }
+
+        if ($mappings === null) {
             $io->error('[Doctrine] No ORM mappings configured.');
             if ($fix) {
-                $this->addDefaultMappings($doctrineFile, $config, $io);
+                $doctrineConfig = (isset($config['doctrine']) && is_array($config['doctrine'])) ? $config['doctrine'] : [];
+                $this->addDefaultMappings($doctrineFile, $doctrineConfig, $io);
             }
             return false;
         }
@@ -49,8 +59,9 @@ class DoctrineMappingValidator
             $entityNamespaceFound = false;
 
             foreach ($mappings as $namespace => $mapping) {
-                if (($mapping['dir'] ?? null) === '%kernel.project_dir%/src/Entity'
-                    || ($mapping['path'] ?? null) === '%kernel.project_dir%/src/Entity'
+                if (
+                    is_array($mapping) && (($mapping['dir'] ?? null) === '%kernel.project_dir%/src/Entity'
+                        || ($mapping['path'] ?? null) === '%kernel.project_dir%/src/Entity')
                 ) {
                     $entityNamespaceFound = true;
                     break;
@@ -60,7 +71,7 @@ class DoctrineMappingValidator
             if (!$entityNamespaceFound) {
                 $io->error('[Doctrine] src/Entity directory not mapped in doctrine.yaml');
                 if ($fix) {
-                    $this->addEntityMapping($doctrineFile, $config, $io);
+                    $this->addEntityMapping($doctrineFile, is_array($config['doctrine']) ? $config['doctrine'] : [], $io);
                 } else {
                     $isValid = false;
                 }
@@ -81,7 +92,7 @@ class DoctrineMappingValidator
                     // Bundle is installed, check if mapped
                     $found = false;
                     foreach ($mappings as $mapping) {
-                        if (($mapping['dir'] ?? null) === $expectedPath || ($mapping['path'] ?? null) === $expectedPath) {
+                        if (is_array($mapping) && (($mapping['dir'] ?? null) === $expectedPath || ($mapping['path'] ?? null) === $expectedPath)) {
                             $found = true;
                             break;
                         }
@@ -100,44 +111,63 @@ class DoctrineMappingValidator
     }
 
     /**
-     * @param array<string, mixed> $config
+     * @param array<mixed> $doctrineConfig
      */
-    private function addDefaultMappings(string $doctrineFile, array $config, SymfonyStyle $io): void
+    private function addDefaultMappings(string $doctrineFile, array $doctrineConfig, SymfonyStyle $io): void
     {
-        $config['doctrine']['orm']['mappings'] = $config['doctrine']['orm']['mappings'] ?? [];
-        $config['doctrine']['orm']['mappings']['App'] = [
+        if (!isset($doctrineConfig['orm'])) {
+            $doctrineConfig['orm'] = [];
+        }
+        if (!is_array($doctrineConfig['orm'])) {
+            $doctrineConfig['orm'] = [];
+        }
+
+        $doctrineConfig['orm']['mappings'] = $doctrineConfig['orm']['mappings'] ?? [];
+        if (!is_array($doctrineConfig['orm']['mappings'])) {
+            $doctrineConfig['orm']['mappings'] = [];
+        }
+
+        $doctrineConfig['orm']['mappings']['App'] = [
             'dir' => '%kernel.project_dir%/src/Entity',
             'prefix' => 'App\\Entity',
             'type' => 'attribute',
         ];
 
+        $config = ['doctrine' => $doctrineConfig];
         $yaml = Yaml::dump($config, 10, 2);
         file_put_contents($doctrineFile, $yaml);
         $io->writeln('  -> Added default App entity mapping to doctrine.yaml');
     }
 
     /**
-     * @param array<string, mixed> $config
+     * @param array<mixed> $doctrineConfig
      */
-    private function addEntityMapping(string $doctrineFile, array $config, SymfonyStyle $io): void
+    private function addEntityMapping(string $doctrineFile, array $doctrineConfig, SymfonyStyle $io): void
     {
-        if (!isset($config['doctrine']['orm']['mappings'])) {
-            $config['doctrine']['orm']['mappings'] = [];
+        if (!isset($doctrineConfig['orm']) || !is_array($doctrineConfig['orm'])) {
+            $doctrineConfig['orm'] = [];
+        }
+        if (!isset($doctrineConfig['orm']['mappings']) || !is_array($doctrineConfig['orm']['mappings'])) {
+            $doctrineConfig['orm']['mappings'] = [];
         }
 
         // Only add if not already present
-        foreach ($config['doctrine']['orm']['mappings'] as $mapping) {
-            if (($mapping['dir'] ?? null) === '%kernel.project_dir%/src/Entity') {
+        foreach ($doctrineConfig['orm']['mappings'] as $mapping) {
+            if (
+                is_array($mapping)
+                && isset($mapping['dir']) && $mapping['dir'] === '%kernel.project_dir%/src/Entity'
+            ) {
                 return;
             }
         }
 
-        $config['doctrine']['orm']['mappings']['App'] = [
+        $doctrineConfig['orm']['mappings']['App'] = [
             'dir' => '%kernel.project_dir%/src/Entity',
             'prefix' => 'App\\Entity',
             'type' => 'attribute',
         ];
 
+        $config = ['doctrine' => $doctrineConfig];
         $yaml = Yaml::dump($config, 10, 2);
         file_put_contents($doctrineFile, $yaml);
         $io->writeln('  -> Added App entity mapping to doctrine.yaml');

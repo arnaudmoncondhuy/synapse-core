@@ -25,12 +25,15 @@ class SynapseMissionRepository extends ServiceEntityRepository
      */
     public function findAllActive(): array
     {
-        return $this->createQueryBuilder('m')
+        /** @var array<int, SynapseMission> $result */
+        $result = $this->createQueryBuilder('m')
             ->andWhere('m.isActive = true')
             ->orderBy('m.sortOrder', 'ASC')
             ->addOrderBy('m.name', 'ASC')
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -41,12 +44,15 @@ class SynapseMissionRepository extends ServiceEntityRepository
      */
     public function findAllOrdered(): array
     {
-        return $this->createQueryBuilder('m')
+        /** @var array<int, SynapseMission> $result */
+        $result = $this->createQueryBuilder('m')
             ->orderBy('m.isBuiltin', 'DESC')
             ->addOrderBy('m.sortOrder', 'ASC')
             ->addOrderBy('m.name', 'ASC')
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**

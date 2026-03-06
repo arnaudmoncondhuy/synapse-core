@@ -319,10 +319,12 @@ class ConversationManager
 
             // Déchiffrement des métadonnées
             $meta = $message->getMetadata();
-            if (isset($meta['_encrypted']) && $this->encryptionService !== null) {
+            if (isset($meta['_encrypted']) && is_string($meta['_encrypted']) && $this->encryptionService !== null) {
                 try {
                     $decryptedMeta = json_decode($this->encryptionService->decrypt($meta['_encrypted']), true, 512, JSON_THROW_ON_ERROR);
-                    $message->setMetadata($decryptedMeta);
+                    /** @var array<string, mixed>|null $finalMeta */
+                    $finalMeta = is_array($decryptedMeta) ? $decryptedMeta : null;
+                    $message->setMetadata($finalMeta);
                 } catch (\Exception $e) {
                     // Si échec de déchiffrement, on vide les métadonnées par sécurité
                     $message->setMetadata([]);

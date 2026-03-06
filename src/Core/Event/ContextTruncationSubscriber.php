@@ -30,7 +30,8 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
     public function onPrePrompt(SynapsePrePromptEvent $event): void
     {
         $config = $event->getConfig();
-        $modelName = $config['model'] ?? null;
+        $modelNameMixed = $config['model'] ?? null;
+        $modelName = is_string($modelNameMixed) ? $modelNameMixed : null;
 
         if (!$modelName) {
             return;
@@ -46,13 +47,16 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
         }
 
         $prompt = $event->getPrompt();
-        $messages = $prompt['contents'] ?? [];
+        $messagesRaw = $prompt['contents'] ?? [];
+        $messages = is_array($messagesRaw) ? $messagesRaw : [];
 
-        if (empty($messages) || !is_array($messages)) {
+        if (empty($messages)) {
             return;
         }
 
-        $truncatedMessages = $this->truncationService->truncate($messages, $contextWindow);
+        /** @var array<int, array<string, mixed>> $typedMessages */
+        $typedMessages = $messages;
+        $truncatedMessages = $this->truncationService->truncate($typedMessages, $contextWindow);
 
         // Remplacement des messages dans l'événement
         $prompt['contents'] = $truncatedMessages;

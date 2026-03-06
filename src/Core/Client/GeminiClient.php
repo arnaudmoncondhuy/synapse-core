@@ -438,20 +438,24 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         // Thinking
-        if (isset($config['thinking'])) {
-            $this->thinkingEnabled = $config['thinking']['enabled'] ?? $this->thinkingEnabled;
-            $this->thinkingBudget  = $config['thinking']['budget'] ?? $this->thinkingBudget;
+        if (isset($config['thinking']) && is_array($config['thinking'])) {
+            $this->thinkingEnabled = (bool) ($config['thinking']['enabled'] ?? $this->thinkingEnabled);
+            $this->thinkingBudget  = (int) ($config['thinking']['budget'] ?? $this->thinkingBudget);
         }
 
         // Safety Settings
-        if (isset($config['safety_settings'])) {
-            $this->safetySettingsEnabled  = $config['safety_settings']['enabled'] ?? $this->safetySettingsEnabled;
-            $this->safetyDefaultThreshold = $config['safety_settings']['default_threshold'] ?? $this->safetyDefaultThreshold;
-            $this->safetyThresholds       = $config['safety_settings']['thresholds'] ?? $this->safetyThresholds;
+        if (isset($config['safety_settings']) && is_array($config['safety_settings'])) {
+            $this->safetySettingsEnabled  = (bool) ($config['safety_settings']['enabled'] ?? $this->safetySettingsEnabled);
+            $this->safetyDefaultThreshold = (string) ($config['safety_settings']['default_threshold'] ?? $this->safetyDefaultThreshold);
+            if (isset($config['safety_settings']['thresholds']) && is_array($config['safety_settings']['thresholds'])) {
+                /** @var array<string, string> $thresholds */
+                $thresholds = $config['safety_settings']['thresholds'];
+                $this->safetyThresholds = $thresholds;
+            }
         }
 
         // Generation Config
-        if (isset($config['generation_config'])) {
+        if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
             $this->generationTemperature     = (float) ($gen['temperature'] ?? $this->generationTemperature);
             $this->generationTopP            = (float) ($gen['top_p'] ?? $this->generationTopP);

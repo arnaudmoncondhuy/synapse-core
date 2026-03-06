@@ -63,7 +63,12 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         if ($container->hasExtension('doctrine')) {
             $alreadyMapped = false;
             foreach ($container->getExtensionConfig('doctrine') as $doctrineConfig) {
-                if (isset($doctrineConfig['orm']['mappings']['SynapseBundle'])) {
+                if (
+                    is_array($doctrineConfig)
+                    && isset($doctrineConfig['orm']) && is_array($doctrineConfig['orm'])
+                    && isset($doctrineConfig['orm']['mappings']) && is_array($doctrineConfig['orm']['mappings'])
+                    && isset($doctrineConfig['orm']['mappings']['SynapseBundle'])
+                ) {
                     $alreadyMapped = true;
                     break;
                 }
@@ -117,7 +122,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.token_tracking.enabled', $config['token_tracking']['enabled'] ?? false);
         $container->setParameter('synapse.token_tracking.reference_currency', $config['token_tracking']['reference_currency'] ?? 'EUR');
         $container->setParameter('synapse.token_tracking.currency_rates', $config['token_tracking']['currency_rates'] ?? []);
-        $container->setParameter('synapse.token_tracking.sliding_day_hours', $config['token_tracking']['sliding_day_hours'] ?? 4);
+        $container->setParameter('synapse.token_tracking.sliding_day_hours', (int) ($config['token_tracking']['sliding_day_hours'] ?? 4));
 
         // ── Routing ───────────────────────────────────────────────────────────
         $container->setParameter('synapse.admin_prefix', $config['routing']['admin_prefix'] ?? '/synapse/admin');

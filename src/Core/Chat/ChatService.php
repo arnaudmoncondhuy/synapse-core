@@ -104,17 +104,20 @@ class ChatService
             $onStatusUpdate('Analyse de la demande...', 'thinking');
         }
 
+        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $askOptions */
+        $askOptions = $options;
+
         // ── DISPATCH GENERATION STARTED EVENT ──
-        $this->dispatcher->dispatch(new SynapseGenerationStartedEvent($message, $options));
+        $this->dispatcher->dispatch(new SynapseGenerationStartedEvent($message, $askOptions));
 
         // ── DISPATCH PRE-PROMPT EVENT ──
         // ContextBuilderSubscriber will populate prompt, config, and tool definitions
-        $prePromptEvent = $this->dispatcher->dispatch(new SynapsePrePromptEvent($message, $options));
+        $prePromptEvent = $this->dispatcher->dispatch(new SynapsePrePromptEvent($message, $askOptions));
         $prompt = $prePromptEvent->getPrompt();
         $config = $prePromptEvent->getConfig();
 
         // Support preset override
-        $presetOverride = $options['preset'] ?? null;
+        $presetOverride = $askOptions['preset'] ?? null;
         if ($presetOverride instanceof SynapsePreset) {
             $config = $this->configProvider->getConfigForPreset($presetOverride);
             $this->configProvider->setOverride($config);
@@ -123,22 +126,24 @@ class ChatService
         try {
 
             // Vérification des plafonds de dépense (avant appel LLM)
-            $userId = $options['user_id'] ?? null;
-            $presetId = $config['preset_id'] ?? null;
-            $missionId = isset($config['mission_id']) ? (int) $config['mission_id'] : null;
+            $userId = $askOptions['user_id'] ?? null;
+            $presetIdMixed = $config['preset_id'] ?? null;
+            $presetId = is_numeric($presetIdMixed) ? (int) $presetIdMixed : null;
+            $missionIdMixed = $config['mission_id'] ?? null;
+            $missionId = is_numeric($missionIdMixed) ? (int) $missionIdMixed : null;
             if ($this->spendingLimitChecker !== null && is_string($userId)) {
-                $estimatedCostRef = $options['estimated_cost_reference'] ?? 0.0;
-                $this->spendingLimitChecker->assertCanSpend($userId, $presetId !== null ? (int) $presetId : null, (float) $estimatedCostRef, $missionId);
+                $estimatedCostRef = (float) ($askOptions['estimated_cost_reference'] ?? 0.0);
+                $this->spendingLimitChecker->assertCanSpend($userId, $presetId, $estimatedCostRef, $missionId);
             }
 
             // Check debug mode
-            $globalDebugMode = $config['debug_mode'] ?? false;
-            $debugMode = ($options['debug'] ?? false) || ($globalDebugMode && ($options['debug'] ?? true) !== false);
+            $globalDebugMode = (bool) ($config['debug_mode'] ?? false);
+            $debugMode = (bool) (($askOptions['debug'] ?? false) || ($globalDebugMode && ($askOptions['debug'] ?? true) !== false));
 
             // Get LLM client and config
             $activeClient = $this->llmRegistry->getClient();
             // $options['streaming'] permet de forcer le mode sync (false) ou streaming (true) indépendamment du preset
-            $streamingEnabled = isset($options['streaming']) ? (bool) $options['streaming'] : ($config['streaming_enabled'] ?? true);
+            $streamingEnabled = isset($askOptions['streaming']) ? (bool) $askOptions['streaming'] : ($config['streaming_enabled'] ?? true);
 
             // Ensure multi-turn usage is accumulated correctly
             $fullTextAccumulator = '';
@@ -164,17 +169,22 @@ class ChatService
 
                 // ── LLM CALL (Streaming or Sync) ──
                 $this->profiler->start('LLM', 'LLM Network Call & Streaming', "Durée totale de l'échange réseau avec l'API du fournisseur (attente + réception des chunks).");
+                /** @var array<int, array<string, mixed>> $contents */
+                $contents = $prompt['contents'];
+                /** @var array<int, array<string, mixed>> $toolDefinitions */
+                $toolDefinitions = $prompt['toolDefinitions'] ?? [];
+
                 if ($streamingEnabled) {
                     $chunks = $activeClient->streamGenerateContent(
-                        $prompt['contents'],
-                        $prompt['toolDefinitions'] ?? [],
+                        $contents,
+                        $toolDefinitions,
                         null,
                         $debugOut,
                     );
                 } else {
                     $response = $activeClient->generateContent(
-                        $prompt['contents'],
-                        $prompt['toolDefinitions'] ?? [],
+                        $contents,
+                        $toolDefinitions,
                         null,
                         [],
                         $debugOut,
@@ -186,16 +196,23 @@ class ChatService
                 $modelToolCalls = [];
 
                 // ── PROCESS CHUNKS ──
-                foreach ($chunks as $chunk) {
+                foreach ($chunks as $chunkMixed) {
+                    if (!is_array($chunkMixed)) {
+                        continue;
+                    }
+                    /** @var array<string, mixed> $chunk */
+                    $chunk = $chunkMixed;
+
                     // Dispatch ChunkReceivedEvent (for debug logging and streaming)
                     $this->dispatcher->dispatch(new SynapseChunkReceivedEvent($chunk, $turn));
 
                     // Accumulate text
-                    if (!empty($chunk['text'])) {
-                        $fullTextAccumulator .= $chunk['text'];
-                        $modelText .= $chunk['text'];
+                    if (!empty($chunk['text']) && is_string($chunk['text'])) {
+                        $chunkText = (string) $chunk['text'];
+                        $fullTextAccumulator .= $chunkText;
+                        $modelText .= $chunkText;
                         if ($onToken) {
-                            $onToken($chunk['text']);
+                            $onToken($chunkText);
                         }
                     }
 
@@ -205,40 +222,53 @@ class ChatService
                     }
 
                     // Accumulate usage across all turns (multi-turn = multiple LLM calls)
-                    if (!empty($chunk['usage'])) {
+                    if (!empty($chunk['usage']) && is_array($chunk['usage'])) {
                         $u = $chunk['usage'];
-                        $cumulativeUsage['prompt_tokens']     += (int) ($u['prompt_tokens'] ?? 0);
-                        $cumulativeUsage['completion_tokens'] += (int) ($u['completion_tokens'] ?? 0);
-                        $cumulativeUsage['thinking_tokens']   += (int) ($u['thinking_tokens'] ?? 0);
-                        $cumulativeUsage['total_tokens']      += (int) ($u['total_tokens'] ?? 0);
+                        $cumulativeUsage['prompt_tokens']     += is_numeric($u['prompt_tokens'] ?? null) ? (int) $u['prompt_tokens'] : 0;
+                        $cumulativeUsage['completion_tokens'] += is_numeric($u['completion_tokens'] ?? null) ? (int) $u['completion_tokens'] : 0;
+                        $cumulativeUsage['thinking_tokens']   += is_numeric($u['thinking_tokens'] ?? null) ? (int) $u['thinking_tokens'] : 0;
+                        $cumulativeUsage['total_tokens']      += is_numeric($u['total_tokens'] ?? null) ? (int) $u['total_tokens'] : 0;
                     }
-                    if (!empty($chunk['safety_ratings'])) {
+                    if (!empty($chunk['safety_ratings']) && is_array($chunk['safety_ratings'])) {
                         $finalSafetyRatings = $chunk['safety_ratings'];
                     }
 
                     // Handle blocked responses
-                    if ($chunk['blocked'] ?? false) {
-                        $reason = $chunk['blocked_reason'] ?? 'contenu bloqué par les filtres de sécurité';
+                    if ((bool) ($chunk['blocked'] ?? false)) {
+                        $reason = is_string($chunk['blocked_reason'] ?? null) ? (string) $chunk['blocked_reason'] : 'contenu bloqué par les filtres de sécurité';
                         $blockedMsg = "⚠️ Ma réponse a été bloquée ({$reason}). Veuillez reformuler votre demande.";
                         $fullTextAccumulator .= $blockedMsg;
                         $modelText .= $blockedMsg;
                         if ($onToken) {
-                            $onToken($blockedMsg);
+                            /** @var callable(string): void $tokenCallback */
+                            $tokenCallback = $onToken;
+                            $tokenCallback($blockedMsg);
                         }
                     }
 
                     // Collect function calls in OpenAI format
-                    if (!empty($chunk['function_calls'])) {
+                    if (!empty($chunk['function_calls']) && is_array($chunk['function_calls'])) {
                         $hasToolCalls = true;
                         foreach ($chunk['function_calls'] as $fc) {
-                            $name = $fc['name'] ?? $fc['function']['name'] ?? null;
-                            if ($name === null || $name === '') {
+                            if (!is_array($fc)) {
                                 continue;
                             }
-                            $rawArgs = $fc['args'] ?? $fc['function']['arguments'] ?? [];
+                            $nameMixed = $fc['name'] ?? null;
+                            if ($nameMixed === null && isset($fc['function']) && is_array($fc['function'])) {
+                                $nameMixed = $fc['function']['name'] ?? null;
+                            }
+                            $name = is_string($nameMixed) ? $nameMixed : '';
+                            if ($name === '') {
+                                continue;
+                            }
+
+                            $rawArgs = $fc['args'] ?? [];
+                            if (empty($rawArgs) && isset($fc['function']) && is_array($fc['function'])) {
+                                $rawArgs = $fc['function']['arguments'] ?? [];
+                            }
                             $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
                             $modelToolCalls[] = [
-                                'id'       => $fc['id'] ?? 'call_' . bin2hex(random_bytes(6)),
+                                'id'       => is_string($fc['id'] ?? null) ? (string)$fc['id'] : 'call_' . bin2hex(random_bytes(6)),
                                 'type'     => 'function',
                                 'function' => [
                                     'name'      => $name,
@@ -271,11 +301,14 @@ class ChatService
                 // ── PROCESS TOOL CALLS ──
                 if ($hasToolCalls && !empty($modelToolCalls)) {
                     // Dispatch ToolCallRequestedEvent - Normalise modelToolCalls to Event format
-                    $eventToolCalls = array_map(fn($tc) => [
-                        'id'   => $tc['id'],
-                        'name' => $tc['function']['name'],
-                        'args' => (array) (json_decode(is_string($tc['function']['arguments']) ? $tc['function']['arguments'] : '', true) ?: [])
-                    ], $modelToolCalls);
+                    $eventToolCalls = array_map(function ($tc) {
+                        $decodedArgs = json_decode(is_string($tc['function']['arguments']) ? $tc['function']['arguments'] : '', true);
+                        return [
+                            'id'   => (string)$tc['id'],
+                            'name' => (string)$tc['function']['name'],
+                            'args' => is_array($decodedArgs) ? $decodedArgs : []
+                        ];
+                    }, $modelToolCalls);
 
                     $toolEvent = $this->dispatcher->dispatch(new SynapseToolCallRequestedEvent($eventToolCalls));
                     $toolResults = $toolEvent->getResults();
@@ -292,15 +325,15 @@ class ChatService
                         }
 
                         if (null !== $toolResult) {
-                            $this->dispatcher->dispatch(new SynapseToolCallCompletedEvent($toolName, $toolResult, $tc));
+                            $this->dispatcher->dispatch(new SynapseToolCallCompletedEvent((string)$toolName, $toolResult, $tc));
                             $prompt['contents'][] = [
                                 'role'         => 'tool',
-                                'tool_call_id' => $tc['id'],
+                                'tool_call_id' => (string)$tc['id'],
                                 'content'      => is_string($toolResult) ? $toolResult : json_encode($toolResult, JSON_UNESCAPED_UNICODE),
                             ];
                             // Callback pour notifier le contrôleur (permet de streamer l'événement immédiatement au frontend)
                             if ($onToolExecuted) {
-                                $onToolExecuted($toolName, $toolResult);
+                                $onToolExecuted((string)$toolName, $toolResult);
                             }
                         }
 
@@ -335,9 +368,10 @@ class ChatService
                 // DebugLogSubscriber will handle cache storage and DB persistence
                 $this->dispatcher->dispatch(new SynapseExchangeCompletedEvent(
                     $debugId,
-                    $config['model'] ?? 'unknown',
+                    is_string($config['model'] ?? null) ? (string) $config['model'] : 'unknown',
                     $activeClient->getProviderName(),
                     $finalUsageMetadata,
+                    /** @var array<string, mixed> $finalSafetyRatings */
                     $finalSafetyRatings,
                     $debugMode,
                     $firstTurnRawData,
@@ -355,14 +389,17 @@ class ChatService
                 $debugId
             ));
 
+            /** @var array<int, array<string, mixed>> $finalSafetyRatingsArray */
+            $finalSafetyRatingsArray = is_array($finalSafetyRatings) ? $finalSafetyRatings : [];
+
             return [
                 'answer'     => $fullTextAccumulator,
                 'debug_id'   => $debugId,
                 'usage'      => $finalUsageMetadata,
-                'safety'     => $finalSafetyRatings,
-                'model'      => $config['model'] ?? ($config['provider'] ?? 'unknown'),
-                'preset_id'  => $config['preset_id'] ?? null,
-                'mission_id' => $config['mission_id'] ?? null,
+                'safety'     => $finalSafetyRatingsArray,
+                'model'      => is_string($config['model'] ?? null) ? (string) $config['model'] : (is_string($config['provider'] ?? null) ? (string) $config['provider'] : 'unknown'),
+                'preset_id'  => is_numeric($config['preset_id'] ?? null) ? (int)$config['preset_id'] : null,
+                'mission_id' => is_numeric($config['mission_id'] ?? null) ? (int)$config['mission_id'] : null,
             ];
         } finally {
             // Garantit la réinitialisation de l'override même en cas d'exception

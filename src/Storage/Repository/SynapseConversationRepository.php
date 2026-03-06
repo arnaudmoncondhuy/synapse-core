@@ -43,15 +43,18 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      */
     public function findActiveByOwner(ConversationOwnerInterface $owner, int $limit = 50): array
     {
-        return $this->createQueryBuilder('c')
+        /** @var array<int, SynapseConversation> $result */
+        $result = $this->createQueryBuilder('c')
             ->where('c.owner = :owner')
-            ->andWhere('c.status = :status')
+            ->andWhere('c.status = :active')
             ->setParameter('owner', $owner)
-            ->setParameter('status', ConversationStatus::ACTIVE)
+            ->setParameter('active', ConversationStatus::ACTIVE)
             ->orderBy('c.updatedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -64,11 +67,14 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
     {
         $date = new \DateTimeImmutable("-{$days} days");
 
-        return $this->createQueryBuilder('c')
+        /** @var array<int, SynapseConversation> $result */
+        $result = $this->createQueryBuilder('c')
             ->where('c.updatedAt < :date')
             ->setParameter('date', $date)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -115,13 +121,16 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      */
     public function findByStatus(ConversationStatus $status, int $limit = 100): array
     {
-        return $this->createQueryBuilder('c')
+        /** @var array<int, SynapseConversation> $result */
+        $result = $this->createQueryBuilder('c')
             ->where('c.status = :status')
             ->setParameter('status', $status)
             ->orderBy('c.updatedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -150,7 +159,10 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
                 ->setParameter('owner', $owner);
         }
 
-        return $qb->getQuery()->getResult();
+        /** @var array<int, SynapseConversation> $result */
+        $result = $qb->getQuery()->getResult();
+
+        return $result;
     }
 
     /**

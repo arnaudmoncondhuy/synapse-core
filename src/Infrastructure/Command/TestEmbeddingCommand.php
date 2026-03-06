@@ -35,8 +35,10 @@ class TestEmbeddingCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $text = $input->getArgument('text');
-        $model = $input->getOption('model');
+        $textArg = $input->getArgument('text');
+        $text = is_string($textArg) ? $textArg : '';
+        $modelOption = $input->getOption('model');
+        $model = is_string($modelOption) ? $modelOption : null;
 
         $io->title('Test de génération d\'Embedding Synapse');
 

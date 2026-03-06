@@ -80,11 +80,14 @@ class MemoryManager
 
         $memories = $this->vectorStore->searchSimilar($vector, $limit, $filters);
 
-        return array_map(fn($m) => [
-            'content' => $m['payload']['content'] ?? '',
-            'score' => $m['score'],
-            'metadata' => $m['payload']
-        ], $memories);
+        return array_map(function ($m) {
+            $payload = $m['payload'];
+            return [
+                'content' => is_string($payload['content'] ?? null) ? (string) $payload['content'] : '',
+                'score'   => (float) $m['score'],
+                'metadata' => $payload
+            ];
+        }, $memories);
     }
 
     /**

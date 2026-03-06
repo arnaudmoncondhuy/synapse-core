@@ -75,7 +75,8 @@ class PurgeConversationsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $days = (int) $input->getOption('days');
+        $daysOption = $input->getOption('days');
+        $days = is_numeric($daysOption) ? (int) $daysOption : 0;
         $dryRun = (bool) $input->getOption('dry-run');
 
         // Validation

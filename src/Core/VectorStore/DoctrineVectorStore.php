@@ -48,19 +48,19 @@ class DoctrineVectorStore implements VectorStoreInterface
         $memory->setPayload($payload);
 
         // Remplir les colonnes dénormalisées pour le filtrage et l'affichage
-        if (isset($payload['content'])) {
+        if (isset($payload['content']) && is_string($payload['content'])) {
             $memory->setContent($payload['content']);
         }
-        if (isset($payload['user_id'])) {
+        if (isset($payload['user_id']) && is_string($payload['user_id'])) {
             $memory->setUserId($payload['user_id']);
         }
-        if (isset($payload['scope'])) {
+        if (isset($payload['scope']) && is_string($payload['scope'])) {
             $memory->setScope($payload['scope']);
         }
-        if (isset($payload['conversation_id'])) {
+        if (isset($payload['conversation_id']) && is_string($payload['conversation_id'])) {
             $memory->setConversationId($payload['conversation_id']);
         }
-        if (isset($payload['source_type'])) {
+        if (isset($payload['source_type']) && is_string($payload['source_type'])) {
             $memory->setSourceType($payload['source_type']);
         }
 
@@ -141,12 +141,16 @@ class DoctrineVectorStore implements VectorStoreInterface
                 ORDER BY embedding::text::vector <=> :vector::text::vector 
                 LIMIT :limit";
 
+        /** @var array<int, array{payload: string, score: string|int|float}> $result */
         $result = $this->em->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
 
-        return array_map(fn($row) => [
-            'payload' => json_decode($row['payload'], true),
-            'score' => (float) $row['score']
-        ], $result);
+        return array_map(function ($row) {
+            $payload = json_decode($row['payload'], true);
+            return [
+                'payload' => is_array($payload) ? $payload : [],
+                'score'   => (float) $row['score']
+            ];
+        }, $result);
     }
 
     /**

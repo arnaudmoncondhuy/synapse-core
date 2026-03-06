@@ -23,8 +23,7 @@ class DoctrineAdminLogger implements SynapseDebugLoggerInterface
     public function __construct(
         private EntityManagerInterface $em,
         private SynapseDebugLogRepository $repository,
-    ) {
-    }
+    ) {}
 
     public function logExchange(string $debugId, array $metadata, array $rawPayload): void
     {
@@ -36,7 +35,8 @@ class DoctrineAdminLogger implements SynapseDebugLoggerInterface
         $debugLog->setData($rawPayload);
 
         if (isset($metadata['conversation_id'])) {
-            $debugLog->setConversationId($metadata['conversation_id']);
+            $conversationId = $metadata['conversation_id'];
+            $debugLog->setConversationId(is_scalar($conversationId) ? (string)$conversationId : null);
         }
 
         $debugLog->setCreatedAt(new \DateTimeImmutable());

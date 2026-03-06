@@ -38,7 +38,10 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
             $qb->setMaxResults($limit);
         }
 
-        return $qb->getQuery()->getResult();
+        /** @var SynapseMessage[] $result */
+        $result = $qb->getQuery()->getResult();
+
+        return $result;
     }
 
     /**
@@ -67,6 +70,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     {
         $since = new \DateTimeImmutable('-7 days');
 
+        /** @var array<int, array{day: string, total: string|int|float|null}> $results */
         $results = $this->createQueryBuilder('m')
             ->select('SUBSTRING(m.createdAt, 1, 10) as day, SUM(m.totalTokens) as total')
             ->where('m.createdAt >= :since')
@@ -92,12 +96,15 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
      */
     public function findNegativeFeedback(int $limit = 50): array
     {
-        return $this->createQueryBuilder('m')
+        /** @var SynapseMessage[] $result */
+        $result = $this->createQueryBuilder('m')
             ->where('m.feedback = -1')
             ->orderBy('m.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -108,12 +115,15 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
      */
     public function findBlocked(int $limit = 50): array
     {
-        return $this->createQueryBuilder('m')
+        /** @var SynapseMessage[] $result */
+        $result = $this->createQueryBuilder('m')
             ->where('m.blocked = true')
             ->orderBy('m.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
@@ -125,6 +135,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     {
         $since = new \DateTimeImmutable('-30 days');
 
+        /** @var array<int, array{role: string|\BackedEnum|\UnitEnum, count: string|int}> $results */
         $results = $this->createQueryBuilder('m')
             ->select('m.role, COUNT(m.id) as count')
             ->where('m.createdAt >= :since')
@@ -135,7 +146,16 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
 
         $dist = [];
         foreach ($results as $row) {
-            $dist[$row['role']] = (int)$row['count'];
+            $roleVal = $row['role'];
+            $role = 'unknown';
+            if (is_string($roleVal)) {
+                $role = $roleVal;
+            } elseif ($roleVal instanceof \BackedEnum) {
+                $role = (string) $roleVal->value;
+            } elseif ($roleVal instanceof \UnitEnum) {
+                $role = $roleVal->name;
+            }
+            $dist[$role] = (int)$row['count'];
         }
 
         return $dist;

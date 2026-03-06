@@ -71,11 +71,15 @@ class ToolExecutionSubscriber implements EventSubscriberInterface
             $result = $tool->execute($args);
 
             // Ensure result is serializable
-            if (is_string($result) || is_array($result) || is_object($result)) {
+            if (is_string($result) || is_array($result) || is_object($result) || null === $result) {
                 return $result;
             }
 
-            return (string) $result;
+            if (is_scalar($result)) {
+                return (string) $result;
+            }
+
+            return null;
         }
 
         return null;

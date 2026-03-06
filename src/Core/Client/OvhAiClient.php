@@ -578,20 +578,23 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         // Generation Config
-        if (isset($config['generation_config'])) {
+        if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
             $this->temperature   = (float) ($gen['temperature'] ?? $this->temperature);
             $this->topP          = (float) ($gen['top_p'] ?? $this->topP);
-            $this->maxTokens     = $gen['max_output_tokens'] ?? $this->maxTokens;
-            $this->stopSequences = $gen['stop_sequences'] ?? $this->stopSequences;
-            // top_k, safety_settings ignorés pour OVH
+            $this->maxTokens     = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
+            if (isset($gen['stop_sequences']) && is_array($gen['stop_sequences'])) {
+                /** @var array<string> $stopSeqs */
+                $stopSeqs = $gen['stop_sequences'];
+                $this->stopSequences = $stopSeqs;
+            }
         }
 
         // Réflexion/Thinking (stocké séparément dans config)
-        if (isset($config['thinking'])) {
+        if (isset($config['thinking']) && is_array($config['thinking'])) {
             $thinking = $config['thinking'];
             $this->thinkingEnabled = (bool) ($thinking['enabled'] ?? false);
-            $this->thinkingBudget  = (int) ($thinking['budget'] ?? null);
+            $this->thinkingBudget  = isset($thinking['budget']) ? (int) $thinking['budget'] : null;
             $this->reasoningEffort = (string) ($thinking['reasoning_effort'] ?? 'high');
         }
     }

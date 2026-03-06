@@ -112,8 +112,10 @@ class MessageFormatter implements MessageFormatterInterface
 
             $entity = new $messageClass();
             $entity->setConversation($conversation);
-            $entity->setRole($this->mapRoleFromOpenAi($msg['role']));
-            $entity->setContent($msg['content']);
+            $role = is_string($msg['role'] ?? null) ? (string) $msg['role'] : 'user';
+            $entity->setRole($this->mapRoleFromOpenAi($role));
+            $content = is_string($msg['content'] ?? null) ? (string) $msg['content'] : '';
+            $entity->setContent($content);
 
             $entities[] = $entity;
         }

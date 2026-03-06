@@ -555,7 +555,8 @@ class SynapseDoctorCommand extends Command
             }
 
             // Check if there are any users
-            $userCount = (int) $connection->executeQuery("SELECT COUNT(*) FROM $userTableFound")->fetchOne();
+            $userCountFetch = $connection->executeQuery("SELECT COUNT(*) FROM $userTableFound")->fetchOne();
+            $userCount = is_numeric($userCountFetch) ? (int) $userCountFetch : 0;
 
             if ($userCount === 0) {
                 $io->writeln(sprintf('  <comment>[WARN]</comment> No users found in %s table', $userTableFound));

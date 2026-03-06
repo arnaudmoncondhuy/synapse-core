@@ -37,7 +37,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     public function getGlobalStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
         // Requête pour totaux généraux
-        $globalResult = $this->getEntityManager()->getConnection()->executeQuery(
+        $resultSet = $this->getEntityManager()->getConnection()->executeQuery(
             'SELECT COUNT(*) AS request_count,
                     COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
                     COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
@@ -46,9 +46,14 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
              FROM synapse_llm_call
              WHERE created_at >= :start AND created_at <= :end',
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
-        )->fetchAssociative();
+        );
+        $globalResult = $resultSet->fetchAssociative();
+        if (!is_array($globalResult)) {
+            $globalResult = [];
+        }
 
         // Requête pour coûts par devise
+        /** @var array<int, array{currency: string, cost: string|int|float}> $costResults */
         $costResults = $this->getEntityManager()->getConnection()->executeQuery(
             'SELECT pricing_currency AS currency, COALESCE(SUM(cost_model_currency), 0) AS cost
              FROM synapse_llm_call
@@ -62,6 +67,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $costs[$row['currency']] = (float) $row['cost'];
         }
 
+        /** @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $globalResult */
         return [
             'request_count'     => (int) ($globalResult['request_count'] ?? 0),
             'prompt_tokens'     => (int) ($globalResult['prompt_tokens'] ?? 0),
@@ -81,6 +87,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      */
     public function getAutomatedTaskStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
+        /** @var array<int, array{module: string, action: string, model: string, count: string|int, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int}> $results */
         $results = $this->createQueryBuilder('t')
             ->select(
                 't.module',
@@ -130,7 +137,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        $result = $conn->executeQuery(
+        $resultSet = $conn->executeQuery(
             'SELECT COUNT(*) as count,
                     COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
                     COALESCE(SUM(completion_tokens), 0) as completion_tokens,
@@ -139,8 +146,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
              FROM synapse_llm_call
              WHERE conversation_id IS NOT NULL AND created_at >= :start AND created_at <= :end',
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
-        )->fetchAssociative();
+        );
+        $result = $resultSet->fetchAssociative();
+        if (!is_array($result)) {
+            $result = [];
+        }
 
+        /** @var array{count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $result */
         return [
             'count'             => (int) ($result['count'] ?? 0),
             'prompt_tokens'     => (int) ($result['prompt_tokens'] ?? 0),
@@ -161,6 +173,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{date: string, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int}> $results */
         $results = $conn->executeQuery(
             'SELECT DATE(created_at) as date,
                     COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
@@ -176,12 +189,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $daily = [];
         foreach ($results as $result) {
-            $daily[$result['date']] = [
-                'date'              => $result['date'],
-                'prompt_tokens'     => (int) $result['prompt_tokens'],
-                'completion_tokens' => (int) $result['completion_tokens'],
-                'thinking_tokens'   => (int) $result['thinking_tokens'],
-                'total_tokens'      => (int) $result['total_tokens'],
+            $date = (string)($result['date'] ?? '');
+            $daily[$date] = [
+                'date'              => $date,
+                'prompt_tokens'     => (int) ($result['prompt_tokens'] ?? 0),
+                'completion_tokens' => (int) ($result['completion_tokens'] ?? 0),
+                'thinking_tokens'   => (int) ($result['thinking_tokens'] ?? 0),
+                'total_tokens'      => (int) ($result['total_tokens'] ?? 0),
             ];
         }
 
@@ -197,6 +211,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      */
     public function getUsageByModule(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
+        /** @var array<int, array{module: string, count: string|int, total_tokens: string|int}> $results */
         $results = $this->createQueryBuilder('t')
             ->select(
                 't.module',
@@ -214,9 +229,10 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $usage = [];
         foreach ($results as $result) {
-            $usage[$result['module']] = [
-                'count'        => (int) $result['count'],
-                'total_tokens' => (int) $result['total_tokens'],
+            $module = (string) ($result['module'] ?? 'unknown');
+            $usage[$module] = [
+                'count'        => (int) ($result['count'] ?? 0),
+                'total_tokens' => (int) ($result['total_tokens'] ?? 0),
             ];
         }
 
@@ -234,6 +250,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{model: string, pricing_currency: string, count: string|int, total_tokens: string|int, cost: string|int|float}> $results */
         $results = $conn->executeQuery(
             'SELECT model,
                     pricing_currency,
@@ -249,12 +266,12 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $usage = [];
         foreach ($results as $result) {
-            $usage[$result['model']] = [
-                'model_id' => (string) $result['model'],
-                'count'    => (int) $result['count'],
-                'total_tokens' => (int) $result['total_tokens'],
-                'cost'     => (float) $result['cost'],
-                'currency' => (string) $result['pricing_currency'],
+            $modelId = (string) ($result['model'] ?? 'unknown');
+            $usage[$modelId] = [
+                'count'    => (int) ($result['count'] ?? 0),
+                'total_tokens' => (int) ($result['total_tokens'] ?? 0),
+                'cost'     => (float) ($result['cost'] ?? 0.0),
+                'currency' => (string) ($result['pricing_currency'] ?? 'N/A'),
             ];
         }
 
@@ -270,6 +287,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{user_id: string, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
         $results = $conn->executeQuery(
             'SELECT user_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -279,12 +297,18 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn($row) => [
-            'user_id'      => (string) $row['user_id'],
-            'count'        => (int) $row['cnt'],
-            'total_tokens' => (int) $row['total_tokens'],
-            'cost'         => (float) $row['cost'],
-        ], $results);
+        $usage = [];
+        foreach ($results as $row) {
+            $userId = isset($row['user_id']) && is_string($row['user_id']) ? $row['user_id'] : (isset($row['user_id']) ? (string)$row['user_id'] : '');
+            $usage[] = [
+                'user_id'      => $userId,
+                'count'        => (int) ($row['cnt'] ?? 0),
+                'total_tokens' => (int) ($row['total_tokens'] ?? 0),
+                'cost'         => (float) ($row['cost'] ?? 0.0),
+            ];
+        }
+
+        return $usage;
     }
 
     /**
@@ -296,6 +320,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{preset_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
         $results = $conn->executeQuery(
             'SELECT preset_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -305,12 +330,17 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn($row) => [
-            'preset_id'    => (int) $row['preset_id'],
-            'count'        => (int) $row['cnt'],
-            'total_tokens' => (int) $row['total_tokens'],
-            'cost'         => (float) $row['cost'],
-        ], $results);
+        $usage = [];
+        foreach ($results as $row) {
+            $usage[] = [
+                'preset_id'    => (int) ($row['preset_id'] ?? 0),
+                'count'        => (int) ($row['cnt'] ?? 0),
+                'total_tokens' => (int) ($row['total_tokens'] ?? 0),
+                'cost'         => (float) ($row['cost'] ?? 0.0),
+            ];
+        }
+
+        return $usage;
     }
 
     /**
@@ -322,6 +352,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{mission_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
         $results = $conn->executeQuery(
             'SELECT mission_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -331,12 +362,17 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
 
-        return array_map(fn($row) => [
-            'mission_id'   => (int) $row['mission_id'],
-            'count'        => (int) $row['cnt'],
-            'total_tokens' => (int) $row['total_tokens'],
-            'cost'         => (float) $row['cost'],
-        ], $results);
+        $usage = [];
+        foreach ($results as $row) {
+            $usage[] = [
+                'mission_id'   => (int) ($row['mission_id'] ?? 0),
+                'count'        => (int) ($row['cnt'] ?? 0),
+                'total_tokens' => (int) ($row['total_tokens'] ?? 0),
+                'cost'         => (float) ($row['cost'] ?? 0.0),
+            ];
+        }
+
+        return $usage;
     }
 
     /**
@@ -361,6 +397,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        /** @var array<int, array{call_id: string, created_at: string, model: string, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int, cost: string|int|float, pricing_input: string|int|float|null, pricing_output: string|int|float|null, pricing_currency: string|null}> $rows */
         $rows = $conn->executeQuery(
             'SELECT call_id, created_at, model, prompt_tokens, completion_tokens, thinking_tokens, total_tokens,
                     COALESCE(cost_reference, 0) AS cost,
@@ -380,25 +417,29 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $currency = null;
 
         foreach ($rows as $row) {
-            $cost = (float) $row['cost'];
+            $cost = is_numeric($row['cost'] ?? null) ? (float) $row['cost'] : 0.0;
             $totalCost += $cost;
-            $totalPrompt += (int) $row['prompt_tokens'];
-            $totalCompletion += (int) $row['completion_tokens'];
-            $totalThinking += (int) $row['thinking_tokens'];
-            $totalTokens += (int) $row['total_tokens'];
-            $currency ??= $row['pricing_currency'];
+            $totalPrompt += (int) ($row['prompt_tokens'] ?? 0);
+            $totalCompletion += (int) ($row['completion_tokens'] ?? 0);
+            $totalThinking += (int) ($row['thinking_tokens'] ?? 0);
+            $totalTokens += (int) ($row['total_tokens'] ?? 0);
+
+            $rowCurrency = $row['pricing_currency'] ?? null;
+            if ($currency === null && is_string($rowCurrency)) {
+                $currency = $rowCurrency;
+            }
 
             $turns[] = [
-                'call_id'           => $row['call_id'],
-                'created_at'        => $row['created_at'],
-                'model'             => $row['model'],
-                'prompt_tokens'     => (int) $row['prompt_tokens'],
-                'completion_tokens' => (int) $row['completion_tokens'],
-                'thinking_tokens'   => (int) $row['thinking_tokens'],
-                'total_tokens'      => (int) $row['total_tokens'],
+                'call_id'           => (string) ($row['call_id'] ?? ''),
+                'created_at'        => (string) ($row['created_at'] ?? ''),
+                'model'             => (string) ($row['model'] ?? ''),
+                'prompt_tokens'     => (int) ($row['prompt_tokens'] ?? 0),
+                'completion_tokens' => (int) ($row['completion_tokens'] ?? 0),
+                'thinking_tokens'   => (int) ($row['thinking_tokens'] ?? 0),
+                'total_tokens'      => (int) ($row['total_tokens'] ?? 0),
                 'cost'              => $cost,
-                'pricing_input'     => $row['pricing_input'] !== null ? (float) $row['pricing_input'] : null,
-                'pricing_output'    => $row['pricing_output'] !== null ? (float) $row['pricing_output'] : null,
+                'pricing_input'     => isset($row['pricing_input']) && is_numeric($row['pricing_input']) ? (float) $row['pricing_input'] : null,
+                'pricing_output'    => isset($row['pricing_output']) && is_numeric($row['pricing_output']) ? (float) $row['pricing_output'] : null,
             ];
         }
 
@@ -437,6 +478,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             ['scopeId' => $scopeId, 'start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAssociative();
 
-        return (float) ($result['total'] ?? 0);
+        if (!is_array($result)) {
+            return 0.0;
+        }
+
+        /** @var array{total?: string|int|float} $result */
+        return (float) ($result['total'] ?? 0.0);
     }
 }

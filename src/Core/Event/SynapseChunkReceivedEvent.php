@@ -59,7 +59,7 @@ class SynapseChunkReceivedEvent extends Event
      */
     public function getText(): ?string
     {
-        return $this->chunk['text'] ?? null;
+        return isset($this->chunk['text']) && is_string($this->chunk['text']) ? (string) $this->chunk['text'] : null;
     }
 
     /**
@@ -67,7 +67,7 @@ class SynapseChunkReceivedEvent extends Event
      */
     public function getThinking(): ?string
     {
-        return $this->chunk['thinking'] ?? null;
+        return isset($this->chunk['thinking']) && is_string($this->chunk['thinking']) ? (string) $this->chunk['thinking'] : null;
     }
 
     /**
@@ -77,7 +77,9 @@ class SynapseChunkReceivedEvent extends Event
      */
     public function getFunctionCalls(): array
     {
-        return $this->chunk['function_calls'] ?? [];
+        /** @var array<int, array{id: string, name: string, args: array<string, mixed>}> $calls */
+        $calls = is_array($this->chunk['function_calls'] ?? null) ? $this->chunk['function_calls'] : [];
+        return $calls;
     }
 
     /**
@@ -87,7 +89,7 @@ class SynapseChunkReceivedEvent extends Event
      */
     public function getUsage(): array
     {
-        return $this->chunk['usage'] ?? [];
+        return is_array($this->chunk['usage'] ?? null) ? $this->chunk['usage'] : [];
     }
 
     /**
@@ -95,7 +97,7 @@ class SynapseChunkReceivedEvent extends Event
      */
     public function isBlocked(): bool
     {
-        return $this->chunk['blocked'] ?? false;
+        return (bool) ($this->chunk['blocked'] ?? false);
     }
 
     /**

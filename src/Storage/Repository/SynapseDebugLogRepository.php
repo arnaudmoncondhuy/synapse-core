@@ -33,21 +33,26 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
      */
     public function findRecent(int $limit = 50): array
     {
-        return $this->createQueryBuilder('d')
+        /** @var array<int, SynapseDebugLog> $result */
+        $result = $this->createQueryBuilder('d')
             ->orderBy('d.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return $result;
     }
 
     /**
      * Supprime tous les logs de debug
      */
-    public function clearAll(): mixed
+    public function clearAll(): int
     {
-        return $this->createQueryBuilder('d')
+        $result = $this->createQueryBuilder('d')
             ->delete()
             ->getQuery()
             ->execute();
+
+        return is_int($result) ? $result : 0;
     }
 }

@@ -35,14 +35,16 @@ class MemoryContextSubscriber implements EventSubscriberInterface
     public function onPrePrompt(SynapsePrePromptEvent $event): void
     {
         $options = $event->getOptions();
-        $userId = $options['user_id'] ?? $this->getCurrentUserId();
+        $userIdMixed = $options['user_id'] ?? $this->getCurrentUserId();
+        $userId = is_string($userIdMixed) ? $userIdMixed : null;
 
         $message = $event->getMessage();
         if (empty($message)) {
             return;
         }
 
-        $conversationId = $options['conversation_id'] ?? null;
+        $conversationIdMixed = $options['conversation_id'] ?? null;
+        $conversationId = is_string($conversationIdMixed) ? $conversationIdMixed : null;
         $error = null;
         $memories = [];
 
@@ -68,18 +70,17 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         }
 
         $prompt = $event->getPrompt();
-        if (!isset($prompt['metadata'])) {
-            $prompt['metadata'] = [];
-        }
+        $metadata = is_array($prompt['metadata'] ?? null) ? $prompt['metadata'] : [];
 
         if (empty($memories)) {
-            $prompt['metadata']['memory_matching'] = [
+            $metadata['memory_matching'] = [
                 'found' => 0,
                 'relevant' => 0,
                 'threshold' => 0.4,
                 'details' => [],
                 'error' => $error ?? null
             ];
+            $prompt['metadata'] = $metadata;
             $event->setPrompt($prompt);
             return;
         }
@@ -88,7 +89,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $relevant = array_filter($memories, fn($m) => $m['score'] >= 0.4);
 
         // Ajout des informations de matching dans les metadata du prompt pour le Debug
-        $prompt['metadata']['memory_matching'] = [
+        $metadata['memory_matching'] = [
             'found' => count($memories),
             'relevant' => count($relevant),
             'threshold' => 0.4,
@@ -98,6 +99,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
             ], $memories),
             'error' => null
         ];
+        $prompt['metadata'] = $metadata;
 
         if (empty($relevant)) {
             $event->setPrompt($prompt);
@@ -116,13 +118,19 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $memoryString .= "Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :\n{$memoryBlock}\n";
         $memoryString .= "Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.";
 
-        $messages = $prompt['contents'] ?? [];
+        $contentsRaw = $prompt['contents'] ?? [];
+        $messages = is_array($contentsRaw) ? $contentsRaw : [];
 
         // Chercher le premier message 'system' pour y concaténer la mémoire
         $systemFound = false;
         foreach ($messages as $i => $entry) {
-            if (($entry['role'] ?? '') === 'system') {
-                $messages[$i]['content'] .= $memoryString;
+            if (is_array($entry) && isset($entry['role']) && $entry['role'] === 'system') {
+                /** @var array{role: string, content?: mixed} $entry */
+                $oldContent = is_string($entry['content'] ?? null) ? (string) $entry['content'] : '';
+                $messages[$i] = [
+                    'role' => 'system',
+                    'content' => $oldContent . $memoryString
+                ];
                 $systemFound = true;
                 break;
             }

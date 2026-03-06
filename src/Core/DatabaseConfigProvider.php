@@ -48,7 +48,28 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *
      * Si un override est défini (via setOverride()), retourne cet override au lieu du preset actif.
      *
-     * @return array<string, mixed> Configuration formatée pour les services LLM
+     * @return array{
+     *     model: string,
+     *     provider: string,
+     *     provider_credentials: array<string, mixed>,
+     *     safety_settings: array{
+     *         enabled: bool,
+     *         default_threshold: string,
+     *         thresholds: array<string, string>
+     *     },
+     *     generation_config: array{
+     *         temperature: float,
+     *         top_p: float,
+     *         top_k: int,
+     *         max_output_tokens: ?int,
+     *         stop_sequences: array<string>
+     *     },
+     *     thinking: array{
+     *         enabled: bool,
+     *         budget: int,
+     *         reasoning_effort: string
+     *     }
+     * } Configuration structurée pour le client LLM.
      */
     public function getConfig(): array
     {
@@ -95,7 +116,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $config = array_merge($config, $globalConfig->toArray());
 
         // Merge provider credentials from SynapseProvider (décryptées)
-        $providerName = $config['provider'];
+        $providerNameMixed = $config['provider'] ?? '';
+        $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
         $provider = $this->providerRepo->findByName($providerName);
 
         if ($provider !== null && $provider->isEnabled()) {
@@ -104,7 +126,10 @@ class DatabaseConfigProvider implements ConfigProviderInterface
             $config['provider_credentials'] = [];
         }
 
-        return $config;
+        /** @var array{model: string, provider: string, provider_credentials: array<string, mixed>, safety_settings: array{enabled: bool, default_threshold: string, thresholds: array<string, string>}, generation_config: array{temperature: float, top_p: float, top_k: int, max_output_tokens: int|null, stop_sequences: array<string>}, thinking: array{enabled: bool, budget: int, reasoning_effort: string}} $finalConfig */
+        $finalConfig = $config;
+
+        return $finalConfig;
     }
 
     /**
@@ -134,8 +159,9 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         }
 
         foreach (['api_key', 'service_account_json', 'private_key'] as $key) {
-            if (!empty($credentials[$key]) && $this->encryptionService->isEncrypted($credentials[$key])) {
-                $credentials[$key] = $this->encryptionService->decrypt($credentials[$key]);
+            $val = $credentials[$key] ?? null;
+            if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
+                $credentials[$key] = $this->encryptionService->decrypt($val);
             }
         }
 
@@ -148,7 +174,28 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      * Si aucun preset valide n'existe, retourne une configuration par défaut
      * (pour permettre la création du premier preset).
      *
-     * @return array<string, mixed>
+     * @return array{
+     *     model: string,
+     *     provider: string,
+     *     provider_credentials: array<string, mixed>,
+     *     safety_settings: array{
+     *         enabled: bool,
+     *         default_threshold: string,
+     *         thresholds: array<string, string>
+     *     },
+     *     generation_config: array{
+     *         temperature: float,
+     *         top_p: float,
+     *         top_k: int,
+     *         max_output_tokens: ?int,
+     *         stop_sequences: array<string>
+     *     },
+     *     thinking: array{
+     *         enabled: bool,
+     *         budget: int,
+     *         reasoning_effort: string
+     *     }
+     * }
      */
     private function loadConfig(): array
     {
@@ -173,7 +220,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $config = array_merge($config, $globalConfig->toArray());
 
         // Merge provider credentials from SynapseProvider (décryptées)
-        $providerName = $config['provider'];
+        $providerNameMixed = $config['provider'] ?? '';
+        $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
         $provider = $this->providerRepo->findByName($providerName);
 
         if ($provider !== null && $provider->isEnabled()) {
