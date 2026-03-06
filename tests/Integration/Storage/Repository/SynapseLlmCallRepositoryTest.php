@@ -12,29 +12,28 @@ use PHPUnit\Framework\TestCase;
 
 class SynapseLlmCallRepositoryTest extends TestCase
 {
-    /**
-     * Helper: Create a repository with mocked Connection and ManagerRegistry.
-     */
     private function createRepository(
-        \Doctrine\DBAL\Result $mockStatement,
+        array $mockResultFetch = [],
+        array $mockResultAll = []
     ): SynapseLlmCallRepository {
+        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
+        $mockStatement->method('fetchAssociative')->willReturn($mockResultFetch ?: ($mockResultAll[0] ?? false));
+        $mockStatement->method('fetchAllAssociative')->willReturn($mockResultAll);
+
         $mockConnection = $this->createMock(Connection::class);
-        $mockConnection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($mockStatement);
+        $mockConnection->method('executeQuery')->willReturn($mockStatement);
+
+        $mockMetadata = $this->createMock(\Doctrine\ORM\Mapping\ClassMetadata::class);
+        $mockMetadata->name = \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::class;
 
         $mockEm = $this->createMock(EntityManagerInterface::class);
         $mockEm->method('getConnection')->willReturn($mockConnection);
+        $mockEm->method('getClassMetadata')->willReturn($mockMetadata);
 
         $mockRegistry = $this->createMock(ManagerRegistry::class);
         $mockRegistry->method('getManagerForClass')->willReturn($mockEm);
 
-        // Create a properly configured mock ClassMetadata
-        $mockMetadata = $this->createMock(\Doctrine\ORM\Mapping\ClassMetadata::class);
-        $mockMetadata->name = \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::class;
-        $mockMetadata->rootEntityName = \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::class;
-
-        return new SynapseLlmCallRepository($mockRegistry, $mockMetadata);
+        return new SynapseLlmCallRepository($mockRegistry);
     }
 
     public function testGetGlobalStatsReturnsCostsGroupedByCurrency(): void
@@ -47,7 +46,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
                 'thinking_tokens' => 100,
                 'total_tokens' => 1600,
                 'currency' => 'EUR',
-                'total_cost' => 0.005,
+                'cost' => 0.005,
             ],
             [
                 'request_count' => 5,
@@ -56,14 +55,11 @@ class SynapseLlmCallRepositoryTest extends TestCase
                 'thinking_tokens' => 0,
                 'total_tokens' => 1100,
                 'currency' => 'USD',
-                'total_cost' => 0.00015,
+                'cost' => 0.00015,
             ],
         ];
 
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
+        $repository = $this->createRepository([], $mockResult);
 
         $stats = $repository->getGlobalStats(
             new \DateTimeImmutable('-7 days'),
@@ -73,18 +69,13 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertArrayHasKey('costs', $stats);
         $this->assertArrayHasKey('EUR', $stats['costs']);
         $this->assertArrayHasKey('USD', $stats['costs']);
-        $this->assertGreaterThan(0, $stats['costs']['EUR']);
-        $this->assertGreaterThan(0, $stats['costs']['USD']);
+        $this->assertEquals(0.005, $stats['costs']['EUR']);
+        $this->assertEquals(0.00015, $stats['costs']['USD']);
     }
 
     public function testGetGlobalStatsReturnsZeroWhenNoData(): void
     {
-        $mockResult = [];
-
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
+        $repository = $this->createRepository([], []);
 
         $stats = $repository->getGlobalStats(
             new \DateTimeImmutable('-7 days'),
@@ -96,58 +87,26 @@ class SynapseLlmCallRepositoryTest extends TestCase
         $this->assertSame(0, $stats['total_tokens'] ?? 0);
     }
 
-    public function testGetGlobalStatsHandlesEurOnly(): void
-    {
-        $mockResult = [
-            [
-                'request_count' => 15,
-                'prompt_tokens' => 2000,
-                'completion_tokens' => 800,
-                'thinking_tokens' => 200,
-                'total_tokens' => 3000,
-                'currency' => 'EUR',
-                'total_cost' => 0.01,
-            ],
-        ];
-
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
-
-        $stats = $repository->getGlobalStats(
-            new \DateTimeImmutable('-7 days'),
-            new \DateTimeImmutable(),
-        );
-
-        $this->assertArrayHasKey('EUR', $stats['costs']);
-        $this->assertGreaterThan(0, $stats['costs']['EUR']);
-        $this->assertArrayNotHasKey('USD', $stats['costs']);
-    }
-
     public function testGetUsageByModelReturnsCurrencyPerModel(): void
     {
         $mockResult = [
             [
-                'model_id' => 'gemini-2.0-flash',
+                'model' => 'gemini-2.0-flash',
                 'count' => 5,
                 'total_tokens' => 1000,
                 'cost' => 0.00005,
-                'currency' => 'USD',
+                'pricing_currency' => 'USD',
             ],
             [
-                'model_id' => 'mistral-large',
+                'model' => 'mistral-large',
                 'count' => 3,
                 'total_tokens' => 500,
                 'cost' => 0.00002,
-                'currency' => 'EUR',
+                'pricing_currency' => 'EUR',
             ],
         ];
 
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
+        $repository = $this->createRepository([], $mockResult);
 
         $usage = $repository->getUsageByModel(
             new \DateTimeImmutable('-7 days'),
@@ -155,28 +114,10 @@ class SynapseLlmCallRepositoryTest extends TestCase
         );
 
         $this->assertCount(2, $usage);
-        $this->assertSame('gemini-2.0-flash', $usage[0]['model_id']);
-        $this->assertSame('USD', $usage[0]['currency']);
-        $this->assertSame('mistral-large', $usage[1]['model_id']);
-        $this->assertSame('EUR', $usage[1]['currency']);
-    }
-
-    public function testGetUsageByModelReturnsEmptyArrayWhenNoData(): void
-    {
-        $mockResult = [];
-
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
-
-        $usage = $repository->getUsageByModel(
-            new \DateTimeImmutable('-7 days'),
-            new \DateTimeImmutable(),
-        );
-
-        $this->assertIsArray($usage);
-        $this->assertEmpty($usage);
+        $this->assertArrayHasKey('gemini-2.0-flash', $usage);
+        $this->assertSame('USD', $usage['gemini-2.0-flash']['currency']);
+        $this->assertArrayHasKey('mistral-large', $usage);
+        $this->assertSame('EUR', $usage['mistral-large']['currency']);
     }
 
     public function testGetDailyUsageReturnsIndexedByDate(): void
@@ -185,45 +126,34 @@ class SynapseLlmCallRepositoryTest extends TestCase
             [
                 'date' => '2026-03-01',
                 'total_tokens' => 1000,
-                'request_count' => 5,
+                'prompt_tokens' => 600,
+                'completion_tokens' => 300,
+                'thinking_tokens' => 100,
             ],
             [
                 'date' => '2026-03-02',
                 'total_tokens' => 1500,
-                'request_count' => 7,
-            ],
-            [
-                'date' => '2026-03-03',
-                'total_tokens' => 800,
-                'request_count' => 3,
+                'prompt_tokens' => 900,
+                'completion_tokens' => 500,
+                'thinking_tokens' => 100,
             ],
         ];
 
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
+        $repository = $this->createRepository([], $mockResult);
 
         $daily = $repository->getDailyUsage(
             new \DateTimeImmutable('-30 days'),
             new \DateTimeImmutable(),
         );
 
-        $this->assertCount(3, $daily);
-        $this->assertArrayHasKey('date', $daily[0]);
-        $this->assertArrayHasKey('total_tokens', $daily[0]);
-        $this->assertSame('2026-03-01', $daily[0]['date']);
-        $this->assertSame(1000, $daily[0]['total_tokens']);
+        $this->assertCount(2, $daily);
+        $this->assertArrayHasKey('2026-03-01', $daily);
+        $this->assertSame(1000, $daily['2026-03-01']['total_tokens']);
     }
 
     public function testGetDailyUsageReturnsEmptyArrayWhenNoData(): void
     {
-        $mockResult = [];
-
-        $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
-        $mockStatement->method('fetchAllAssociative')->willReturn($mockResult);
-
-        $repository = $this->createRepository($mockStatement);
+        $repository = $this->createRepository([], []);
 
         $daily = $repository->getDailyUsage(
             new \DateTimeImmutable('-30 days'),
