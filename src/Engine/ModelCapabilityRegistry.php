@@ -29,13 +29,13 @@ class ModelCapabilityRegistry
      */
     private function loadModels(): void
     {
-        // Essayer d'abord le chemin dans Infrastructure (après refactorisation)
-        // __DIR__ = src/Core/Chat, donc dirname(__DIR__, 3) = bundle root
-        $configDir = dirname(__DIR__, 3) . '/src/Infrastructure/Resources/config/models';
+        // Chemin vers les configurations YAML des modèles après refactorisation
+        // __DIR__ = src/Engine, donc dirname(__DIR__, 2) = packages/core
+        $configDir = dirname(__DIR__, 2) . '/src/Resources/config/models';
 
-        // Fallback vers Core/Resources (ancien chemin)
         if (!is_dir($configDir)) {
-            $configDir = dirname(__DIR__, 3) . '/src/Core/Resources/config/models';
+            // Tentative de résolution alternative si appelé depuis une application hôte
+            $configDir = dirname(__DIR__, 5) . '/vendor/arnaudmoncondhuy/synapse-core/src/Resources/config/models';
         }
 
         if (!is_dir($configDir)) {
