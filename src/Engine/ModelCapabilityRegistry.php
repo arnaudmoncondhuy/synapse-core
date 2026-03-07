@@ -77,6 +77,13 @@ class ModelCapabilityRegistry
         'context_window' => null,
         'pricing_input' => null,
         'pricing_output' => null,
+        // Phase 1
+        'max_input_tokens' => null,
+        'max_output_tokens' => null,
+        'supports_vision' => false,
+        'supports_parallel_tool_calls' => false,
+        'supports_response_schema' => false,
+        'deprecated_at' => null,
     ];
 
     /**
@@ -103,6 +110,13 @@ class ModelCapabilityRegistry
             pricingOutput: is_numeric($data['pricing_output'] ?? null) ? (float) $data['pricing_output'] : null,
             modelId: isset($data['model_id']) && is_string($data['model_id']) ? (string) $data['model_id'] : null,
             dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
+            // Phase 1
+            maxInputTokens: is_numeric($data['max_input_tokens'] ?? null) ? (int) $data['max_input_tokens'] : null,
+            maxOutputTokens: is_numeric($data['max_output_tokens'] ?? null) ? (int) $data['max_output_tokens'] : null,
+            supportsVision: (bool) ($data['supports_vision'] ?? false),
+            supportsParallelToolCalls: (bool) ($data['supports_parallel_tool_calls'] ?? false),
+            supportsResponseSchema: (bool) ($data['supports_response_schema'] ?? false),
+            deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
         );
     }
 

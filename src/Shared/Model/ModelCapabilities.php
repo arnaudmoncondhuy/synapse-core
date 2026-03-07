@@ -57,14 +57,64 @@ class ModelCapabilities
 
         /** ID technique optionnel (ex: ID MaaS pour Vertex) */
         public readonly ?string $modelId = null,
+
+        // ── Phase 1 : Contexte asymétrique ───────────────────────────────────
+
+        /** Max tokens en entrée — si null, fallback vers contextWindow */
+        public readonly ?int $maxInputTokens = null,
+
+        /** Max tokens en sortie — si null, pas de limite explicite connue */
+        public readonly ?int $maxOutputTokens = null,
+
+        // ── Phase 1 : Modalités ──────────────────────────────────────────────
+
+        /** Supporte l'analyse d'images en entrée */
+        public readonly bool $supportsVision = false,
+
+        /** Supporte l'appel parallèle de plusieurs tools en une réponse */
+        public readonly bool $supportsParallelToolCalls = false,
+
+        /** Supporte le JSON Mode / Structured Outputs */
+        public readonly bool $supportsResponseSchema = false,
+
+        // ── Phase 1 : Lifecycle ──────────────────────────────────────────────
+
+        /** Date de dépréciation du modèle au format YYYY-MM-DD, ou null */
+        public readonly ?string $deprecatedAt = null,
     ) {
+    }
+
+    /**
+     * Retourne le nombre maximum de tokens en entrée.
+     * Fallback : maxInputTokens → contextWindow → null.
+     */
+    public function getEffectiveMaxInputTokens(): ?int
+    {
+        return $this->maxInputTokens ?? $this->contextWindow;
+    }
+
+    /**
+     * Indique si le modèle est déprécié à une date donnée (défaut : maintenant).
+     */
+    public function isDeprecated(?\DateTimeInterface $at = null): bool
+    {
+        if (null === $this->deprecatedAt) {
+            return false;
+        }
+        $deprecation = \DateTimeImmutable::createFromFormat('Y-m-d', $this->deprecatedAt);
+        if (!$deprecation) {
+            return false;
+        }
+
+        return ($at ?? new \DateTimeImmutable()) >= $deprecation;
     }
 
     /**
      * Vérifie si le modèle supporte une capacité donnée.
      *
      * @param string $capability Capacité à vérifier (valeurs acceptées : 'thinking', 'safety_settings', 'top_k',
-     *                           'function_calling', 'streaming', 'system_prompt')
+     *                           'function_calling', 'streaming', 'system_prompt', 'vision',
+     *                           'parallel_tool_calls', 'response_schema')
      *
      * @return bool true si supportée, false sinon (y compris pour les capacités inconnues)
      */
@@ -77,6 +127,9 @@ class ModelCapabilities
             'function_calling' => $this->functionCalling,
             'streaming' => $this->streaming,
             'system_prompt' => $this->systemPrompt,
+            'vision' => $this->supportsVision,
+            'parallel_tool_calls' => $this->supportsParallelToolCalls,
+            'response_schema' => $this->supportsResponseSchema,
             default => false,
         };
     }

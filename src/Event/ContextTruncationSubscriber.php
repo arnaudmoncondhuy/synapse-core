@@ -39,8 +39,9 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
         }
 
         // Récupération de la capacité "Context Window" du modèle
+        // getEffectiveMaxInputTokens() utilise maxInputTokens en priorité, puis contextWindow en fallback
         $capabilities = $this->capabilityRegistry->getCapabilities($modelName);
-        $contextWindow = $capabilities->contextWindow;
+        $contextWindow = $capabilities->getEffectiveMaxInputTokens();
 
         // Si le modèle n'a pas de limite définie, on ne tronque pas
         if (null === $contextWindow || $contextWindow <= 0) {

@@ -1,0 +1,127 @@
+# ============================================================
+# FICHIER DE RÉFÉRENCE — Synapse ModelCapabilities
+# ============================================================
+# Ce fichier documente tous les champs disponibles pour déclarer
+# un modèle LLM, avec leurs valeurs par défaut et leur description.
+#
+# Il n'enregistre aucun modèle (models: {}).
+# Il sert de référence pour créer un nouveau fichier provider.
+#
+# Pour ajouter un provider : créer un nouveau fichier YAML dans
+# ce dossier (ex: mistral.yaml) et remplir les valeurs réelles.
+#
+# Les champs absents d'un fichier provider héritent des valeurs
+# définies dans ModelCapabilityRegistry::DEFAULTS (voir ci-dessous).
+# ============================================================
+
+defaults_reference:
+
+  # ── Identité ──────────────────────────────────────────────────────────────
+  provider: "unknown"          # Requis. Slug du provider (ex: 'gemini', 'ovh', 'anthropic')
+  type: "chat"                 # Mode du modèle : chat | embedding
+                               # Futur (Phase 4): image_generation | audio_transcription | audio_speech | moderation | rerank
+  model_id: ~                  # Alias technique optionnel (ex: ID Vertex AI). null = utiliser la clé YAML
+
+  # ── Contexte ──────────────────────────────────────────────────────────────
+  context_window: ~            # Legacy. Fenêtre totale en tokens. null = pas de troncature automatique
+  max_input_tokens: ~          # Phase 1. Max tokens acceptés en entrée. null = fallback vers context_window
+  max_output_tokens: ~         # Phase 1. Max tokens générables en sortie. null = pas de limite connue
+
+  # ── Capacités (défaut TRUE — couvertes par la plupart des modèles chat) ───
+  function_calling: true       # Supporte le tool use / function calling
+  streaming: true              # Supporte le streaming SSE/NDJSON
+  system_prompt: true          # Supporte un system prompt / instruction système
+
+  # ── Capacités (défaut FALSE — activation opt-in) ──────────────────────────
+  thinking: false              # Supporte le raisonnement étendu (thinking budget tokens)
+  safety_settings: false       # Supporte les filtres de sécurité granulaires (spécifique Gemini)
+  top_k: false                 # Supporte le paramètre topK dans generation_config
+
+  # Phase 1
+  supports_vision: false               # Analyse d'images en entrée (multimodal)
+  supports_parallel_tool_calls: false  # Appels parallèles de plusieurs tools en une réponse
+  supports_response_schema: false      # JSON Mode / Structured Outputs natif
+
+  # Phase 2 (non encore implémentés dans ModelCapabilities)
+  # supports_audio_input: false        # Audio en entrée (Gemini 2.0+, GPT-4o Audio)
+  # supports_audio_output: false       # Génération audio en sortie (TTS natif)
+  # supports_prompt_caching: false     # Prompt caching (réduction coûts 75-90%, Anthropic/Gemini/OpenAI)
+  # supports_web_search: false         # Recherche web intégrée (Gemini Grounding, Perplexity)
+
+  # ── Tarification (par million de tokens, null = coût inconnu) ─────────────
+  pricing_input: ~             # Coût input standard
+  pricing_output: ~            # Coût output standard
+
+  # Phase 2 (non encore implémentés dans ModelCapabilities)
+  # pricing_reasoning_output: ~  # Thinking/reasoning tokens — fallback: pricing_output
+  # pricing_cache_write: ~       # Écriture cache — fallback: pricing_input
+  # pricing_cache_read: ~        # Lecture cache (souvent ~10% du prix input)
+
+  # Phase 3 (non encore implémentés)
+  # pricing_audio_input: ~       # Tokens audio en entrée
+  # pricing_audio_output: ~      # Tokens audio en sortie
+  # pricing_vision_input: ~      # Images en entrée (par image ou par pixel)
+
+  # ── Lifecycle ─────────────────────────────────────────────────────────────
+  deprecated_at: ~             # Phase 1. Date YYYY-MM-DD ou null. Ex: "2026-06-15"
+
+  # Phase 3 (non encore implémentés)
+  # is_preview: false            # Modèle en preview (pas encore GA — instable)
+  # supported_regions: []        # Régions disponibles. Ex: ['us', 'eu', 'asia']. Vide = global
+
+  # ── Embeddings ────────────────────────────────────────────────────────────
+  dimensions: []               # Tailles de vecteurs disponibles. Ex: [3072, 1536, 768]
+
+
+# ============================================================
+# TEMPLATE : Modèle Chat (copier/adapter dans votre_provider.yaml)
+# ============================================================
+#
+# models:
+#   mon-modele-chat:
+#     provider: mon_provider
+#     type: chat
+#     context_window: 131072
+#     max_input_tokens: 131072
+#     max_output_tokens: 16384
+#     function_calling: true
+#     streaming: true
+#     system_prompt: true
+#     thinking: false
+#     safety_settings: false
+#     top_k: false
+#     supports_vision: false
+#     supports_parallel_tool_calls: false
+#     supports_response_schema: false
+#     pricing_input: 0.10
+#     pricing_output: 0.30
+#     deprecated_at: ~
+
+
+# ============================================================
+# TEMPLATE : Modèle Embedding
+# ============================================================
+#
+# models:
+#   mon-modele-embedding:
+#     type: embedding
+#     provider: mon_provider
+#     dimensions: [1024, 512]
+#     context_window: 8192
+#     max_input_tokens: 8192
+#     max_output_tokens: 0
+#     function_calling: false
+#     streaming: false
+#     system_prompt: false
+#     thinking: false
+#     safety_settings: false
+#     top_k: false
+#     supports_vision: false
+#     supports_parallel_tool_calls: false
+#     supports_response_schema: false
+#     pricing_input: 0.01
+#     pricing_output: 0.00
+
+
+# ── Aucun modèle enregistré dans ce fichier ──────────────────────────────────
+models: {}
