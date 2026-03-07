@@ -85,6 +85,12 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                     $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
                 }
                 $config['agent_id'] = $agent->getId();
+
+                // Injecter les outils autorisés de l'agent
+                // (sauf si le développeur a déjà défini tools_override)
+                if (!isset($options['tools_override'])) {
+                    $options['tools_override'] = $agent->getAllowedToolNames();
+                }
             }
         }
 

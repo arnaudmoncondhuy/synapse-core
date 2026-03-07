@@ -74,6 +74,16 @@ class SynapseAgent
     private ?SynapseTone $tone = null;
 
     /**
+     * Liste des noms d'outils autorisés pour cet agent.
+     * Tableau vide [] = aucun outil disponible.
+     * Tableau non-vide = restriction aux outils nommés.
+     *
+     * @var string[]
+     */
+    #[ORM\Column(type: Types::JSON)]
+    private array $allowedToolNames = [];
+
+    /**
      * Agent fournie par le bundle (ne peut pas être supprimée depuis l'admin).
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
@@ -200,6 +210,25 @@ class SynapseAgent
         return $this;
     }
 
+    /** @return string[] */
+    public function getAllowedToolNames(): array
+    {
+        return $this->allowedToolNames;
+    }
+
+    /** @param string[] $allowedToolNames */
+    public function setAllowedToolNames(array $allowedToolNames): self
+    {
+        $this->allowedToolNames = array_values(array_filter($allowedToolNames, 'is_string'));
+
+        return $this;
+    }
+
+    public function hasToolRestrictions(): bool
+    {
+        return !empty($this->allowedToolNames);
+    }
+
     public function isBuiltin(): bool
     {
         return $this->isBuiltin;
@@ -262,6 +291,7 @@ class SynapseAgent
             'systemPrompt' => $this->systemPrompt,
             'modelPreset' => $this->modelPreset?->getName(),
             'tone' => $this->tone?->getKey(),
+            'allowedToolNames' => $this->allowedToolNames,
             'isBuiltin' => $this->isBuiltin,
             'isActive' => $this->isActive,
         ];

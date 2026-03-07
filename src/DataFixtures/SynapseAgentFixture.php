@@ -86,6 +86,7 @@ class SynapseAgentFixture extends Fixture
 
             // Pas de preset défini : fallback sur le preset global actif
             $agent->setModelPreset(null);
+            $agent->setAllowedToolNames([]);
 
             $manager->persist($agent);
         }
