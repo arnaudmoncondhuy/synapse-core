@@ -8,7 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 
@@ -41,7 +41,7 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * @param array{preset: SynapsePreset} $input
+     * @param array{preset: SynapseModelPreset} $input
      *
      * @return array<string, mixed>
      */
@@ -55,7 +55,7 @@ class PresetValidatorAgent implements AgentInterface
      *
      * @param array<string, mixed> $report
      */
-    public function runStep(int $step, SynapsePreset $preset, array &$report): void
+    public function runStep(int $step, SynapseModelPreset $preset, array &$report): void
     {
         match ($step) {
             1 => $this->executeConfigCheckStep($preset, $report),
@@ -70,7 +70,7 @@ class PresetValidatorAgent implements AgentInterface
      *
      * @return array<string, mixed>
      */
-    public function runAll(SynapsePreset $preset): array
+    public function runAll(SynapseModelPreset $preset): array
     {
         $report = [];
 
@@ -86,7 +86,7 @@ class PresetValidatorAgent implements AgentInterface
      *
      * @param array<string, mixed> $report
      */
-    private function executeConfigCheckStep(SynapsePreset $preset, array &$report): void
+    private function executeConfigCheckStep(SynapseModelPreset $preset, array &$report): void
     {
         $checks = [];
         $errors = [];
@@ -147,7 +147,7 @@ class PresetValidatorAgent implements AgentInterface
      *
      * @param array<string, mixed> $report
      */
-    private function executeLlmCallStep(SynapsePreset $preset, array &$report): void
+    private function executeLlmCallStep(SynapseModelPreset $preset, array &$report): void
     {
         $result = [];
         $syncError = null;
@@ -261,7 +261,7 @@ class PresetValidatorAgent implements AgentInterface
      *
      * @param array<string, mixed> $report
      */
-    private function executeAnalysisStep(SynapsePreset $preset, array &$report): void
+    private function executeAnalysisStep(SynapseModelPreset $preset, array &$report): void
     {
         // Défense supplémentaire : s'assurer que le configProvider n'utilise plus le preset testé
         // (normalement géré par le try/finally de ChatService, mais on double la sécurité)

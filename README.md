@@ -25,7 +25,7 @@ composer require arnaudmoncondhuy/synapse-core:^0.1
 ### 💾 Stockage et Entités Doctrine
 - **Conversation** - Historique conversationnel
 - **Message** - Messages avec roles (user, assistant, tool)
-- **SynapsePreset** - Configurations d'IA réutilisables
+- **SynapseModelPreset** - Configurations d'IA réutilisables
 - **SynapseProvider** - Crédentials et configuration de providers
 - **SynapseModel** - Métadonnées et capabilities des modèles
 

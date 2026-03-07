@@ -6,7 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Agent;
 
 use ArnaudMoncondhuy\SynapseCore\Agent\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use PHPUnit\Framework\TestCase;
 
 class SynapseAgentTest extends TestCase
@@ -14,7 +14,7 @@ class SynapseAgentTest extends TestCase
     public function testAsk(): void
     {
         $chatService = $this->createMock(ChatService::class);
-        $preset = new SynapsePreset();
+        $preset = new SynapseModelPreset();
         $preset->setModel('gpt-4');
 
         $agent = new SynapseAgent(

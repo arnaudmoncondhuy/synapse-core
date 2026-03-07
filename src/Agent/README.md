@@ -134,7 +134,7 @@ Workflow:
   2. Appel LLM d'analyse → reçoit 4 JSONs, produit rapport Markdown
 
 Return: {
-    'preset': SynapsePreset,
+    'preset': SynapseModelPreset,
     'ai_response': string (réponse au message de test),
     'debug_id': string (référence DB),
     'critical_checks': ['response_not_empty' => bool, 'debug_saved_in_db' => bool],

@@ -9,7 +9,7 @@ Synapse Core utilise des `MappedSuperclass` que vous devez étendre dans votre a
 
 ## Entités de configuration
 
-- **SynapsePreset** : Configuration technique d’un modèle (température, outils, etc.).
+- **SynapseModelPreset** : Configuration technique d’un modèle (température, outils, etc.).
 - **SynapseProvider** : Credentials chiffrés pour les fournisseurs (Gemini, OpenAI).
 - **SynapseModel** : Métadonnées et tarification des modèles LLM.
 - **SynapseMission** : Configuration d’agent (system prompt, preset, ton).

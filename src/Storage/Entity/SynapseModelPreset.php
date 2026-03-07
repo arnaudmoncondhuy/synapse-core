@@ -16,14 +16,20 @@ use Doctrine\ORM\Mapping as ORM;
  * Les credentials du provider sont stockés dans SynapseProvider.
  */
 #[ORM\Entity]
-#[ORM\Table(name: 'synapse_preset')]
+#[ORM\Table(name: 'synapse_model_preset')]
 #[ORM\HasLifecycleCallbacks]
-class SynapsePreset
+class SynapseModelPreset
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
+
+    /**
+     * Clé unique (slug) pour appel dans le code (ex: 'gemini_fast')
+     */
+    #[ORM\Column(type: Types::STRING, length: 50, unique: true, nullable: true)]
+    private ?string $key = null;
 
     /**
      * Nom lisible du preset.
@@ -121,6 +127,18 @@ class SynapsePreset
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getKey(): ?string
+    {
+        return $this->key;
+    }
+
+    public function setKey(?string $key): self
+    {
+        $this->key = $key;
+
+        return $this;
     }
 
     public function getName(): string

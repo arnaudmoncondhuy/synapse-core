@@ -106,7 +106,7 @@ services:
 
     ArnaudMoncondhuy\SynapseCore\DatabaseConfigProvider:
         arguments:
-            $presetRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository'
+            $presetRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository'
             $globalConfigRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
             $presetValidator: '@ArnaudMoncondhuy\SynapseCore\PresetValidator'
@@ -221,7 +221,7 @@ services:
             $configRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
             $slidingDayHours: '%synapse.token_tracking.sliding_day_hours%'
 
-    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository:
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository:
         arguments:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']

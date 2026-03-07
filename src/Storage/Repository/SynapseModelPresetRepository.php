@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Repository;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -14,22 +14,22 @@ use Doctrine\Persistence\ManagerRegistry;
  *
  * Un seul preset peut être actif à la fois (pas de scope).
  *
- * @extends ServiceEntityRepository<SynapsePreset>
+ * @extends ServiceEntityRepository<SynapseModelPreset>
  */
-class SynapsePresetRepository extends ServiceEntityRepository
+class SynapseModelPresetRepository extends ServiceEntityRepository
 {
     public function __construct(
         ManagerRegistry $registry,
         private SynapseProviderRepository $providerRepo,
         private ModelCapabilityRegistry $capabilityRegistry,
     ) {
-        parent::__construct($registry, SynapsePreset::class);
+        parent::__construct($registry, SynapseModelPreset::class);
     }
 
     /**
      * Retourne le preset actif, ou en crée un par défaut si aucun n'existe.
      */
-    public function findActive(): SynapsePreset
+    public function findActive(): SynapseModelPreset
     {
         $preset = $this->findOneBy(['isActive' => true]);
 
@@ -57,16 +57,21 @@ class SynapsePresetRepository extends ServiceEntityRepository
         return $preset;
     }
 
+    public function findByKey(string $key): ?SynapseModelPreset
+    {
+        return $this->findOneBy(['key' => $key]);
+    }
+
     /**
      * Active un preset et désactive tous les autres.
      */
-    public function activate(SynapsePreset $preset): void
+    public function activate(SynapseModelPreset $preset): void
     {
         $em = $this->getEntityManager();
 
         // Désactiver tous les presets
         $em->createQuery(
-            'UPDATE '.SynapsePreset::class.' p SET p.isActive = false'
+            'UPDATE ' . SynapseModelPreset::class . ' p SET p.isActive = false'
         )->execute();
 
         // Activer le preset cible
@@ -77,7 +82,7 @@ class SynapsePresetRepository extends ServiceEntityRepository
     /**
      * Tous les presets, triés par id.
      *
-     * @return SynapsePreset[]
+     * @return SynapseModelPreset[]
      */
     public function findAllPresets(): array
     {
@@ -87,9 +92,9 @@ class SynapsePresetRepository extends ServiceEntityRepository
     /**
      * Crée un preset avec les valeurs par défaut.
      */
-    private function createDefaultPreset(): SynapsePreset
+    private function createDefaultPreset(): SynapseModelPreset
     {
-        $preset = new SynapsePreset();
+        $preset = new SynapseModelPreset();
         $preset->setName('Preset par défaut');
         $preset->setIsActive(true);
 

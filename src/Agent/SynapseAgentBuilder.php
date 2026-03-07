@@ -6,7 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Agent;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 
 /**
  * Service de fabrication d'agents IA (AgentBuilder).
@@ -121,7 +121,7 @@ class SynapseAgentBuilder
         }
 
         // Création du Preset Virtuel (Stateless)
-        $preset = new SynapsePreset();
+        $preset = new SynapseModelPreset();
         $preset->setName('Agent Virtuel: '.$this->model);
         $preset->setProviderName($capabilities->provider);
         $preset->setModel($this->model);

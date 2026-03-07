@@ -61,9 +61,9 @@ class SynapseMission
      * Preset LLM optionnel pour cette mission.
      * Si null, utilise le preset actif global.
      */
-    #[ORM\ManyToOne(targetEntity: SynapsePreset::class)]
+    #[ORM\ManyToOne(targetEntity: SynapseModelPreset::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?SynapsePreset $preset = null;
+    private ?SynapseModelPreset $modelPreset = null;
 
     /**
      * Ton de réponse optionnel pour cette mission.
@@ -176,14 +176,14 @@ class SynapseMission
         return $this;
     }
 
-    public function getPreset(): ?SynapsePreset
+    public function getModelPreset(): ?SynapseModelPreset
     {
-        return $this->preset;
+        return $this->modelPreset;
     }
 
-    public function setPreset(?SynapsePreset $preset): self
+    public function setModelPreset(?SynapseModelPreset $modelPreset): self
     {
-        $this->preset = $preset;
+        $this->modelPreset = $modelPreset;
 
         return $this;
     }
@@ -260,7 +260,7 @@ class SynapseMission
             'name' => $this->name,
             'description' => $this->description,
             'systemPrompt' => $this->systemPrompt,
-            'preset' => $this->preset?->getName(),
+            'modelPreset' => $this->modelPreset?->getName(),
             'tone' => $this->tone?->getKey(),
             'isBuiltin' => $this->isBuiltin,
             'isActive' => $this->isActive,

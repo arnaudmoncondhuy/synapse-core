@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -27,7 +27,7 @@ final class PresetValidator
     /**
      * Vérifie si un preset est valide.
      */
-    public function isValid(SynapsePreset $preset): bool
+    public function isValid(SynapseModelPreset $preset): bool
     {
         $providerName = $preset->getProviderName();
         $model = $preset->getModel();
@@ -47,7 +47,7 @@ final class PresetValidator
     /**
      * Retourne la raison pour laquelle un preset est invalide.
      */
-    public function getInvalidReason(SynapsePreset $preset): ?string
+    public function getInvalidReason(SynapseModelPreset $preset): ?string
     {
         if ($this->isValid($preset)) {
             return null;
@@ -87,7 +87,7 @@ final class PresetValidator
      *
      * @throws \Exception Si aucun preset valide n'existe
      */
-    public function ensureActivePresetIsValid(SynapsePreset $activePreset): void
+    public function ensureActivePresetIsValid(SynapseModelPreset $activePreset): void
     {
         // Si le preset actif est valide, OK
         if ($this->isValid($activePreset)) {
@@ -99,8 +99,8 @@ final class PresetValidator
         $this->em->flush();
 
         // 🔍 Chercher un autre preset valide pour l'activer
-        $repo = $this->em->getRepository(SynapsePreset::class);
-        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository $repo */
+        $repo = $this->em->getRepository(SynapseModelPreset::class);
+        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository $repo */
         $allPresets = $repo->findAll();
         foreach ($allPresets as $preset) {
             if ($preset->getId() === $activePreset->getId()) {

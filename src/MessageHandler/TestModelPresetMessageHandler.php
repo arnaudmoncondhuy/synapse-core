@@ -6,17 +6,17 @@ namespace ArnaudMoncondhuy\SynapseCore\MessageHandler;
 
 use ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent;
 use ArnaudMoncondhuy\SynapseCore\Message\TestPresetMessage;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 #[AsMessageHandler]
-class TestPresetMessageHandler
+class TestModelPresetMessageHandler
 {
     public function __construct(
         private PresetValidatorAgent $agent,
-        private SynapsePresetRepository $presetRepository,
+        private SynapseModelPresetRepository $presetRepository,
         private CacheInterface $cache,
     ) {
     }
@@ -24,7 +24,7 @@ class TestPresetMessageHandler
     public function __invoke(TestPresetMessage $message): void
     {
         $id = $message->getPresetId();
-        $cacheKey = sprintf('synapse_preset_test_%d', $id);
+        $cacheKey = sprintf('synapse_model_preset_test_%d', $id);
         $lockKey = sprintf('synapse_test_lock_%d', $id);
 
         $preset = $this->presetRepository->find($id);

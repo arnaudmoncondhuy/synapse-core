@@ -6,9 +6,9 @@ namespace ArnaudMoncondhuy\SynapseCore;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapsePresetRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -17,7 +17,7 @@ use Symfony\Contracts\Cache\ItemInterface;
  * Fournisseur de configuration dynamique depuis la BDD.
  *
  * Fusionne :
- * - Le preset LLM actif (SynapsePreset)
+ * - Le preset LLM actif (SynapseModelPreset)
  * - La configuration globale (SynapseConfig singleton : retention, context, system_prompt)
  * - Les credentials du provider (SynapseProvider)
  *
@@ -35,7 +35,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     private ?array $configOverride = null;
 
     public function __construct(
-        private SynapsePresetRepository $presetRepo,
+        private SynapseModelPresetRepository $presetRepo,
         private SynapseConfigRepository $globalConfigRepo,
         private SynapseProviderRepository $providerRepo,
         private PresetValidator $presetValidator,
@@ -86,7 +86,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      *
      * @return array<string, mixed> Configuration formatée pour les services LLM
      */
-    public function getConfigForPreset(SynapsePreset $preset): array
+    public function getConfigForPreset(SynapseModelPreset $preset): array
     {
         $config = $preset->toArray();
         $config['preset_id'] = $preset->getId();

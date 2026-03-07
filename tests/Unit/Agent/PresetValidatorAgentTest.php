@@ -9,7 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
@@ -43,7 +43,7 @@ class PresetValidatorAgentTest extends TestCase
 
     public function testExecuteConfigCheckStepWithValidConfig(): void
     {
-        $preset = new SynapsePreset();
+        $preset = new SynapseModelPreset();
         $preset->setProviderName('openai');
         $preset->setModel('gpt-4');
 
@@ -63,7 +63,7 @@ class PresetValidatorAgentTest extends TestCase
 
     public function testExecuteConfigCheckStepWithInvalidProvider(): void
     {
-        $preset = new SynapsePreset();
+        $preset = new SynapseModelPreset();
         $preset->setProviderName('unknown');
 
         $this->providerRepo->method('findByName')->willReturn(null);

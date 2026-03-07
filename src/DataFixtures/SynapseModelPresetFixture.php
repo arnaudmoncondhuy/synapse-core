@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\DataFixtures;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
-class SynapsePresetFixture extends Fixture
+class SynapseModelPresetFixture extends Fixture
 {
     public function load(ObjectManager $manager): void
     {
@@ -41,11 +41,11 @@ class SynapsePresetFixture extends Fixture
 
         foreach ($presets as $data) {
             // Idempotent : vérifie l'existence par nom
-            if (null !== $manager->getRepository(SynapsePreset::class)->findOneBy(['name' => $data['name']])) {
+            if (null !== $manager->getRepository(SynapseModelPreset::class)->findOneBy(['name' => $data['name']])) {
                 continue;
             }
 
-            $preset = new SynapsePreset();
+            $preset = new SynapseModelPreset();
             $preset->setName($data['name']);
             $preset->setProviderName($data['provider']);
             $preset->setModel($data['model']);

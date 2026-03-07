@@ -13,7 +13,7 @@ use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -56,7 +56,7 @@ class ChatService
      *     history?: array<int, array<string, mixed>>,
      *     stateless?: bool,
      *     debug?: bool,
-     *     preset?: SynapsePreset,
+     *     preset?: SynapseModelPreset,
      *     conversation_id?: string,
      *     user_id?: string,
      *     estimated_cost_reference?: float,
@@ -100,7 +100,7 @@ class ChatService
             $onStatusUpdate('Analyse de la demande...', 'thinking');
         }
 
-        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapsePreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $askOptions */
+        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapseModelPreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $askOptions */
         $askOptions = $options;
 
         // ── DISPATCH GENERATION STARTED EVENT ──
@@ -116,7 +116,7 @@ class ChatService
 
         // Support preset override
         $presetOverride = $askOptions['preset'] ?? null;
-        if ($presetOverride instanceof SynapsePreset) {
+        if ($presetOverride instanceof SynapseModelPreset) {
             $config = $this->configProvider->getConfigForPreset($presetOverride);
             $this->configProvider->setOverride($config);
         }

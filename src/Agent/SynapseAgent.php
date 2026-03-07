@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Agent;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 
 /**
  * Représente une instance d'agent IA configurée et prête à l'emploi.
@@ -20,7 +20,7 @@ class SynapseAgent
      */
     public function __construct(
         private ChatService $chatService,
-        private SynapsePreset $preset,
+        private SynapseModelPreset $preset,
         private ?string $systemPrompt = null,
         private array $allowedTools = [],
         private int $maxTurns = 5,
@@ -53,7 +53,7 @@ class SynapseAgent
             $options['tools_override'] = $this->allowedTools;
         }
 
-        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapsePreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $chatOptions */
+        /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapseModelPreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $chatOptions */
         $chatOptions = $options;
 
         return $this->chatService->ask($message, $chatOptions, null, $onToken);
@@ -62,7 +62,7 @@ class SynapseAgent
     /**
      * Accesseur au preset (pour debug ou inspection).
      */
-    public function getPreset(): SynapsePreset
+    public function getPreset(): SynapseModelPreset
     {
         return $this->preset;
     }

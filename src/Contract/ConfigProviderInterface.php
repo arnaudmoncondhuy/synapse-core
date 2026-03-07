@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Contract;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 
 /**
  * Interface pour fournir la configuration dynamique aux clients LLM.
@@ -43,5 +43,5 @@ interface ConfigProviderInterface
      *
      * @return array<string, mixed> configuration extraite du preset
      */
-    public function getConfigForPreset(SynapsePreset $preset): array;
+    public function getConfigForPreset(SynapseModelPreset $preset): array;
 }

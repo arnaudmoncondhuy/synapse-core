@@ -8,8 +8,9 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\MissionRegistry;
-use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
+use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -27,9 +28,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
         private MissionRegistry $missionRegistry,
+        private SynapseModelPresetRepository $modelPresetRepository,
         private SynapseProfiler $profiler,
-    ) {
-    }
+    ) {}
 
     /**
      * Décrit l'événement écouté : SynapsePrePromptEvent avec haute priorité (100).
@@ -57,85 +58,58 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $message = $event->getMessage();
         $options = $event->getOptions();
 
-        // ── Build system message (OpenAI format) ──
-        if (isset($options['system_prompt']) && is_string($options['system_prompt'])) {
-            $systemMessage = ['role' => 'system', 'content' => $options['system_prompt']];
-        } else {
-            $toneKeyMixed = $options['tone'] ?? null;
-            $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
-            $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
-        }
+        // ── 1. SOCLE (Défaut) ──
+        $config = $this->configProvider->getConfig();
+        $toneKeyMixed = $options['tone'] ?? null;
+        $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
+        $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
 
-        // Support mission override (combine mission prompt + optional tone)
+        // ── 2. METIER (Mission) ──
         if (isset($options['mission']) && is_string($options['mission'])) {
             $mission = $this->missionRegistry->get($options['mission']);
             if (null !== $mission && $mission->isActive()) {
+                // Surcharge le prompt système par celui de la mission
                 $systemContent = $mission->getSystemPrompt();
+
                 // Fusionner le tone de la mission si défini
                 if (null !== $mission->getTone() && $mission->getTone()->isActive()) {
                     $tonePrompt = $mission->getTone()->getSystemPrompt();
                     if (!empty($tonePrompt)) {
-                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n".$tonePrompt;
+                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n" . $tonePrompt;
                     }
                 }
                 $systemMessage = ['role' => 'system', 'content' => $systemContent];
-            }
-        }
 
-        // ── Load history ──
-        $isStateless = (bool) ($options['stateless'] ?? false);
-        $contents = [];
-
-        if ($isStateless) {
-            // Stateless mode: Use provided history in options or empty list
-            $providedHistoryRaw = $options['history'] ?? [];
-            $providedHistory = is_array($providedHistoryRaw) ? $providedHistoryRaw : [];
-            if (!empty($providedHistory)) {
-                /** @var array<int, array<string, mixed>> $typedHistory */
-                $typedHistory = $providedHistory;
-                $contents = $this->sanitizeHistoryForNewTurn($typedHistory);
-            }
-            if (!empty($message)) {
-                $contents[] = ['role' => 'user', 'content' => TextUtil::sanitizeUtf8($message)];
-            }
-        } else {
-            // Stateful mode: load history from DB/Handler + add current message
-            $rawHistoryRaw = $options['history'] ?? [];
-            $rawHistory = is_array($rawHistoryRaw) ? $rawHistoryRaw : [];
-            /** @var array<int, array<string, mixed>> $typedHistory */
-            $typedHistory = $rawHistory;
-            $contents = $this->sanitizeHistoryForNewTurn($typedHistory);
-            if (!empty($message)) {
-                $contents[] = ['role' => 'user', 'content' => TextUtil::sanitizeUtf8($message)];
-            }
-        }
-
-        // Get config
-        $config = $this->configProvider->getConfig();
-
-        // Support preset override via mission (if mission has a preset)
-        if (isset($options['mission']) && is_string($options['mission'])) {
-            $mission = $this->missionRegistry->get($options['mission']);
-            if (null !== $mission && null !== $mission->getPreset()) {
-                $config = $this->configProvider->getConfigForPreset($mission->getPreset());
-            }
-        }
-
-        // Support preset override (for testing or AgentBuilder) - takes precedence over mission preset
-        $presetOption = $options['preset'] ?? null;
-        if ($presetOption instanceof \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapsePreset) {
-            $config = $this->configProvider->getConfigForPreset($presetOption);
-        }
-
-        // Expose mission_id in config for spending limits and token accounting
-        if (isset($options['mission']) && is_string($options['mission'])) {
-            $mission = $this->missionRegistry->get($options['mission']);
-            if (null !== $mission) {
+                // Surcharge la config technique par le PresetModel de la mission (s'il y en a un)
+                if (null !== $mission->getModelPreset()) {
+                    $config = $this->configProvider->getConfigForPreset($mission->getModelPreset());
+                }
                 $config['mission_id'] = $mission->getId();
             }
         }
 
-        // ── Build complete prompt (system message + history) ──
+        // ── 3. DÉVELOPPEUR (Overrides) ──
+        // Le développeur a toujours le dernier mot via les options de ask()
+
+        // a. Override du Prompt Système
+        if (isset($options['system_prompt']) && is_string($options['system_prompt'])) {
+            $systemMessage = ['role' => 'system', 'content' => $options['system_prompt']];
+        }
+
+        // b. Override du Preset Modèle
+        $presetOption = $options['model_preset'] ?? ($options['preset'] ?? null); // Fallback temporaire sur 'preset'
+        if (is_string($presetOption)) {
+            $overridePreset = $this->modelPresetRepository->findByKey($presetOption);
+            if (null !== $overridePreset) {
+                $config = $this->configProvider->getConfigForPreset($overridePreset);
+                // Conserver l'ID de la mission pour le tracking si on avait une mission
+                if (isset($options['mission']) && isset($mission)) {
+                    $config['mission_id'] = $mission->getId();
+                }
+            }
+        }
+
+        // ── 4. Load history ──
         // System instruction is now the first message in contents (OpenAI canonical format)
         $toolsOptionRaw = $options['tools'] ?? null;
         /** @var list<string>|null $toolsOption */
