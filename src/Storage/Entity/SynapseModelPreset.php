@@ -28,8 +28,8 @@ class SynapseModelPreset
     /**
      * Clé unique (slug) pour appel dans le code (ex: 'gemini_fast')
      */
-    #[ORM\Column(type: Types::STRING, length: 50, unique: true, nullable: true)]
-    private ?string $key = null;
+    #[ORM\Column(type: Types::STRING, length: 50, unique: true, nullable: false)]
+    private string $key = '';
 
     /**
      * Nom lisible du preset.
@@ -129,12 +129,12 @@ class SynapseModelPreset
         return $this->id;
     }
 
-    public function getKey(): ?string
+    public function getKey(): string
     {
         return $this->key;
     }
 
-    public function setKey(?string $key): self
+    public function setKey(string $key): self
     {
         $this->key = $key;
 
