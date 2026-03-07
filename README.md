@@ -44,12 +44,12 @@ composer require arnaudmoncondhuy/synapse-core:^0.1
 - **TokenAccountingService** - Suivi de l'usage (input/output/thinking par conversation et par action système)
 - **SpendingLimitChecker** - Vérification des quotas avant chaque requête LLM
 - **SynapseTokenUsage** - Historique détaillé des dépenses avec conversion monétaire
-- **SynapseSpendingLimit** - Configuration des plafonds (par utilisateur, mission ou preset)
+- **SynapseSpendingLimit** - Configuration des plafonds (par utilisateur, agent ou preset)
 
-### 🗺️ Missions et Tons
-- **SynapseMission** - Abstraction d'agent combinant instructions, preset et style
+### 🗺️ Agents et Tons
+- **SynapseAgent** - Abstraction d'agent combinant instructions, preset et style
 - **SynapseTone** - Tons de réponse réutilisables (ex: Professionnel, Concis)
-- **MissionRegistry** - Inscription et découverte dynamique des missions
+- **AgentRegistry** - Inscription et découverte dynamique des agents
 
 ### 🩺 Diagnostic
 - **SynapseDoctorCommand** - Commande unique pour installer, diagnostiquer et réparer l'intégration (`synapse:doctor`)
@@ -145,7 +145,7 @@ Les tarifs sont configurés directement dans l'entité `SynapseModel` (via l'adm
 
 ### Plafonds de dépense
 Vous pouvez définir des limites dans `SynapseSpendingLimit` :
-- **Scopes** : `USER`, `MISSION`, `PRESET`.
+- **Scopes** : `USER`, `AGENT`, `PRESET`.
 - **Périodes** : `CALENDAR_DAY`, `CALENDAR_MONTH`, `SLIDING_DAY` (24h), `SLIDING_MONTH` (30j).
 
 ## 📖 Support

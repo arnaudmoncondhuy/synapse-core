@@ -46,14 +46,14 @@ class SynapseSpendingLimitRepository extends ServiceEntityRepository
     }
 
     /**
-     * Plafonds actifs pour une mission (scope=mission).
+     * Plafonds actifs pour un agent (scope=agent).
      *
      * @return SynapseSpendingLimit[]
      */
-    public function findForMission(int $missionId): array
+    public function findForAgent(int $agentId): array
     {
         return $this->findBy(
-            ['scope' => SpendingLimitScope::MISSION, 'scopeId' => (string) $missionId],
+            ['scope' => SpendingLimitScope::AGENT, 'scopeId' => (string) $agentId],
             ['amount' => 'ASC']
         );
     }

@@ -165,9 +165,9 @@ services:
         arguments:
             $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository'
 
-    ArnaudMoncondhuy\SynapseCore\MissionRegistry:
+    ArnaudMoncondhuy\SynapseCore\AgentRegistry:
         arguments:
-            $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository'
+            $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository'
 
     ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder:
         arguments:
@@ -256,7 +256,7 @@ services:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']
 
-    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository:
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository:
         arguments:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']

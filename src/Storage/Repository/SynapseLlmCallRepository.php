@@ -352,20 +352,20 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     }
 
     /**
-     * Usage agrégé par mission (tokens + coût) sur une période.
+     * Usage agrégé par agent (tokens + coût) sur une période.
      *
-     * @return list<array{mission_id: int, count: int, total_tokens: int, cost: float}>
+     * @return list<array{agent_id: int, count: int, total_tokens: int, cost: float}>
      */
-    public function getUsageByMission(\DateTimeInterface $start, \DateTimeInterface $end): array
+    public function getUsageByAgent(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{mission_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
+        /** @var array<int, array{agent_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
         $results = $conn->executeQuery(
-            'SELECT mission_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
+            'SELECT agent_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
-             WHERE mission_id IS NOT NULL AND created_at >= :start AND created_at <= :end
-             GROUP BY mission_id
+             WHERE agent_id IS NOT NULL AND created_at >= :start AND created_at <= :end
+             GROUP BY agent_id
              ORDER BY cost DESC, total_tokens DESC',
             ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         )->fetchAllAssociative();
@@ -373,7 +373,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $usage = [];
         foreach ($results as $row) {
             $usage[] = [
-                'mission_id' => (int) ($row['mission_id'] ?? 0),
+                'agent_id' => (int) ($row['agent_id'] ?? 0),
                 'count' => (int) ($row['cnt'] ?? 0),
                 'total_tokens' => (int) ($row['total_tokens'] ?? 0),
                 'cost' => (float) ($row['cost'] ?? 0.0),
@@ -465,11 +465,11 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     }
 
     /**
-     * Consommation (coût en devise de référence) sur une fenêtre pour un scope user, preset ou mission.
+     * Consommation (coût en devise de référence) sur une fenêtre pour un scope user, preset ou agent.
      *
      * Utilisé par SpendingLimitChecker. Lit depuis la colonne cost_reference (snapshot immuable).
      *
-     * @param 'user'|'preset'|'mission' $scope
+     * @param 'user'|'preset'|'agent' $scope
      */
     public function getConsumptionForWindow(string $scope, string $scopeId, \DateTimeInterface $start, \DateTimeInterface $end): float
     {
@@ -477,7 +477,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $column = match ($scope) {
             'user' => 'user_id',
-            'mission' => 'mission_id',
+            'agent' => 'agent_id',
             default => 'preset_id',
         };
 

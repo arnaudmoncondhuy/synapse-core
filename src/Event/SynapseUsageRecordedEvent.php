@@ -24,8 +24,8 @@ class SynapseUsageRecordedEvent extends Event
         private ?string $userId = null,
         private ?string $conversationId = null,
         private ?int $presetId = null,
-    ) {
-    }
+        private ?int $agentId = null,
+    ) {}
 
     public function getModule(): string
     {
@@ -75,5 +75,10 @@ class SynapseUsageRecordedEvent extends Event
     public function getPresetId(): ?int
     {
         return $this->presetId;
+    }
+
+    public function getAgentId(): ?int
+    {
+        return $this->agentId;
     }
 }

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\DataFixtures;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMission;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 
-class SynapseMissionFixture extends Fixture
+class SynapseAgentFixture extends Fixture
 {
-    private const MISSIONS = [
+    private const AGENTS = [
         [
             'key' => 'assistant_general',
             'emoji' => '🤖',
@@ -59,35 +59,35 @@ class SynapseMissionFixture extends Fixture
         /** @var SynapseToneRepository $toneRepo */
         $toneRepo = $manager->getRepository('ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseTone');
 
-        foreach (self::MISSIONS as $data) {
+        foreach (self::AGENTS as $data) {
             // Idempotent : vérifie l'existence par clé
-            if (null !== $manager->getRepository(SynapseMission::class)->findOneBy(['key' => $data['key']])) {
+            if (null !== $manager->getRepository(SynapseAgent::class)->findOneBy(['key' => $data['key']])) {
                 continue;
             }
 
-            $mission = new SynapseMission();
-            $mission->setKey($data['key']);
-            $mission->setEmoji($data['emoji']);
-            $mission->setName($data['name']);
-            $mission->setDescription($data['description']);
-            $mission->setSystemPrompt($data['systemPrompt']);
-            $mission->setIsBuiltin(false);
-            $mission->setIsActive(true);
-            $sortOrder = array_search($data, self::MISSIONS);
-            $mission->setSortOrder(false === $sortOrder ? 0 : (int) $sortOrder);
+            $agent = new SynapseAgent();
+            $agent->setKey($data['key']);
+            $agent->setEmoji($data['emoji']);
+            $agent->setName($data['name']);
+            $agent->setDescription($data['description']);
+            $agent->setSystemPrompt($data['systemPrompt']);
+            $agent->setIsBuiltin(false);
+            $agent->setIsActive(true);
+            $sortOrder = array_search($data, self::AGENTS);
+            $agent->setSortOrder(false === $sortOrder ? 0 : (int) $sortOrder);
 
             // Résoudre le tone si spécifié
             if (null !== $data['tone']) {
                 $tone = $toneRepo->findByKey($data['tone']);
                 if (null !== $tone) {
-                    $mission->setTone($tone);
+                    $agent->setTone($tone);
                 }
             }
 
             // Pas de preset défini : fallback sur le preset global actif
-            $mission->setPreset(null);
+            $agent->setModelPreset(null);
 
-            $manager->persist($mission);
+            $manager->persist($agent);
         }
 
         $manager->flush();

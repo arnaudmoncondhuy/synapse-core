@@ -61,7 +61,8 @@ class ChatService
      *     user_id?: string,
      *     estimated_cost_reference?: float,
      *     streaming?: bool,
-     *     reset_conversation?: bool
+     *     reset_conversation?: bool,
+     *     agent?: string
      * } $options Options contrôlant le comportement de l'échange
      * @param callable(string $msg, string $step): void|null       $onStatusUpdate Callback appelé à chaque étape (thinking, tool_call, etc.).
      * @param callable(string $token): void|null                   $onToken        callback appelé à chaque token reçu (streaming)
@@ -74,7 +75,7 @@ class ChatService
      *     safety: array<int, array<string, mixed>>,
      *     model: string,
      *     preset_id: ?int,
-     *     mission_id: ?int
+     *     agent_id: ?int
      * } Résultat normalisé de l'échange
      */
     public function ask(
@@ -92,7 +93,7 @@ class ChatService
                 'safety' => [],
                 'model' => 'unknown',
                 'preset_id' => null,
-                'mission_id' => null,
+                'agent_id' => null,
             ];
         }
 
@@ -126,11 +127,11 @@ class ChatService
             $userId = $askOptions['user_id'] ?? null;
             $presetIdMixed = $config['preset_id'] ?? null;
             $presetId = is_numeric($presetIdMixed) ? (int) $presetIdMixed : null;
-            $missionIdMixed = $config['mission_id'] ?? null;
-            $missionId = is_numeric($missionIdMixed) ? (int) $missionIdMixed : null;
+            $agentIdMixed = $config['agent_id'] ?? null;
+            $agentId = is_numeric($agentIdMixed) ? (int) $agentIdMixed : null;
             if (null !== $this->spendingLimitChecker && is_string($userId)) {
                 $estimatedCostRef = (float) ($askOptions['estimated_cost_reference'] ?? 0.0);
-                $this->spendingLimitChecker->assertCanSpend($userId, $presetId, $estimatedCostRef, $missionId);
+                $this->spendingLimitChecker->assertCanSpend($userId, $presetId, $estimatedCostRef, $agentId);
             }
 
             // Check debug mode
@@ -397,7 +398,7 @@ class ChatService
                 'safety' => $finalSafetyRatingsArray,
                 'model' => is_string($config['model'] ?? null) ? (string) $config['model'] : (is_string($config['provider'] ?? null) ? (string) $config['provider'] : 'unknown'),
                 'preset_id' => is_numeric($config['preset_id'] ?? null) ? (int) $config['preset_id'] : null,
-                'mission_id' => is_numeric($config['mission_id'] ?? null) ? (int) $config['mission_id'] : null,
+                'agent_id' => is_numeric($config['agent_id'] ?? null) ? (int) $config['agent_id'] : null,
             ];
         } finally {
             // Garantit la réinitialisation de l'override même en cas d'exception

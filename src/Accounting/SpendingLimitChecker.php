@@ -39,11 +39,11 @@ class SpendingLimitChecker
      * @param string   $userId           ID utilisateur (string)
      * @param int|null $presetId         ID du preset utilisé (optionnel)
      * @param float    $estimatedCostRef Coût estimé en devise de référence
-     * @param int|null $missionId        ID de la mission utilisée (optionnel)
+     * @param int|null $agentId          ID de l'agent utilisé (optionnel)
      *
      * @throws LlmQuotaException Si un plafond serait dépassé
      */
-    public function assertCanSpend(string $userId, ?int $presetId, float $estimatedCostRef, ?int $missionId = null): void
+    public function assertCanSpend(string $userId, ?int $presetId, float $estimatedCostRef, ?int $agentId = null): void
     {
         if (!$this->configRepo->getGlobalConfig()->isSpendingLimitsEnabled()) {
             return;
@@ -59,8 +59,8 @@ class SpendingLimitChecker
                 $limits[] = $limit;
             }
         }
-        if (null !== $missionId) {
-            foreach ($this->spendingLimitRepo->findForMission($missionId) as $limit) {
+        if (null !== $agentId) {
+            foreach ($this->spendingLimitRepo->findForAgent($agentId) as $limit) {
                 $limits[] = $limit;
             }
         }
@@ -68,7 +68,7 @@ class SpendingLimitChecker
         foreach ($limits as $limit) {
             [$start, $end] = $this->getWindow($limit->getPeriod());
             $scopeId = (string) $limit->getScopeId();
-            /** @var 'user'|'preset'|'mission' $scope */
+            /** @var 'user'|'preset'|'agent' $scope */
             $scope = $limit->getScope()->value;
 
             $consumption = $this->getConsumptionFromCacheOrDb($scope, $scopeId, $limit->getPeriod(), $start, $end);
@@ -83,7 +83,7 @@ class SpendingLimitChecker
     /**
      * Récupère la consommation (devise de référence) depuis le cache ou la DB.
      *
-     * @param 'user'|'preset'|'mission' $scope
+     * @param 'user'|'preset'|'agent' $scope
      */
     private function getConsumptionFromCacheOrDb(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start, \DateTimeInterface $end): float
     {

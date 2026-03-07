@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMissionRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Mission d'agent — configuration prédéfinie combinant un prompt système,
+ * Agent IA — configuration prédéfinie combinant un prompt système,
  * un preset LLM optionnel, et un ton de réponse optionnel.
  *
- * Les missions builtin (isBuiltin = true) sont fournies par le bundle et ne
- * peuvent pas être supprimées depuis l'admin.
+ * Les agents builtin (isBuiltin = true) sont fournis par le bundle et ne
+ * peuvent pas être supprimés depuis l'admin.
  *
- * Utilisation : ChatService::ask($msg, ['mission' => 'support_client'])
+ * Utilisation : ChatService::ask($msg, ['agent' => 'support_client'])
  */
-#[ORM\Entity(repositoryClass: SynapseMissionRepository::class)]
-#[ORM\Table(name: 'synapse_mission')]
+#[ORM\Entity(repositoryClass: SynapseAgentRepository::class)]
+#[ORM\Table(name: 'synapse_agent')]
 #[ORM\HasLifecycleCallbacks]
-class SynapseMission
+class SynapseAgent
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
@@ -28,7 +28,7 @@ class SynapseMission
     private ?int $id = null;
 
     /**
-     * Clé unique (slug). Utilisée dans ChatService::ask(['mission' => 'support_client']).
+     * Clé unique (slug). Utilisée dans ChatService::ask(['agent' => 'support_client']).
      */
     #[ORM\Column(type: Types::STRING, length: 50, unique: true)]
     private string $key = '';
@@ -46,19 +46,19 @@ class SynapseMission
     private string $name = '';
 
     /**
-     * Description courte de la mission.
+     * Description courte d'agent.
      */
     #[ORM\Column(type: Types::TEXT)]
     private string $description = '';
 
     /**
-     * Instructions injectées dans le system prompt pour définir l'objectif de la mission.
+     * Instructions injectées dans le system prompt pour définir l'objectif d'agent.
      */
     #[ORM\Column(type: Types::TEXT)]
     private string $systemPrompt = '';
 
     /**
-     * Preset LLM optionnel pour cette mission.
+     * Preset LLM optionnel pour cet agent.
      * Si null, utilise le preset actif global.
      */
     #[ORM\ManyToOne(targetEntity: SynapseModelPreset::class)]
@@ -66,7 +66,7 @@ class SynapseMission
     private ?SynapseModelPreset $modelPreset = null;
 
     /**
-     * Ton de réponse optionnel pour cette mission.
+     * Ton de réponse optionnel pour cet agent.
      * Si non-null, ses instructions sont fusionnées au system prompt.
      */
     #[ORM\ManyToOne(targetEntity: SynapseTone::class)]
@@ -74,13 +74,13 @@ class SynapseMission
     private ?SynapseTone $tone = null;
 
     /**
-     * Mission fournie par le bundle (ne peut pas être supprimée depuis l'admin).
+     * Agent fournie par le bundle (ne peut pas être supprimée depuis l'admin).
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $isBuiltin = true;
 
     /**
-     * Mission activée (visible dans les sélecteurs de l'interface).
+     * Agent activé (visible dans les sélecteurs de l'interface).
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $isActive = true;

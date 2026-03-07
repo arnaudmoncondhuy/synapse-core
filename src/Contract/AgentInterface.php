@@ -28,7 +28,7 @@ interface AgentInterface
     public function getName(): string;
 
     /**
-     * Description en langage naturel de la mission de l'agent.
+     * Description en langage naturel de l'agent.
      *
      * Utilisée pour l'affichage dans l'administration et pour aider à l'auto-documentation
      * de l'écosystème IA.

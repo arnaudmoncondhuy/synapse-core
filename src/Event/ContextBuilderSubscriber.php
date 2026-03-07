@@ -7,7 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
-use ArnaudMoncondhuy\SynapseCore\MissionRegistry;
+use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
@@ -27,7 +27,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private PromptBuilder $promptBuilder,
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
-        private MissionRegistry $missionRegistry,
+        private AgentRegistry $agentRegistry,
         private SynapseModelPresetRepository $modelPresetRepository,
         private SynapseProfiler $profiler,
     ) {}
@@ -64,27 +64,27 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
         $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
 
-        // ── 2. METIER (Mission) ──
-        if (isset($options['mission']) && is_string($options['mission'])) {
-            $mission = $this->missionRegistry->get($options['mission']);
-            if (null !== $mission && $mission->isActive()) {
-                // Surcharge le prompt système par celui de la mission
-                $systemContent = $mission->getSystemPrompt();
+        // ── 2. METIER (Agent) ──
+        if (isset($options['agent']) && is_string($options['agent'])) {
+            $agent = $this->agentRegistry->get($options['agent']);
+            if (null !== $agent && $agent->isActive()) {
+                // Surcharge le prompt système par celui de l'agent
+                $systemContent = $agent->getSystemPrompt();
 
-                // Fusionner le tone de la mission si défini
-                if (null !== $mission->getTone() && $mission->getTone()->isActive()) {
-                    $tonePrompt = $mission->getTone()->getSystemPrompt();
+                // Fusionner le tone de l'agent si défini
+                if (null !== $agent->getTone() && $agent->getTone()->isActive()) {
+                    $tonePrompt = $agent->getTone()->getSystemPrompt();
                     if (!empty($tonePrompt)) {
                         $systemContent .= "\n\n### TONE INSTRUCTIONS\n" . $tonePrompt;
                     }
                 }
                 $systemMessage = ['role' => 'system', 'content' => $systemContent];
 
-                // Surcharge la config technique par le PresetModel de la mission (s'il y en a un)
-                if (null !== $mission->getModelPreset()) {
-                    $config = $this->configProvider->getConfigForPreset($mission->getModelPreset());
+                // Surcharge la config technique par le PresetModel de l'agent (s'il y en a un)
+                if (null !== $agent->getModelPreset()) {
+                    $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
                 }
-                $config['mission_id'] = $mission->getId();
+                $config['agent_id'] = $agent->getId();
             }
         }
 
@@ -102,9 +102,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             $overridePreset = $this->modelPresetRepository->findByKey($presetOption);
             if (null !== $overridePreset) {
                 $config = $this->configProvider->getConfigForPreset($overridePreset);
-                // Conserver l'ID de la mission pour le tracking si on avait une mission
-                if (isset($options['mission']) && isset($mission)) {
-                    $config['mission_id'] = $mission->getId();
+                // Conserver l'ID de l'agent pour le tracking si on avait un agent
+                if (isset($options['agent']) && isset($agent)) {
+                    $config['agent_id'] = $agent->getId();
                 }
             }
         }

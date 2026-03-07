@@ -29,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_llm_call_module_model', columns: ['module', 'model'])]
 #[ORM\Index(name: 'idx_llm_call_preset_created', columns: ['preset_id', 'created_at'])]
 #[ORM\Index(name: 'idx_llm_call_user_created', columns: ['user_id', 'created_at'])]
-#[ORM\Index(name: 'idx_llm_call_mission_created', columns: ['mission_id', 'created_at'])]
+#[ORM\Index(name: 'idx_llm_call_agent_created', columns: ['agent_id', 'created_at'])]
 #[ORM\Index(name: 'idx_llm_call_conversation_created', columns: ['conversation_id', 'created_at'])]
 #[ORM\HasLifecycleCallbacks]
 class SynapseLlmCall
@@ -115,10 +115,10 @@ class SynapseLlmCall
     private ?int $presetId = null;
 
     /**
-     * ID de la mission (assistant) utilisée (si applicable, pour plafonds par mission).
+     * ID de l'agent utilisé (si applicable, pour plafonds par agent).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $missionId = null;
+    private ?int $agentId = null;
 
     /**
      * Date de création.
@@ -309,14 +309,14 @@ class SynapseLlmCall
         return $this;
     }
 
-    public function getMissionId(): ?int
+    public function getAgentId(): ?int
     {
-        return $this->missionId;
+        return $this->agentId;
     }
 
-    public function setMissionId(?int $missionId): self
+    public function setAgentId(?int $agentId): self
     {
-        $this->missionId = $missionId;
+        $this->agentId = $agentId;
 
         return $this;
     }

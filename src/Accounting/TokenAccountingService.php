@@ -51,7 +51,7 @@ class TokenAccountingService
         string|int|null $userId = null,
         ?string $conversationId = null,
         ?int $presetId = null,
-        ?int $missionId = null,
+        ?int $agentId = null,
         ?array $metadata = null,
     ): SynapseLlmCall {
         $tokenUsage = new SynapseLlmCall();
@@ -84,8 +84,8 @@ class TokenAccountingService
             $tokenUsage->setPresetId($presetId);
         }
 
-        if (null !== $missionId) {
-            $tokenUsage->setMissionId($missionId);
+        if (null !== $agentId) {
+            $tokenUsage->setAgentId($agentId);
         }
 
         $currentUsage = [
@@ -109,7 +109,7 @@ class TokenAccountingService
         $this->em->flush();
 
         if (null !== $this->cache && $costRef > 0) {
-            $this->incrementSpendingCache(null !== $userId ? (string) $userId : null, $presetId, (float) $costRef);
+            $this->incrementSpendingCache(null !== $userId ? (string) $userId : null, $presetId, (float) $costRef, $agentId);
         }
 
         if (null !== $this->dispatcher) {
@@ -124,6 +124,7 @@ class TokenAccountingService
                 null !== $userId ? (string) $userId : null,
                 $conversationId,
                 $presetId,
+                $agentId,
             ));
         }
 
@@ -133,13 +134,13 @@ class TokenAccountingService
     /**
      * Incrémente les compteurs cache pour les plafonds (sliding + calendar).
      */
-    public function incrementSpendingCache(?string $userId, ?int $presetId, float $amountInReference): void
+    public function incrementSpendingCache(?string $userId, ?int $presetId, float $amountInReference, ?int $agentId = null): void
     {
         if (null === $this->cache || $amountInReference <= 0) {
             return;
         }
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        $keys = $this->getSpendingCacheKeysForRecord($userId, $presetId, $now);
+        $keys = $this->getSpendingCacheKeysForRecord($userId, $presetId, $now, $agentId);
         foreach ($keys as $key => $ttlSeconds) {
             $item = $this->cache->getItem($key);
             $val = $item->get();
@@ -153,7 +154,7 @@ class TokenAccountingService
     /**
      * @return array<string, int> key => TTL seconds
      */
-    private function getSpendingCacheKeysForRecord(?string $userId, ?int $presetId, \DateTimeImmutable $at): array
+    private function getSpendingCacheKeysForRecord(?string $userId, ?int $presetId, \DateTimeImmutable $at, ?int $agentId = null): array
     {
         $keys = [];
         $date = $at->format('Y-m-d');
@@ -169,6 +170,12 @@ class TokenAccountingService
             $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_month'] = 2678400;
             $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_day_' . $date] = 172800;
             $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_month_' . $month] = 5184000;
+        }
+        if (null !== $agentId) {
+            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_sliding_day'] = 90000;
+            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_sliding_month'] = 2678400;
+            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_calendar_day_' . $date] = 172800;
+            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_calendar_month_' . $month] = 5184000;
         }
 
         return $keys;
