@@ -110,6 +110,12 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // ── 4. Load history ──
+        $contents = [];
+        if (isset($options['history']) && is_array($options['history'])) {
+            $contents = $this->sanitizeHistoryForNewTurn($options['history']);
+        }
+        $contents[] = ['role' => 'user', 'content' => $message];
+
         // System instruction is now the first message in contents (OpenAI canonical format)
         $toolsOptionRaw = $options['tools'] ?? null;
         /** @var list<string>|null $toolsOption */
