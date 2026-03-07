@@ -68,6 +68,7 @@ class PresetValidatorAgent implements AgentInterface
     /**
      * Récupère d'un coup tous les résultats (utilisé pour l'affichage final).
      *
+     * @param SynapseModelPreset $preset
      * @return array<string, mixed>
      */
     public function runAll(SynapseModelPreset $preset): array
