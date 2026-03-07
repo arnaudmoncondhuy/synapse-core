@@ -39,7 +39,7 @@ interface ConfigProviderInterface
      * Contrairement à `getConfig()`, cette méthode ne dépend pas de l'état global
      * mais extrait la configuration depuis une entité Preset donnée.
      *
-     * @param SynapsePreset $preset L'entité preset à analyser
+     * @param SynapseModelPreset $preset L'entité preset à analyser
      *
      * @return array<string, mixed> configuration extraite du preset
      */
