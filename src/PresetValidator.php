@@ -21,8 +21,7 @@ final class PresetValidator
         private SynapseProviderRepository $providerRepo,
         private ModelCapabilityRegistry $capabilityRegistry,
         private EntityManagerInterface $em,
-    ) {
-    }
+    ) {}
 
     /**
      * Vérifie si un preset est valide.
@@ -31,8 +30,9 @@ final class PresetValidator
     {
         $providerName = $preset->getProviderName();
         $model = $preset->getModel();
+        $key = $preset->getKey();
 
-        if (empty($providerName) || empty($model)) {
+        if (empty($providerName) || empty($model) || empty($key)) {
             return false;
         }
 
@@ -55,25 +55,34 @@ final class PresetValidator
 
         $providerName = $preset->getProviderName();
         $model = $preset->getModel();
+        $key = $preset->getKey();
 
-        if (empty($providerName) || empty($model)) {
-            if (empty($providerName) && empty($model)) {
-                return 'Pas de provider ou de modèle configuré';
+        if (empty($providerName) || empty($model) || empty($key)) {
+            if (empty($providerName) && empty($model) && empty($key)) {
+                return 'Configuration incomplète (fournisseur, modèle et clé technique requis)';
             }
 
-            return empty($providerName) ? 'Aucun fournisseur défini' : 'Aucun modèle défini';
+            if (empty($key)) {
+                return 'Clé technique (slug) manquante';
+            }
+
+            if (empty($providerName)) {
+                return 'Aucun fournisseur défini';
+            }
+
+            return 'Aucun modèle défini';
         }
 
         $provider = $this->providerRepo->findOneBy(['name' => $providerName]);
         if (!$provider) {
-            return 'Fournisseur "'.$providerName.'" introuvable';
+            return 'Fournisseur "' . $providerName . '" introuvable';
         }
         if (!$provider->isConfigured()) {
-            return 'Fournisseur "'.$provider->getLabel().'" non configuré';
+            return 'Fournisseur "' . $provider->getLabel() . '" non configuré';
         }
 
         if (!$this->capabilityRegistry->isKnownModel($model)) {
-            return 'Modèle "'.$model.'" inexistant ou désactivé';
+            return 'Modèle "' . $model . '" inexistant ou désactivé';
         }
 
         return null;
