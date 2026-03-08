@@ -563,13 +563,26 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function buildVertexUrl(string $template, string $model): string
     {
         $caps = $this->capabilityRegistry->getCapabilities($model);
-        $finalModelId = $caps->modelId ?? $model;
+        $finalModelId = $caps->model ?? $model;
+        $region = $this->vertexRegion;
+
+        // Pour la région "global", Vertex AI utilise un endpoint sans préfixe région
+        if ('global' === $region) {
+            $template = str_replace('%s-aiplatform.googleapis.com', 'aiplatform.googleapis.com', $template);
+
+            return sprintf(
+                $template,
+                $this->vertexProjectId,
+                $region,
+                $finalModelId
+            );
+        }
 
         return sprintf(
             $template,
-            $this->vertexRegion,
+            $region,
             $this->vertexProjectId,
-            $this->vertexRegion,
+            $region,
             $finalModelId
         );
     }
@@ -920,6 +933,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 'type' => 'select',
                 'required' => true,
                 'options' => [
+                    'global' => 'Global (modèles preview & nouveaux)',
                     'europe-west9' => 'Europe West 9 (Paris)',
                     'europe-west1' => 'Europe West 1 (Belgique)',
                     'europe-west4' => 'Europe West 4 (Pays-Bas)',
