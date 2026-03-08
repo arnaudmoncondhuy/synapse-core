@@ -75,8 +75,7 @@ class ModelCapabilityRegistry
         'supports_function_calling' => true,
         'supports_streaming' => true,
         'supports_system_prompt' => true,
-        // Contexte
-        'context_window' => null,
+        // Contexte (context_window supprimé — utiliser max_input_tokens)
         'max_input_tokens' => null,
         'max_output_tokens' => null,
         // Tarification
@@ -104,15 +103,13 @@ class ModelCapabilityRegistry
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
             type: is_string($data['type'] ?? null) ? (string) $data['type'] : 'chat',
             dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
-            // Phase 1.5 — convention supports_* (compat: ancienne clé sans préfixe acceptée en fallback)
-            supportsThinking: (bool) ($data['supports_thinking'] ?? $data['thinking'] ?? false),
-            supportsSafetySettings: (bool) ($data['supports_safety_settings'] ?? $data['safety_settings'] ?? false),
-            supportsTopK: (bool) ($data['supports_top_k'] ?? $data['top_k'] ?? false),
-            supportsFunctionCalling: (bool) ($data['supports_function_calling'] ?? $data['function_calling'] ?? true),
-            supportsStreaming: (bool) ($data['supports_streaming'] ?? $data['streaming'] ?? true),
-            supportsSystemPrompt: (bool) ($data['supports_system_prompt'] ?? $data['system_prompt'] ?? true),
-            // Contexte
-            contextWindow: is_numeric($data['context_window'] ?? null) ? (int) $data['context_window'] : null,
+            // Phase 1.5 — convention supports_*
+            supportsThinking: (bool) ($data['supports_thinking'] ?? false),
+            supportsSafetySettings: (bool) ($data['supports_safety_settings'] ?? false),
+            supportsTopK: (bool) ($data['supports_top_k'] ?? false),
+            supportsFunctionCalling: (bool) ($data['supports_function_calling'] ?? true),
+            supportsStreaming: (bool) ($data['supports_streaming'] ?? true),
+            supportsSystemPrompt: (bool) ($data['supports_system_prompt'] ?? true),
             pricingInput: is_numeric($data['pricing_input'] ?? null) ? (float) $data['pricing_input'] : null,
             pricingOutput: is_numeric($data['pricing_output'] ?? null) ? (float) $data['pricing_output'] : null,
             // Phase 1 — Contexte asymétrique
