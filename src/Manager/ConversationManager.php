@@ -369,6 +369,17 @@ class ConversationManager
     public function deleteConversation(SynapseConversation $conversation): void
     {
         $this->checkPermission($conversation, 'delete');
+
+        // Supprimer les fichiers d'attachments avant le soft delete
+        // (le soft delete ne déclenche pas les cascades Doctrine ni preRemove)
+        if (null !== $this->attachmentStorage) {
+            foreach ($conversation->getMessages() as $message) {
+                foreach ($message->getAttachments() as $attachment) {
+                    $this->em->remove($attachment); // déclenche preRemove → supprime le fichier physique
+                }
+            }
+        }
+
         $conversation->softDelete();
         $this->em->flush();
     }
