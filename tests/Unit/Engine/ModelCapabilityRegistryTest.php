@@ -39,6 +39,7 @@ class ModelCapabilityRegistryTest extends TestCase
         $this->assertNull($caps->deprecatedAt);
         $this->assertNull($caps->pricingInput);
         $this->assertNull($caps->pricingOutput);
+        $this->assertNull($caps->vertexRegion);
     }
 
     public function testIsKnownModel(): void
@@ -94,5 +95,31 @@ class ModelCapabilityRegistryTest extends TestCase
         $registry = new ModelCapabilityRegistry();
         $geminiModels = $registry->getModelsForProvider('gemini');
         $this->assertIsArray($geminiModels);
+    }
+
+    public function testVertexRegionOnPreviewModels(): void
+    {
+        $registry = new ModelCapabilityRegistry();
+
+        foreach (['gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite-preview'] as $modelId) {
+            if (!$registry->isKnownModel($modelId)) {
+                continue;
+            }
+            $caps = $registry->getCapabilities($modelId);
+            $this->assertSame('global', $caps->vertexRegion, "Le modèle $modelId doit avoir vertex_region: global");
+        }
+    }
+
+    public function testVertexRegionNullOnStableModels(): void
+    {
+        $registry = new ModelCapabilityRegistry();
+
+        foreach (['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'] as $modelId) {
+            if (!$registry->isKnownModel($modelId)) {
+                continue;
+            }
+            $caps = $registry->getCapabilities($modelId);
+            $this->assertNull($caps->vertexRegion, "Le modèle $modelId ne doit pas avoir de vertex_region forcée");
+        }
     }
 }
