@@ -78,6 +78,11 @@ class ModelCapabilities
 
         /** Date de dépréciation du modèle au format YYYY-MM-DD, ou null */
         public readonly ?string $deprecatedAt = null,
+
+        // ── Provider-specific ────────────────────────────────────────────────
+
+        /** Région Vertex AI par défaut pour ce modèle (ex: 'global', 'europe-west1') */
+        public readonly ?string $vertexRegion = null,
     ) {
     }
 

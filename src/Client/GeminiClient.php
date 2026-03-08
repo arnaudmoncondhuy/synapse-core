@@ -472,6 +472,15 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             if (!empty($creds['region']) && is_string($creds['region'])) {
                 $this->vertexRegion = $creds['region'];
             }
+            // Défaut YAML du modèle (ex: vertex_region: global pour les previews)
+            $yamlRegion = $this->capabilityRegistry->getCapabilities($this->model)->vertexRegion;
+            if (null !== $yamlRegion) {
+                $this->vertexRegion = $yamlRegion;
+            }
+            // Override explicite au niveau du preset (priorité maximale)
+            if (!empty($config['vertex_region']) && is_string($config['vertex_region'])) {
+                $this->vertexRegion = $config['vertex_region'];
+            }
             if (!empty($creds['service_account_json']) && is_string($creds['service_account_json'])) {
                 $this->geminiAuthService->setCredentialsJson($creds['service_account_json']);
             }

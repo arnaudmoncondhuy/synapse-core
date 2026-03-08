@@ -3,6 +3,7 @@
 models:
   gemini-3.1-pro-preview:
     provider: gemini
+    vertex_region: global
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
@@ -19,6 +20,7 @@ models:
 
   gemini-3.1-flash-lite-preview:
     provider: gemini
+    vertex_region: global
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
@@ -35,6 +37,7 @@ models:
 
   gemini-3-flash-preview:
     provider: gemini
+    vertex_region: global
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true

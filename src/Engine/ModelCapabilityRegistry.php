@@ -121,6 +121,8 @@ class ModelCapabilityRegistry
             supportsResponseSchema: (bool) ($data['supports_response_schema'] ?? false),
             // Lifecycle
             deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
+            // Provider-specific
+            vertexRegion: isset($data['vertex_region']) && is_string($data['vertex_region']) ? $data['vertex_region'] : null,
         );
     }
 
