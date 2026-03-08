@@ -242,7 +242,7 @@ class PresetValidatorAgent implements AgentInterface
 
         // Vérification thinking si le modèle le supporte
         $caps = $this->capabilityRegistry->getCapabilities($preset->getModel());
-        if ($caps->thinking) {
+        if ($caps->supportsThinking) {
             $providerOptions = $preset->getProviderOptions() ?? [];
             $thinkingConfig = $providerOptions['thinking'] ?? null;
             $actualThinking = $rawRequest['thinking'] ?? $rawRequest['reasoning_effort'] ?? null;
@@ -288,11 +288,11 @@ class PresetValidatorAgent implements AgentInterface
 
         $caps = $this->capabilityRegistry->getCapabilities($preset->getModel());
         $capsJson = json_encode([
-            'thinking_supported' => $caps->thinking,
-            'safety_settings_supported' => $caps->safetySettings,
-            'top_k_supported' => $caps->topK,
-            'function_calling_supported' => $caps->functionCalling,
-            'streaming_supported' => $caps->streaming,
+            'thinking_supported' => $caps->supportsThinking,
+            'safety_settings_supported' => $caps->supportsSafetySettings,
+            'top_k_supported' => $caps->supportsTopK,
+            'function_calling_supported' => $caps->supportsFunctionCalling,
+            'streaming_supported' => $caps->supportsStreaming,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $configErrorsText = '';

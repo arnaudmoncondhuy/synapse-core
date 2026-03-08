@@ -68,21 +68,25 @@ class ModelCapabilityRegistry
     private const DEFAULTS = [
         'provider' => 'unknown',
         'type' => 'chat',
-        'thinking' => false,
-        'safety_settings' => false,
-        'top_k' => false,
-        'function_calling' => true,
-        'streaming' => true,
-        'system_prompt' => true,
+        // Phase 1.5 — convention supports_*
+        'supports_thinking' => false,
+        'supports_safety_settings' => false,
+        'supports_top_k' => false,
+        'supports_function_calling' => true,
+        'supports_streaming' => true,
+        'supports_system_prompt' => true,
+        // Contexte
         'context_window' => null,
-        'pricing_input' => null,
-        'pricing_output' => null,
-        // Phase 1
         'max_input_tokens' => null,
         'max_output_tokens' => null,
+        // Tarification
+        'pricing_input' => null,
+        'pricing_output' => null,
+        // Phase 1 — Modalités
         'supports_vision' => false,
         'supports_parallel_tool_calls' => false,
         'supports_response_schema' => false,
+        // Lifecycle
         'deprecated_at' => null,
     ];
 
@@ -99,23 +103,26 @@ class ModelCapabilityRegistry
             model: $model,
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
             type: is_string($data['type'] ?? null) ? (string) $data['type'] : 'chat',
-            thinking: (bool) ($data['thinking'] ?? false),
-            safetySettings: (bool) ($data['safety_settings'] ?? false),
-            topK: (bool) ($data['top_k'] ?? false),
-            functionCalling: (bool) ($data['function_calling'] ?? true),
-            streaming: (bool) ($data['streaming'] ?? true),
-            systemPrompt: (bool) ($data['system_prompt'] ?? true),
+            dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
+            // Phase 1.5 — convention supports_* (compat: ancienne clé sans préfixe acceptée en fallback)
+            supportsThinking: (bool) ($data['supports_thinking'] ?? $data['thinking'] ?? false),
+            supportsSafetySettings: (bool) ($data['supports_safety_settings'] ?? $data['safety_settings'] ?? false),
+            supportsTopK: (bool) ($data['supports_top_k'] ?? $data['top_k'] ?? false),
+            supportsFunctionCalling: (bool) ($data['supports_function_calling'] ?? $data['function_calling'] ?? true),
+            supportsStreaming: (bool) ($data['supports_streaming'] ?? $data['streaming'] ?? true),
+            supportsSystemPrompt: (bool) ($data['supports_system_prompt'] ?? $data['system_prompt'] ?? true),
+            // Contexte
             contextWindow: is_numeric($data['context_window'] ?? null) ? (int) $data['context_window'] : null,
             pricingInput: is_numeric($data['pricing_input'] ?? null) ? (float) $data['pricing_input'] : null,
             pricingOutput: is_numeric($data['pricing_output'] ?? null) ? (float) $data['pricing_output'] : null,
-            modelId: isset($data['model_id']) && is_string($data['model_id']) ? (string) $data['model_id'] : null,
-            dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
-            // Phase 1
+            // Phase 1 — Contexte asymétrique
             maxInputTokens: is_numeric($data['max_input_tokens'] ?? null) ? (int) $data['max_input_tokens'] : null,
             maxOutputTokens: is_numeric($data['max_output_tokens'] ?? null) ? (int) $data['max_output_tokens'] : null,
+            // Phase 1 — Modalités
             supportsVision: (bool) ($data['supports_vision'] ?? false),
             supportsParallelToolCalls: (bool) ($data['supports_parallel_tool_calls'] ?? false),
             supportsResponseSchema: (bool) ($data['supports_response_schema'] ?? false),
+            // Lifecycle
             deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
         );
     }

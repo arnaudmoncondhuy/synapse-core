@@ -1,14 +1,14 @@
 # Source: https://ai.google.dev/gemini-api/docs/pricing?hl=fr
 # Source: https://ai.google.dev/gemini-api/docs/models
 models:
-  gemini-3.1-pro:
+  gemini-3.1-pro-preview:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -19,14 +19,14 @@ models:
     pricing_output: 12.00
     model_id: gemini-3.1-pro-preview
 
-  gemini-3.1-flash-lite:
+  gemini-3.1-flash-lite-preview:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -37,14 +37,14 @@ models:
     pricing_output: 1.50
     model_id: gemini-3.1-flash-lite-preview
 
-  gemini-3-flash:
+  gemini-3-flash-preview:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -57,12 +57,12 @@ models:
 
   gemini-2.5-pro:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -74,12 +74,12 @@ models:
 
   gemini-2.5-flash:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -91,12 +91,12 @@ models:
 
   gemini-2.5-flash-lite:
     provider: gemini
-    thinking: true
-    safety_settings: true
-    top_k: true
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 1048576
     max_input_tokens: 1000000
     max_output_tokens: 65536
@@ -110,12 +110,12 @@ models:
     type: embedding
     provider: gemini
     dimensions: [3072, 1536, 768] # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
-    thinking: false
-    safety_settings: false
-    top_k: false
-    function_calling: false
-    streaming: false
-    system_prompt: false
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_streaming: false
+    supports_system_prompt: false
     context_window: 2048 # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
     max_input_tokens: 2048
     max_output_tokens: 0

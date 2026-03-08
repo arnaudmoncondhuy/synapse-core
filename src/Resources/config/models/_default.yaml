@@ -20,22 +20,20 @@ defaults_reference:
   provider: "unknown"          # Requis. Slug du provider (ex: 'gemini', 'ovh', 'anthropic')
   type: "chat"                 # Mode du modèle : chat | embedding
                                # Futur (Phase 4): image_generation | audio_transcription | audio_speech | moderation | rerank
-  model_id: ~                  # Alias technique optionnel (ex: ID Vertex AI). null = utiliser la clé YAML
-
   # ── Contexte ──────────────────────────────────────────────────────────────
-  context_window: ~            # Legacy. Fenêtre totale en tokens. null = pas de troncature automatique
+  context_window: ~            # Legacy (déprécié). Fenêtre totale en tokens — fallback via getEffectiveMaxInputTokens()
   max_input_tokens: ~          # Phase 1. Max tokens acceptés en entrée. null = fallback vers context_window
   max_output_tokens: ~         # Phase 1. Max tokens générables en sortie. null = pas de limite connue
 
   # ── Capacités (défaut TRUE — couvertes par la plupart des modèles chat) ───
-  function_calling: true       # Supporte le tool use / function calling
-  streaming: true              # Supporte le streaming SSE/NDJSON
-  system_prompt: true          # Supporte un system prompt / instruction système
+  supports_function_calling: true   # Supporte le tool use / function calling
+  supports_streaming: true         # Supporte le streaming SSE/NDJSON
+  supports_system_prompt: true     # Supporte un system prompt / instruction système
 
   # ── Capacités (défaut FALSE — activation opt-in) ──────────────────────────
-  thinking: false              # Supporte le raisonnement étendu (thinking budget tokens)
-  safety_settings: false       # Supporte les filtres de sécurité granulaires (spécifique Gemini)
-  top_k: false                 # Supporte le paramètre topK dans generation_config
+  supports_thinking: false         # Supporte le raisonnement étendu (thinking budget tokens)
+  supports_safety_settings: false  # Supporte les filtres de sécurité granulaires (spécifique Gemini)
+  supports_top_k: false            # Supporte le paramètre topK dans generation_config
 
   # Phase 1
   supports_vision: false               # Analyse d'images en entrée (multimodal)
@@ -84,12 +82,12 @@ defaults_reference:
 #     context_window: 131072
 #     max_input_tokens: 131072
 #     max_output_tokens: 16384
-#     function_calling: true
-#     streaming: true
-#     system_prompt: true
-#     thinking: false
-#     safety_settings: false
-#     top_k: false
+#     supports_function_calling: true
+#     supports_streaming: true
+#     supports_system_prompt: true
+#     supports_thinking: false
+#     supports_safety_settings: false
+#     supports_top_k: false
 #     supports_vision: false
 #     supports_parallel_tool_calls: false
 #     supports_response_schema: false
@@ -110,12 +108,12 @@ defaults_reference:
 #     context_window: 8192
 #     max_input_tokens: 8192
 #     max_output_tokens: 0
-#     function_calling: false
-#     streaming: false
-#     system_prompt: false
-#     thinking: false
-#     safety_settings: false
-#     top_k: false
+#     supports_function_calling: false
+#     supports_streaming: false
+#     supports_system_prompt: false
+#     supports_thinking: false
+#     supports_safety_settings: false
+#     supports_top_k: false
 #     supports_vision: false
 #     supports_parallel_tool_calls: false
 #     supports_response_schema: false

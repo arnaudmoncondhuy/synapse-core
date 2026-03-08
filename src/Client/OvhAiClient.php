@@ -90,8 +90,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             'thinking_budget' => $this->thinkingBudget,
             'reasoning_effort' => $this->thinkingEnabled ? $this->reasoningEffort : null,
             'safety_enabled' => false,  // OVH n'a pas de sécurité native
-            'tools_sent' => !empty($tools) && $caps->functionCalling,
-            'system_prompt_sent' => $caps->systemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
+            'tools_sent' => !empty($tools) && $caps->supportsFunctionCalling,
+            'system_prompt_sent' => $caps->supportsSystemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
             'context_caching' => false,  // OVH n'a pas de context caching
         ];
         $debugOut['raw_request_body'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($payload);
@@ -222,8 +222,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             'thinking_budget' => $this->thinkingBudget,
             'reasoning_effort' => $this->thinkingEnabled ? $this->reasoningEffort : null,
             'safety_enabled' => false,  // OVH n'a pas de sécurité native
-            'tools_sent' => !empty($tools) && $caps->functionCalling,
-            'system_prompt_sent' => $caps->systemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
+            'tools_sent' => !empty($tools) && $caps->supportsFunctionCalling,
+            'system_prompt_sent' => $caps->supportsSystemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
             'context_caching' => false,  // OVH n'a pas de context caching
         ];
         $debugOut['raw_request_body'] = $payload;
@@ -497,13 +497,13 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             $payload['stop'] = $this->stopSequences;
         }
 
-        if (!empty($tools) && $caps->functionCalling) {
+        if (!empty($tools) && $caps->supportsFunctionCalling) {
             $payload['tools'] = $this->toOpenAiTools($tools);
         }
 
         // Ajouter la réflexion/reasoning si activée (paramètre OVH: reasoning_effort)
         // L'API rejette le paramètre si le modèle n'a pas de capacités de réflexion (400 Bad Request)
-        if ($this->thinkingEnabled && $caps->thinking) {
+        if ($this->thinkingEnabled && $caps->supportsThinking) {
             // Les valeurs possibles sont: "high", "medium", "low", "minimal"
             $payload['reasoning_effort'] = $this->reasoningEffort;
         }

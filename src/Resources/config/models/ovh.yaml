@@ -2,12 +2,12 @@
 models:
   gpt-oss-20b:
     provider: ovh
-    thinking: true
-    safety_settings: false
-    top_k: false
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 131072 # 128k tokens context
     max_input_tokens: 131072
     max_output_tokens: 16384
@@ -19,12 +19,12 @@ models:
 
   gpt-oss-120b:
     provider: ovh
-    thinking: true
-    safety_settings: false
-    top_k: false
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 131072 # 128k tokens context
     max_input_tokens: 131072
     max_output_tokens: 16384
@@ -36,12 +36,12 @@ models:
 
   Qwen3-32B:
     provider: ovh
-    thinking: true
-    safety_settings: false
-    top_k: false
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 32768 # 32k tokens context
     max_input_tokens: 32768
     max_output_tokens: 8192
@@ -53,12 +53,12 @@ models:
 
   Llama-3.1-8B-Instruct:
     provider: ovh
-    thinking: false
-    safety_settings: false
-    top_k: false
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 131072 # 128k tokens context
     max_input_tokens: 131072
     max_output_tokens: 4096
@@ -70,12 +70,12 @@ models:
 
   Mistral-7B-Instruct-v0.3:
     provider: ovh
-    thinking: false
-    safety_settings: false
-    top_k: false
-    function_calling: true
-    streaming: true
-    system_prompt: true
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
     context_window: 32768 # Standard 32k context for V0.3
     max_input_tokens: 32768
     max_output_tokens: 8192
@@ -89,12 +89,12 @@ models:
     type: embedding
     provider: ovh
     dimensions: [1024] # Dimension standard pour bge-m3
-    thinking: false
-    safety_settings: false
-    top_k: false
-    function_calling: false
-    streaming: false
-    system_prompt: false
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_streaming: false
+    supports_system_prompt: false
     context_window: 8192
     max_input_tokens: 8192
     max_output_tokens: 0

@@ -88,12 +88,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'provider' => 'gemini',
             'temperature' => $this->generationTemperature,
             'top_p' => $this->generationTopP,
-            'top_k' => $caps->topK ? $this->generationTopK : null,
+            'top_k' => $caps->supportsTopK ? $this->generationTopK : null,
             'max_output_tokens' => $this->generationMaxOutputTokens,
-            'thinking_enabled' => $this->thinkingEnabled && $caps->thinking,
-            'thinking_budget' => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
+            'thinking_enabled' => $this->thinkingEnabled && $caps->supportsThinking,
+            'thinking_budget' => ($this->thinkingEnabled && $caps->supportsThinking) ? $this->thinkingBudget : null,
             'safety_enabled' => $this->safetySettingsEnabled,
-            'tools_sent' => !empty($tools) && $caps->functionCalling,
+            'tools_sent' => !empty($tools) && $caps->supportsFunctionCalling,
             'system_prompt_sent' => !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
         ];
         $debugOut['raw_request_body'] = TextUtil::sanitizeArrayUtf8($payload);
@@ -228,12 +228,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'provider' => 'gemini',
             'temperature' => $this->generationTemperature,
             'top_p' => $this->generationTopP,
-            'top_k' => $caps->topK ? $this->generationTopK : null,
+            'top_k' => $caps->supportsTopK ? $this->generationTopK : null,
             'max_output_tokens' => $this->generationMaxOutputTokens,
-            'thinking_enabled' => $this->thinkingEnabled && $caps->thinking,
-            'thinking_budget' => ($this->thinkingEnabled && $caps->thinking) ? $this->thinkingBudget : null,
+            'thinking_enabled' => $this->thinkingEnabled && $caps->supportsThinking,
+            'thinking_budget' => ($this->thinkingEnabled && $caps->supportsThinking) ? $this->thinkingBudget : null,
             'safety_enabled' => $this->safetySettingsEnabled,
-            'tools_sent' => !empty($tools) && $caps->functionCalling,
+            'tools_sent' => !empty($tools) && $caps->supportsFunctionCalling,
             'system_prompt_sent' => !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
         ];
         $debugOut['raw_request_body'] = TextUtil::sanitizeArrayUtf8($payload);
@@ -727,7 +727,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $payload['generationConfig'] = $generationConfig;
         }
 
-        if ($caps->safetySettings) {
+        if ($caps->supportsSafetySettings) {
             $safetySettings = $this->buildSafetySettings();
             if (!empty($safetySettings)) {
                 $payload['safetySettings'] = $safetySettings;
@@ -736,7 +736,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $payload['safetySettings'] = $this->buildSafetySettingsBlockNone();
         }
 
-        if (!empty($tools) && $caps->functionCalling) {
+        if (!empty($tools) && $caps->supportsFunctionCalling) {
             $firstTool = reset($tools);
             $isFlatFunctionList = is_array($firstTool)
                 && isset($firstTool['name'])
@@ -788,7 +788,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'topP' => $this->generationTopP,
         ];
 
-        if ($caps->topK) {
+        if ($caps->supportsTopK) {
             $config['topK'] = $this->generationTopK;
         }
 
@@ -820,7 +820,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     {
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
 
-        if (!$this->thinkingEnabled || !$caps->thinking) {
+        if (!$this->thinkingEnabled || !$caps->supportsThinking) {
             return null;
         }
 

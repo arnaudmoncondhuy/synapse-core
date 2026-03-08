@@ -29,24 +29,24 @@ class ModelCapabilities
         public readonly array $dimensions = [],
 
         /** Supporte le mode thinking étendu (budget de tokens de réflexion) */
-        public readonly bool $thinking = false,
+        public readonly bool $supportsThinking = false,
 
         /** Supporte les filtres de sécurité (safetySettings Gemini) */
-        public readonly bool $safetySettings = false,
+        public readonly bool $supportsSafetySettings = false,
 
         /** Supporte le paramètre topK */
-        public readonly bool $topK = false,
+        public readonly bool $supportsTopK = false,
 
         /** Supporte le function calling / tool use */
-        public readonly bool $functionCalling = true,
+        public readonly bool $supportsFunctionCalling = true,
 
         /** Supporte le streaming SSE/NDJSON */
-        public readonly bool $streaming = true,
+        public readonly bool $supportsStreaming = true,
 
         /** Supporte un system prompt / instruction système */
-        public readonly bool $systemPrompt = true,
+        public readonly bool $supportsSystemPrompt = true,
 
-        /** Taille de la fenêtre de contexte maximale en tokens */
+        /** Taille de la fenêtre de contexte maximale en tokens (legacy — utiliser max_input_tokens) */
         public readonly ?int $contextWindow = null,
 
         /** Prix par défaut par million de tokens (Input) */
@@ -54,9 +54,6 @@ class ModelCapabilities
 
         /** Prix par défaut par million de tokens (Output) */
         public readonly ?float $pricingOutput = null,
-
-        /** ID technique optionnel (ex: ID MaaS pour Vertex) */
-        public readonly ?string $modelId = null,
 
         // ── Phase 1 : Contexte asymétrique ───────────────────────────────────
 
@@ -112,24 +109,22 @@ class ModelCapabilities
     /**
      * Vérifie si le modèle supporte une capacité donnée.
      *
-     * @param string $capability Capacité à vérifier (valeurs acceptées : 'thinking', 'safety_settings', 'top_k',
-     *                           'function_calling', 'streaming', 'system_prompt', 'vision',
-     *                           'parallel_tool_calls', 'response_schema')
+     * @param string $capability Capacité à vérifier (clé YAML sans le préfixe 'supports_', ex: 'thinking', 'vision')
      *
      * @return bool true si supportée, false sinon (y compris pour les capacités inconnues)
      */
     public function supports(string $capability): bool
     {
         return match ($capability) {
-            'thinking' => $this->thinking,
-            'safety_settings' => $this->safetySettings,
-            'top_k' => $this->topK,
-            'function_calling' => $this->functionCalling,
-            'streaming' => $this->streaming,
-            'system_prompt' => $this->systemPrompt,
-            'vision' => $this->supportsVision,
-            'parallel_tool_calls' => $this->supportsParallelToolCalls,
-            'response_schema' => $this->supportsResponseSchema,
+            'supports_thinking', 'thinking' => $this->supportsThinking,
+            'supports_safety_settings', 'safety_settings' => $this->supportsSafetySettings,
+            'supports_top_k', 'top_k' => $this->supportsTopK,
+            'supports_function_calling', 'function_calling' => $this->supportsFunctionCalling,
+            'supports_streaming', 'streaming' => $this->supportsStreaming,
+            'supports_system_prompt', 'system_prompt' => $this->supportsSystemPrompt,
+            'supports_vision', 'vision' => $this->supportsVision,
+            'supports_parallel_tool_calls', 'parallel_tool_calls' => $this->supportsParallelToolCalls,
+            'supports_response_schema', 'response_schema' => $this->supportsResponseSchema,
             default => false,
         };
     }

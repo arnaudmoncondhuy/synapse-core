@@ -111,11 +111,11 @@ class SynapseAgentBuilder
         $capabilities = $this->capabilityRegistry->getCapabilities($this->model);
 
         // Validation des capacités critiques
-        if (!empty($this->allowedTools) && !$capabilities->functionCalling) {
+        if (!empty($this->allowedTools) && !$capabilities->supportsFunctionCalling) {
             throw new \LogicException("Le modèle '{$this->model}' ne supporte pas l'appel d'outils (function_calling).");
         }
 
-        if ($this->systemPrompt && !$capabilities->systemPrompt) {
+        if ($this->systemPrompt && !$capabilities->supportsSystemPrompt) {
             // Logique de fallback ou exception ? On choisit l'exception pour garantir la sécurité de Cortex
             throw new \LogicException("Le modèle '{$this->model}' ne supporte pas les instructions système.");
         }
@@ -128,7 +128,7 @@ class SynapseAgentBuilder
         $preset->setGenerationTemperature($this->temperature);
 
         $providerOptions = [];
-        if (($this->reasoningBudget || $this->reasoningEffort) && $capabilities->thinking) {
+        if (($this->reasoningBudget || $this->reasoningEffort) && $capabilities->supportsThinking) {
             if ($this->reasoningBudget) {
                 $providerOptions['thinking_budget'] = $this->reasoningBudget;
             }
