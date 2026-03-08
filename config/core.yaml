@@ -273,6 +273,21 @@ services:
     ArnaudMoncondhuy\SynapseCore\Contract\SynapseDebugLoggerInterface:
         alias: ArnaudMoncondhuy\SynapseCore\Storage\Logger\MonologDebugLogger
 
+    # ── Attachment Storage ────────────────────────────────────────────────────
+    ArnaudMoncondhuy\SynapseCore\Service\AttachmentStorageService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageAttachmentRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Event\AttachmentRemovalSubscriber:
+        autowire: true
+        autoconfigure: true
+        public: false
+
     # ── Event Subscribers ──────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber:
         autowire: true

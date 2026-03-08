@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Manager;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
+use ArnaudMoncondhuy\SynapseCore\Service\AttachmentStorageService;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ConversationStatus;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
@@ -43,6 +44,7 @@ class ConversationManager
         private ?string $conversationClass = null,
         /** @var class-string<SynapseMessage>|null */
         private ?string $messageClass = null,
+        private ?AttachmentStorageService $attachmentStorage = null,
     ) {
     }
 
@@ -128,6 +130,7 @@ class ConversationManager
      *     metadata?: array<string, mixed>
      * } $metadata Données techniques de l'échange
      * @param string|null $callId UUID de l'appel LLM (SynapseLlmCall.callId) — pour les messages MODEL.
+     * @param array<int, array{mime_type: string, data: string}> $images Images à stocker comme pièces jointes.
      *
      * @return SynapseMessage L'entité message créée
      */
@@ -137,6 +140,7 @@ class ConversationManager
         string $content,
         array $metadata = [],
         ?string $callId = null,
+        array $images = [],
     ): SynapseMessage {
         $message = $this->instantiateMessage();
         $message->setConversation($conversation);
@@ -192,6 +196,14 @@ class ConversationManager
             $conversation->addMessage($message);
         }
         $this->em->persist($message);
+
+        // Store images as file attachments (replaces base64 storage in metadata)
+        if (!empty($images) && null !== $this->attachmentStorage) {
+            foreach ($images as $image) {
+                $this->attachmentStorage->store($image, $message);
+            }
+        }
+
         $this->em->flush();
 
         return $message;
@@ -368,10 +380,12 @@ class ConversationManager
      * Filtre les messages non affichables (système, fonction, etc.).
      *
      * @param SynapseConversation $conversation SynapseConversation à formater
+     * @param bool $forDisplay When true (Twig rendering), includes attachments info.
+     *                         When false (LLM), replaces image content with placeholder text.
      *
-     * @return array<int, array{role: string, content: string, parts: array<int, array{text: string}>, metadata: array<string, mixed>}>
+     * @return array<int, array{role: string, content: string|array<mixed>, metadata: array<string, mixed>, attachments?: array<int, array{uuid: string, mime_type: string}>}>
      */
-    public function getHistoryArray(SynapseConversation $conversation): array
+    public function getHistoryArray(SynapseConversation $conversation, bool $forDisplay = false): array
     {
         $history = [];
         $messages = $this->getMessages($conversation);
@@ -384,16 +398,45 @@ class ConversationManager
             $textContent = $msg->getDecryptedContent() ?? $msg->getContent();
             $metadata = $msg->getMetadata() ?? [];
 
-            // Reconstruire le content multipart depuis metadata si le message contient des images
-            $contentForHistory = isset($metadata['parts']) && is_array($metadata['parts'])
-                ? $metadata['parts']
-                : $textContent;
+            // Build attachments list from entity relation
+            $attachments = [];
+            foreach ($msg->getAttachments() as $att) {
+                $attachments[] = ['uuid' => $att->getId(), 'mime_type' => $att->getMimeType()];
+            }
 
-            $history[] = [
-                'role' => $role,
-                'content' => $contentForHistory,
-                'metadata' => $metadata,
-            ];
+            if ($forDisplay) {
+                // For Twig: return plain text content + attachments array for display
+                $entry = [
+                    'role' => $role,
+                    'content' => $textContent,
+                    'metadata' => $metadata,
+                ];
+                if (!empty($attachments)) {
+                    $entry['attachments'] = $attachments;
+                }
+            } else {
+                // For LLM: legacy parts from metadata, or text with placeholder for images
+                $contentForHistory = isset($metadata['parts']) && is_array($metadata['parts'])
+                    ? $metadata['parts']
+                    : $textContent;
+
+                // If there are file attachments and no legacy parts, add placeholders
+                if (!empty($attachments) && !isset($metadata['parts'])) {
+                    $placeholders = [];
+                    foreach ($attachments as $att) {
+                        $placeholders[] = '[Image jointe : ' . $att['mime_type'] . ']';
+                    }
+                    $contentForHistory = $textContent . "\n" . implode("\n", $placeholders);
+                }
+
+                $entry = [
+                    'role' => $role,
+                    'content' => $contentForHistory,
+                    'metadata' => $metadata,
+                ];
+            }
+
+            $history[] = $entry;
         }
 
         return $history;
