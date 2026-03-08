@@ -26,8 +26,8 @@ interface MessageFormatterInterface
     /**
      * Transforme des messages provenant d'une API en objets entités prêts à la persistance.
      *
-     * @param array<int, array<string, mixed>> $messages     messages au format API
-     * @param SynapseConversation              $conversation la conversation parente à laquelle lier les messages
+     * @param array<int, array<string, mixed>> $messages messages au format API
+     * @param SynapseConversation $conversation la conversation parente à laquelle lier les messages
      *
      * @return array<int, object> liste des nouvelles entités SynapseMessage (non persistées)
      */

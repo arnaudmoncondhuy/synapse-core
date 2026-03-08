@@ -31,7 +31,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère les statistiques globales d'usage avec coûts par devise.
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array{request_count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int, costs: array<string, float>}
      */
@@ -55,7 +55,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         }
 
         // Requête pour coûts par devise
-        /** @var array<int, array{currency: string, cost: string|int|float}> $costResults */
+        /** @var array<int, array{currency: string, cost: float|int|string}> $costResults */
         $costResults = $this->getEntityManager()->getConnection()->executeQuery(
             'SELECT pricing_currency AS currency, COALESCE(SUM(cost_model_currency), 0) AS cost
              FROM synapse_llm_call
@@ -84,13 +84,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère les statistiques des tâches automatisées (hors conversations).
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array<string, array{module: string, action: string, model: string, count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Stats par module/action
      */
     public function getAutomatedTaskStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
-        /** @var array<int, array{module: string, action: string, model: string, count: string|int, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int}> $results */
+        /** @var array<int, array{module: string, action: string, model: string, count: int|string, prompt_tokens: int|string, completion_tokens: int|string, thinking_tokens: int|string, total_tokens: int|string}> $results */
         $results = $this->createQueryBuilder('t')
             ->select(
                 't.module',
@@ -113,7 +113,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $stats = [];
         foreach ($results as $result) {
-            $key = $result['module'] . ':' . $result['action'];
+            $key = $result['module'].':'.$result['action'];
             $stats[$key] = [
                 'module' => $result['module'],
                 'action' => $result['action'],
@@ -133,7 +133,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère les statistiques des conversations (appels liés à une conversation).
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array{count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}
      */
@@ -171,7 +171,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère l'usage quotidien (série temporelle).
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array<string, array{date: string, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}> Usage par jour
      */
@@ -179,7 +179,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{date: string, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int}> $results */
+        /** @var array<int, array{date: string, prompt_tokens: int|string, completion_tokens: int|string, thinking_tokens: int|string, total_tokens: int|string}> $results */
         $results = $conn->executeQuery(
             'SELECT DATE(created_at) as date,
                     COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
@@ -212,13 +212,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère l'usage par module.
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array<string, array{count: int, total_tokens: int}> Usage par module
      */
     public function getUsageByModule(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
-        /** @var array<int, array{module: string, count: string|int, total_tokens: string|int}> $results */
+        /** @var array<int, array{module: string, count: int|string, total_tokens: int|string}> $results */
         $results = $this->createQueryBuilder('t')
             ->select(
                 't.module',
@@ -250,7 +250,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * Récupère l'usage par modèle (avec coûts et devise).
      *
      * @param \DateTimeInterface $start Date de début
-     * @param \DateTimeInterface $end   Date de fin
+     * @param \DateTimeInterface $end Date de fin
      *
      * @return array<string, array{count: int, total_tokens: int, cost: float, currency: string}> Usage par modèle
      */
@@ -258,7 +258,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{model: string, pricing_currency: string, count: string|int, total_tokens: string|int, cost: string|int|float}> $results */
+        /** @var array<int, array{model: string, pricing_currency: string, count: int|string, total_tokens: int|string, cost: float|int|string}> $results */
         $results = $conn->executeQuery(
             'SELECT model,
                     pricing_currency,
@@ -295,7 +295,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{user_id: string, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
+        /** @var array<int, array{user_id: string, cnt: int|string, total_tokens: int|string, cost: float|int|string}> $results */
         $results = $conn->executeQuery(
             'SELECT user_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -328,7 +328,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{preset_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
+        /** @var array<int, array{preset_id: int|string, cnt: int|string, total_tokens: int|string, cost: float|int|string}> $results */
         $results = $conn->executeQuery(
             'SELECT preset_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -360,7 +360,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{agent_id: string|int, cnt: string|int, total_tokens: string|int, cost: string|int|float}> $results */
+        /** @var array<int, array{agent_id: int|string, cnt: int|string, total_tokens: int|string, cost: float|int|string}> $results */
         $results = $conn->executeQuery(
             'SELECT agent_id, COUNT(*) AS cnt, COALESCE(SUM(total_tokens), 0) AS total_tokens, COALESCE(SUM(cost_reference), 0) AS cost
              FROM synapse_llm_call
@@ -405,7 +405,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        /** @var array<int, array{call_id: string, created_at: string, model: string, prompt_tokens: string|int, completion_tokens: string|int, thinking_tokens: string|int, total_tokens: string|int, cost: string|int|float, pricing_input: string|int|float|null, pricing_output: string|int|float|null, pricing_currency: string|null}> $rows */
+        /** @var array<int, array{call_id: string, created_at: string, model: string, prompt_tokens: int|string, completion_tokens: int|string, thinking_tokens: int|string, total_tokens: int|string, cost: float|int|string, pricing_input: float|int|string|null, pricing_output: float|int|string|null, pricing_currency: string|null}> $rows */
         $rows = $conn->executeQuery(
             'SELECT call_id, created_at, model, prompt_tokens, completion_tokens, thinking_tokens, total_tokens,
                     COALESCE(cost_reference, 0) AS cost,
@@ -469,7 +469,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      *
      * Utilisé par SpendingLimitChecker. Lit depuis la colonne cost_reference (snapshot immuable).
      *
-     * @param 'user'|'preset'|'agent' $scope
+     * @param 'agent'|'preset'|'user' $scope
      */
     public function getConsumptionForWindow(string $scope, string $scopeId, \DateTimeInterface $start, \DateTimeInterface $end): float
     {
@@ -491,6 +491,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         }
 
         $total = $result['total'] ?? 0.0;
+
         return is_numeric($total) ? (float) $total : 0.0;
     }
 }

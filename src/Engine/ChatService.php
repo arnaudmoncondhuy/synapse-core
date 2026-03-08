@@ -12,8 +12,8 @@ use ArnaudMoncondhuy\SynapseCore\Event\SynapseGenerationStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent;
-use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
+use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -42,7 +42,8 @@ class ChatService
         private SynapseProfiler $profiler,
         private ?\ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager $conversationManager = null,
         private ?\ArnaudMoncondhuy\SynapseCore\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Point d'entrée principal pour envoyer un message à l'IA.
@@ -50,8 +51,7 @@ class ChatService
      * Cette méthode gère l'orchestration complète : recherche du contexte, appel du client LLM,
      * exécution des outils (si nécessaire) et persistance des messages.
      *
-     * @param string                                       $message le texte envoyé par l'utilisateur
-     * @param list<array{mime_type: string, data: string}> $images  Images attachées au message (vision)
+     * @param string $message le texte envoyé par l'utilisateur
      * @param array{
      *     tone?: string,
      *     history?: array<int, array<string, mixed>>,
@@ -65,9 +65,10 @@ class ChatService
      *     reset_conversation?: bool,
      *     agent?: string
      * } $options Options contrôlant le comportement de l'échange
-     * @param callable(string $msg, string $step): void|null       $onStatusUpdate Callback appelé à chaque étape (thinking, tool_call, etc.).
-     * @param callable(string $token): void|null                   $onToken        callback appelé à chaque token reçu (streaming)
+     * @param callable(string $msg, string $step): void|null $onStatusUpdate Callback appelé à chaque étape (thinking, tool_call, etc.).
+     * @param callable(string $token): void|null $onToken callback appelé à chaque token reçu (streaming)
      * @param callable(string $toolName, mixed $result): void|null $onToolExecuted callback appelé après exécution d'un outil
+     * @param list<array{mime_type: string, data: string}> $images Images attachées au message (vision)
      *
      * @return array{
      *     answer: string,
@@ -268,7 +269,7 @@ class ChatService
                             }
                             $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
                             $modelToolCalls[] = [
-                                'id' => is_string($fc['id'] ?? null) ? (string) $fc['id'] : 'call_' . bin2hex(random_bytes(6)),
+                                'id' => is_string($fc['id'] ?? null) ? (string) $fc['id'] : 'call_'.bin2hex(random_bytes(6)),
                                 'type' => 'function',
                                 'function' => [
                                     'name' => $name,
@@ -317,12 +318,12 @@ class ChatService
                     // Add tool responses to prompt for next iteration (one message per tool)
                     foreach ($modelToolCalls as $tc) {
                         $toolName = $tc['function']['name'];
-                        $this->profiler->start('Tool', 'Tool Execution: ' . $toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
+                        $this->profiler->start('Tool', 'Tool Execution: '.$toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
 
                         $toolResult = $toolResults[$toolName] ?? null;
 
                         if ($onStatusUpdate) {
-                            $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:' . $toolName);
+                            $onStatusUpdate("Exécution de l'outil: {$toolName}...", 'tool:'.$toolName);
                         }
 
                         if (null !== $toolResult) {
@@ -338,7 +339,7 @@ class ChatService
                             }
                         }
 
-                        $this->profiler->stop('Tool', 'Tool Execution: ' . $toolName, $turn);
+                        $this->profiler->stop('Tool', 'Tool Execution: '.$toolName, $turn);
                     }
 
                     // Continuer la boucle : le LLM reçoit le résultat de l'outil et peut enchaîner avec sa réponse (ex. "Bonjour Arnaud, comment puis-je vous aider ?")

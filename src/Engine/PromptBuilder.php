@@ -55,7 +55,7 @@ class PromptBuilder
     public function buildSystemInstruction(?string $toneKey = null): string
     {
         $config = $this->configProvider->getConfig();
-        $systemPrompt = $config['system_prompt'] ?? null;
+        $systemPrompt = isset($config['system_prompt']) && is_string($config['system_prompt']) ? $config['system_prompt'] : null;
 
         // Si un prompt système est défini en base de données, on l'interpole avec les variables du ContextProvider
         if ($systemPrompt) {
@@ -84,8 +84,8 @@ class PromptBuilder
      * Agnostique : le bundle ne connaît pas les variables, il utilise celles
      * fournies par le ContextProvider via getInitialContext().
      *
-     * @param string               $template le template avec variables {DATE}, {EMAIL}, etc
-     * @param array<string, mixed> $context  Le contexte retourné par getInitialContext()
+     * @param string $template le template avec variables {DATE}, {EMAIL}, etc
+     * @param array<string, mixed> $context Le contexte retourné par getInitialContext()
      *
      * @return string Le template avec les variables remplacées
      */

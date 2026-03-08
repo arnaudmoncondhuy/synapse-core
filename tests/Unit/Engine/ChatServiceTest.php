@@ -48,6 +48,7 @@ class ChatServiceTest extends TestCase
                 $event->setPrompt(['contents' => [['role' => 'user', 'content' => 'Hello']]]);
                 $event->setConfig(['model' => 'test-model', 'streaming_enabled' => false]);
             }
+
             return $event;
         });
 
@@ -57,8 +58,8 @@ class ChatServiceTest extends TestCase
             'usage' => [
                 'prompt_tokens' => 5,
                 'completion_tokens' => 3,
-                'total_tokens' => 8
-            ]
+                'total_tokens' => 8,
+            ],
         ]);
 
         $result = $this->chatService->ask('Hello');

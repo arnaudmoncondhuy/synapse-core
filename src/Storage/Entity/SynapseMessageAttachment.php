@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseMessageAttachmentRepository;
+use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SynapseMessageAttachmentRepository::class)]
 #[ORM\Table(name: 'synapse_message_attachment')]
@@ -41,9 +41,28 @@ class SynapseMessageAttachment
         $this->createdAt = new \DateTimeImmutable();
     }
 
-    public function getId(): string { return $this->id; }
-    public function getMessageId(): string { return $this->messageId; }
-    public function getMimeType(): string { return $this->mimeType; }
-    public function getFilePath(): string { return $this->filePath; }
-    public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getMessageId(): string
+    {
+        return $this->messageId;
+    }
+
+    public function getMimeType(): string
+    {
+        return $this->mimeType;
+    }
+
+    public function getFilePath(): string
+    {
+        return $this->filePath;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
 }

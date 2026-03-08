@@ -31,18 +31,18 @@ class ModelCapabilityRegistry
     {
         // Chemin vers les configurations YAML des modèles après refactorisation
         // __DIR__ = src/Engine, donc dirname(__DIR__, 2) = packages/core
-        $configDir = dirname(__DIR__, 2) . '/src/Resources/config/models';
+        $configDir = dirname(__DIR__, 2).'/src/Resources/config/models';
 
         if (!is_dir($configDir)) {
             // Tentative de résolution alternative si appelé depuis une application hôte
-            $configDir = dirname(__DIR__, 5) . '/vendor/arnaudmoncondhuy/synapse-core/src/Resources/config/models';
+            $configDir = dirname(__DIR__, 5).'/vendor/arnaudmoncondhuy/synapse-core/src/Resources/config/models';
         }
 
         if (!is_dir($configDir)) {
             return;
         }
 
-        $files = glob($configDir . '/*.yaml');
+        $files = glob($configDir.'/*.yaml');
         if (!$files) {
             return;
         }
@@ -102,7 +102,7 @@ class ModelCapabilityRegistry
             model: $model,
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
             type: is_string($data['type'] ?? null) ? (string) $data['type'] : 'chat',
-            dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn($v) => (int) $v, (array) $data['dimensions']) : [],
+            dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn ($v) => is_numeric($v) ? (int) $v : 0, (array) $data['dimensions']) : [],
             // Phase 1.5 — convention supports_*
             supportsThinking: (bool) ($data['supports_thinking'] ?? false),
             supportsSafetySettings: (bool) ($data['supports_safety_settings'] ?? false),

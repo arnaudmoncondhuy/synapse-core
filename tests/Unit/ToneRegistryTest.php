@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit;
 
-use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseTone;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository;
+use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use PHPUnit\Framework\TestCase;
 
 class ToneRegistryTest extends TestCase

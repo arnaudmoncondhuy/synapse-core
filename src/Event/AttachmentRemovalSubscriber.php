@@ -13,8 +13,13 @@ use Doctrine\Persistence\Event\LifecycleEventArgs;
 #[AsDoctrineListener(event: Events::preRemove)]
 class AttachmentRemovalSubscriber
 {
-    public function __construct(private AttachmentStorageService $attachmentStorage) {}
+    public function __construct(private AttachmentStorageService $attachmentStorage)
+    {
+    }
 
+    /**
+     * @param LifecycleEventArgs<\Doctrine\ORM\EntityManagerInterface> $args
+     */
     public function preRemove(LifecycleEventArgs $args): void
     {
         $entity = $args->getObject();

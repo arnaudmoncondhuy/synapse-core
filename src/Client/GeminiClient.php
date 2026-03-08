@@ -51,7 +51,8 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         private GeminiAuthService $geminiAuthService,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {}
+    ) {
+    }
 
     public function getProviderName(): string
     {
@@ -203,11 +204,11 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @param array<int, array<string, mixed>> $contents
      * @param array<int, array<string, mixed>> $tools
-     * @param array<string, mixed>             $debugOut
-     *
-     * @return \Generator<int, array<string, mixed>>
+     * @param array<string, mixed> $debugOut
      *
      * @throws \RuntimeException En cas d'erreur API Vertex AI
+     *
+     * @return \Generator<int, array<string, mixed>>
      */
     public function streamGenerateContent(
         array $contents,
@@ -361,7 +362,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
         if (is_array($parts) && !empty($parts)) {
             foreach ($parts as $part) {
-
                 /** @var array<string, mixed> $part */
                 if (!is_array($part)) {
                     continue;
@@ -389,7 +389,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     $fcCount = is_array($normalized['function_calls']) ? count($normalized['function_calls']) : 0;
                     /** @var array<string, mixed> $fc */
                     $fc = [
-                        'id' => 'call_' . substr(md5($fcName . $fcCount), 0, 12),
+                        'id' => 'call_'.substr(md5($fcName.$fcCount), 0, 12),
                         'name' => $fcName,
                         'args' => is_array($part['functionCall']['args'] ?? null) ? $part['functionCall']['args'] : [],
                     ];
@@ -565,7 +565,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Le model_id est obtenu depuis ModelCapabilityRegistry (peut différer du model passé).
      *
      * @param string $template Template URL Vertex : https://REGION-aiplatform.googleapis.com/v1/projects/PROJECT/locations/REGION/publishers/google/models/MODEL:endpoint
-     * @param string $model    Identifiant du modèle (ex: 'gemini-2.5-flash')
+     * @param string $model Identifiant du modèle (ex: 'gemini-2.5-flash')
      *
      * @return string URL complète et fonctionnelle pour l'API Vertex
      */
@@ -718,7 +718,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             if (($msg['role'] ?? '') === 'model') {
                 $parts = is_array($msg['parts'] ?? null) ? $msg['parts'] : [];
                 foreach ($parts as $part) {
-
                     /** @var array<string, mixed> $part */
                     if (is_array($part) && isset($part['functionCall']) && is_array($part['functionCall'])) {
                         return is_scalar($part['functionCall']['name'] ?? null) ? (string) $part['functionCall']['name'] : '';
@@ -735,7 +734,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @param array<int, array<string, mixed>> $contents
      * @param array<int, array<string, mixed>> $tools
-     * @param array<string, mixed>|null        $thinkingConfigOverride
+     * @param array<string, mixed>|null $thinkingConfigOverride
      *
      * @return array<string, mixed>
      */
@@ -743,7 +742,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         array $contents,
         array $tools,
         string $effectiveModel,
-        /** @var array<string, mixed>|null $thinkingConfigOverrideVar */
+        /* @var array<string, mixed>|null $thinkingConfigOverrideVar */
         ?array $thinkingConfigOverride,
     ): array {
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
@@ -810,7 +809,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private function buildVertexHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->geminiAuthService->getAccessToken(),
+            'Authorization' => 'Bearer '.$this->geminiAuthService->getAccessToken(),
             'Content-Type' => 'application/json',
         ];
     }
@@ -821,7 +820,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      * Intègre optionnellement une config thinking (peut être surcharge par paramètre).
      * Filtre les paramètres selon les capacités du modèle (ModelCapabilityRegistry).
      *
-     * @param string                    $effectiveModel         Identifiant du modèle
+     * @param string $effectiveModel Identifiant du modèle
      * @param array<string, mixed>|null $thinkingConfigOverride Config thinking optionnelle (surcharge buildThinkingConfig)
      *
      * @return array<string, mixed> Config Gemini : {temperature, topP, topK?, maxOutputTokens?, stopSequences?, thinkingConfig?}
@@ -924,7 +923,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         ];
 
-        return array_map(fn($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
+        return array_map(fn ($cat) => ['category' => $cat, 'threshold' => 'BLOCK_NONE'], $categories);
     }
 
     public function getCredentialFields(): array
@@ -1001,9 +1000,9 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
      *
      * @param \Throwable $e Exception originelle (HttpExceptionInterface, network, etc.)
      *
-     * @return void N'existe jamais — lève toujours \RuntimeException
-     *
      * @throws \RuntimeException Toujours levée avec message normalisé
+     *
+     * @return void N'existe jamais — lève toujours \RuntimeException
      */
     private function handleException(\Throwable $e): void
     {
@@ -1014,12 +1013,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             $statusCode = $e->getResponse()->getStatusCode();
             try {
                 $errorBody = $e->getResponse()->getContent(false);
-                $message .= ' || Google Error: ' . $errorBody;
+                $message .= ' || Google Error: '.$errorBody;
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'Gemini API Error: ' . $message;
+        $fullMsg = 'Gemini API Error: '.$message;
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),

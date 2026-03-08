@@ -42,9 +42,9 @@ interface LlmClientInterface
      * Génère du contenu en mode streaming (Server-Sent Events).
      *
      * @param array<int, array<string, mixed>> $contents Historique complet (format OpenAI canonical)
-     * @param array<int, array<string, mixed>> $tools    Déclarations des outils disponibles au format JSON Schema
-     * @param string|null                      $model    Identifiant du modèle à utiliser (ex: 'gemini-1.5-pro')
-     * @param array<string, mixed>             $debugOut Sortie de debug (passage par référence)
+     * @param array<int, array<string, mixed>> $tools Déclarations des outils disponibles au format JSON Schema
+     * @param string|null $model Identifiant du modèle à utiliser (ex: 'gemini-1.5-pro')
+     * @param array<string, mixed> $debugOut Sortie de debug (passage par référence)
      *
      * @return \Generator<int, array<string, mixed>> yield des chunks normalisés contenant 'text', 'usage', etc
      */
@@ -59,10 +59,10 @@ interface LlmClientInterface
      * Génère du contenu en mode synchrone (bloquant).
      *
      * @param array<int, array<string, mixed>> $contents Historique complet
-     * @param array<int, array<string, mixed>> $tools    Déclarations des outils
-     * @param string|null                      $model    Modèle à utiliser
-     * @param array<string, mixed>             $options  Options additionnelles (température, top-p, etc.)
-     * @param array<string, mixed>             $debugOut Sortie de debug
+     * @param array<int, array<string, mixed>> $tools Déclarations des outils
+     * @param string|null $model Modèle à utiliser
+     * @param array<string, mixed> $options Options additionnelles (température, top-p, etc.)
+     * @param array<string, mixed> $debugOut Sortie de debug
      *
      * @return array<string, mixed> Le dernier chunk normalisé de la réponse
      */
@@ -90,7 +90,7 @@ interface LlmClientInterface
      * @param array<string, mixed> $credentials Les valeurs saisies dans l'admin
      *
      * @throws \InvalidArgumentException Si les formats sont incorrects
-     * @throws \Exception                Si la validation échoue (ex: test de connexion impossible)
+     * @throws \Exception Si la validation échoue (ex: test de connexion impossible)
      */
     public function validateCredentials(array $credentials): void;
 

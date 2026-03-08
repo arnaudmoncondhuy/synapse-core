@@ -28,7 +28,8 @@ class PresetValidatorAgent implements AgentInterface
         private ModelCapabilityRegistry $capabilityRegistry,
         private SynapseProviderRepository $providerRepo,
         private ConfigProviderInterface $configProvider,
-    ) {}
+    ) {
+    }
 
     public function getName(): string
     {
@@ -68,7 +69,6 @@ class PresetValidatorAgent implements AgentInterface
     /**
      * Récupère d'un coup tous les résultats (utilisé pour l'affichage final).
      *
-     * @param SynapseModelPreset $preset
      * @return array<string, mixed>
      */
     public function runAll(SynapseModelPreset $preset): array
@@ -112,9 +112,9 @@ class PresetValidatorAgent implements AgentInterface
                 $checks['provider_configured'] = $provider->isConfigured();
 
                 if (!$provider->isEnabled()) {
-                    $errors[] = 'Provider "' . $provider->getLabel() . '" est désactivé';
+                    $errors[] = 'Provider "'.$provider->getLabel().'" est désactivé';
                 } elseif (!$provider->isConfigured()) {
-                    $errors[] = 'Provider "' . $provider->getLabel() . '" non configuré (clé API manquante)';
+                    $errors[] = 'Provider "'.$provider->getLabel().'" non configuré (clé API manquante)';
                 }
             }
         }
@@ -201,7 +201,6 @@ class PresetValidatorAgent implements AgentInterface
         $actualModel = $actualParams['model'] ?? $rawRequest['model'] ?? null;
         $actualTemp = $actualParams['temperature'] ?? $rawRequest['temperature'] ?? null;
         $actualTopP = $actualParams['top_p'] ?? $rawRequest['top_p'] ?? null;
-        /** @var mixed $actualStreaming */
         $actualStreaming = $rawRequest['stream'] ?? $actualParams['streaming'] ?? null;
 
         $expectedTemp = $preset->getGenerationTemperature();
@@ -300,8 +299,8 @@ class PresetValidatorAgent implements AgentInterface
             /** @var array<int|string, string> $configErrorsArray */
             $configErrorsArray = is_array($configErrors) ? $configErrors : [];
             $configErrorsText = "## ⚠️ Erreurs de configuration détectées\n"
-                . implode("\n", array_map(fn($e) => "- " . (string) $e, $configErrorsArray))
-                . "\n\n";
+                .implode("\n", array_map(fn ($e) => '- '.(string) $e, $configErrorsArray))
+                ."\n\n";
         }
 
         $syncUsageArray = is_array($syncUsage) ? $syncUsage : [];
@@ -311,18 +310,18 @@ class PresetValidatorAgent implements AgentInterface
 
         $analysisPrompt = sprintf(
             "Tu es un agent de validation du système Synapse LLM. Analyse les données du test d'un preset.\n\n"
-                . "OBJECTIF : Vérifier que les paramètres réellement envoyés à l'API correspondent à ce qui est configuré dans le preset.\n"
-                . "IMPORTANT : Si la réponse brute contient une erreur (ex: 400 Bad Request, 401 Unauthorized), explique la cause probable.\n"
-                . "IMPORTANT : Vérifie les incohérences de capacités entre le preset et le modèle (ex: thinking activé sur un modèle qui ne le supporte pas).\n\n"
-                . '%s'
-                . "## 0. Capacités déclarées du modèle\n```json\n%s\n```\n\n"
-                . "## 1. Configuration du preset (déclarée)\n```json\n%s\n```\n\n"
-                . "## 2. Paramètres normalisés envoyés (debug)\n```json\n%s\n```\n\n"
-                . "## 3. Requête brute envoyée à l'API\n```json\n%s\n```\n\n"
-                . "## 4. Réponse brute reçue de l'API\n```json\n%s\n```\n\n"
-                . "## 5. Consommation tokens\n- Prompt: %d, Completion: %d, Thinking: %d, Total: %d (%s)\n\n"
-                . "Retourne un rapport Markdown concis avec ces sections :\n"
-                . "### ✅ Points conformes\n### ⚠️ Anomalies détectées\n### 💡 Recommandations\n### Conclusion",
+                ."OBJECTIF : Vérifier que les paramètres réellement envoyés à l'API correspondent à ce qui est configuré dans le preset.\n"
+                ."IMPORTANT : Si la réponse brute contient une erreur (ex: 400 Bad Request, 401 Unauthorized), explique la cause probable.\n"
+                ."IMPORTANT : Vérifie les incohérences de capacités entre le preset et le modèle (ex: thinking activé sur un modèle qui ne le supporte pas).\n\n"
+                .'%s'
+                ."## 0. Capacités déclarées du modèle\n```json\n%s\n```\n\n"
+                ."## 1. Configuration du preset (déclarée)\n```json\n%s\n```\n\n"
+                ."## 2. Paramètres normalisés envoyés (debug)\n```json\n%s\n```\n\n"
+                ."## 3. Requête brute envoyée à l'API\n```json\n%s\n```\n\n"
+                ."## 4. Réponse brute reçue de l'API\n```json\n%s\n```\n\n"
+                ."## 5. Consommation tokens\n- Prompt: %d, Completion: %d, Thinking: %d, Total: %d (%s)\n\n"
+                ."Retourne un rapport Markdown concis avec ces sections :\n"
+                ."### ✅ Points conformes\n### ⚠️ Anomalies détectées\n### 💡 Recommandations\n### Conclusion",
             $configErrorsText,
             $capsJson,
             $presetConfigJson,
@@ -345,7 +344,7 @@ class PresetValidatorAgent implements AgentInterface
                 // Pas de 'preset' : utilise le preset actif pour l'analyse
             ]);
         } catch (\Throwable $e) {
-            $report['analysis'] = 'Analyse IA indisponible : ' . $e->getMessage();
+            $report['analysis'] = 'Analyse IA indisponible : '.$e->getMessage();
             $report['all_critical_ok'] = ($report['config_ok'] ?? true)
                 && !in_array(false, is_array($report['critical_checks'] ?? null) ? $report['critical_checks'] : [], true);
             unset($report['debug_data_sync']);

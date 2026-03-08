@@ -41,7 +41,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private PresetValidator $presetValidator,
         private ?CacheInterface $cache = null,
         private ?EncryptionServiceInterface $encryptionService = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Récupère la configuration fusionnée (preset actif + config globale + credentials provider).

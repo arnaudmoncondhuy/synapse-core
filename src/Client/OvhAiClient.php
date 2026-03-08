@@ -51,7 +51,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         private HttpClientInterface $httpClient,
         private ConfigProviderInterface $configProvider,
         private ModelCapabilityRegistry $capabilityRegistry,
-    ) {}
+    ) {
+    }
 
     public function getProviderName(): string
     {
@@ -97,9 +98,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $debugOut['raw_request_body'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($payload);
 
         try {
-            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/').'/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
+                    'Authorization' => 'Bearer '.(string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -136,7 +137,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     if ('data: [DONE]' === $line) {
                         // Safety net: flush remaining accumulated tool calls if any
                         if (!empty($toolCallsAccumulator)) {
-                            /** @var array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
+                            /* @var array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
                             yield $this->buildToolCallChunk($toolCallsAccumulator);
                         }
                         $streamingComplete = true;
@@ -229,9 +230,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $debugOut['raw_request_body'] = $payload;
 
         try {
-            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/chat/completions', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/').'/chat/completions', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
+                    'Authorization' => 'Bearer '.(string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -267,9 +268,9 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         ];
 
         try {
-            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/') . '/embeddings', [
+            $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/').'/embeddings', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . (string) $this->apiKey,
+                    'Authorization' => 'Bearer '.(string) $this->apiKey,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $payload,
@@ -286,6 +287,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                 usort($dataList, function (array $a, array $b) {
                     $idxA = isset($a['index']) && is_numeric($a['index']) ? (int) $a['index'] : 0;
                     $idxB = isset($b['index']) && is_numeric($b['index']) ? (int) $b['index'] : 0;
+
                     return $idxA <=> $idxB;
                 });
 
@@ -319,7 +321,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      * Retourne un chunk normalisé, ou null si le chunk ne contient rien d'utile.
      *
      * @param array<string, mixed> $data
-     * @param array<mixed>         $toolCallsAccumulator
+     * @param array<mixed> $toolCallsAccumulator
      *
      * @return array<string, mixed>|null
      */
@@ -369,7 +371,6 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         // Tool calls (streamed incrementally — name in first chunk, args accumulated)
         if (isset($delta['tool_calls']) && is_array($delta['tool_calls'])) {
             foreach ($delta['tool_calls'] as $tc) {
-
                 /** @var array<string, mixed> $tc */
                 if (!is_array($tc)) {
                     continue;
@@ -423,7 +424,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      */
     /** @param array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator */
     /** @param array<int, array{id: string, name: string, args: string}> $toolCallsAccumulator
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function buildToolCallChunk(array &$toolCallsAccumulator): array
     {
@@ -456,7 +457,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
      */
     private function toOpenAiTools(array $tools): array
     {
-        return array_map(fn(array $tool) => [
+        return array_map(fn (array $tool) => [
             'type' => 'function',
             'function' => [
                 'name' => $tool['name'],
@@ -469,9 +470,8 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     /**
      * Construit le payload de requête OpenAI.
      *
-     * @param array<int, array<string, mixed>>                             $messages
-     * @param array<int, array<string, mixed>>                             $tools
-     * @param \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps
+     * @param array<int, array<string, mixed>> $messages
+     * @param array<int, array<string, mixed>> $tools
      *
      * @return array<string, mixed>
      */
@@ -557,9 +557,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         if (!empty($message['tool_calls']) && is_array($message['tool_calls'])) {
             foreach ($message['tool_calls'] as $tc) {
-
                 /** @var array<string, mixed> $tc */
-
                 $function = is_array($tc['function'] ?? null) ? $tc['function'] : [];
                 $argsStr = is_string($function['arguments'] ?? null) ? (string) $function['arguments'] : '{}';
                 $argsRaw2 = json_decode((string) $argsStr, true);
@@ -625,8 +623,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         // Generation Config
         if (isset($config['generation_config']) && is_array($config['generation_config'])) {
             $gen = $config['generation_config'];
-            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) { $this->temperature = (float) $gen['temperature']; }
-            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) { $this->topP = (float) $gen['top_p']; }
+            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) {
+                $this->temperature = (float) $gen['temperature'];
+            }
+            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) {
+                $this->topP = (float) $gen['top_p'];
+            }
             $this->maxTokens = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
             if (isset($gen['stop_sequences']) && is_array($gen['stop_sequences'])) {
                 /** @var array<string> $stopSeqs */
@@ -679,19 +681,19 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             $apiKeyStr = $apiKey;
             /** @var string $endpointStr */
             $endpointStr = $endpoint;
-            $response = $this->httpClient->request('GET', rtrim($endpointStr, '/') . '/models', [
+            $response = $this->httpClient->request('GET', rtrim($endpointStr, '/').'/models', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $apiKeyStr,
+                    'Authorization' => 'Bearer '.$apiKeyStr,
                     'Accept' => 'application/json',
                 ],
                 'timeout' => 10,
             ]);
 
             if (200 !== $response->getStatusCode()) {
-                throw new \Exception('Erreur HTTP ' . $response->getStatusCode() . ': ' . $response->getContent(false));
+                throw new \Exception('Erreur HTTP '.$response->getStatusCode().': '.$response->getContent(false));
             }
         } catch (\Exception $e) {
-            throw new \Exception('Impossible de se connecter à OVH: ' . $e->getMessage());
+            throw new \Exception('Impossible de se connecter à OVH: '.$e->getMessage());
         }
     }
 
@@ -713,13 +715,13 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                 if (is_array($errorData) && isset($errorData['message'])) {
                     $message = (string) $errorData['message'];
                 } else {
-                    $message .= ' || OVH Raw Error: ' . $errorBody;
+                    $message .= ' || OVH Raw Error: '.$errorBody;
                 }
             } catch (\Throwable) {
             }
         }
 
-        $fullMsg = 'OVH AI API Error: ' . ((string) $message);
+        $fullMsg = 'OVH AI API Error: '.((string) $message);
 
         throw match ($statusCode) {
             401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),

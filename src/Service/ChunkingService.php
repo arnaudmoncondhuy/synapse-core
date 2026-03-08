@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Service;
 
-use ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface;
 use ArnaudMoncondhuy\SynapseCore\Chunking\TextSplitterRegistry;
+use ArnaudMoncondhuy\SynapseCore\Contract\TextSplitterInterface;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 
 /**

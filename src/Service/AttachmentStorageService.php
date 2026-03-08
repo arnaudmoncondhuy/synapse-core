@@ -16,7 +16,7 @@ class AttachmentStorageService
         private EntityManagerInterface $em,
         string $projectDir,
     ) {
-        $this->storageDir = $projectDir . '/var/synapse/attachments';
+        $this->storageDir = $projectDir.'/var/synapse/attachments';
     }
 
     /**
@@ -28,9 +28,9 @@ class AttachmentStorageService
     {
         $uuid = $this->generateUuid();
         $ext = $this->mimeToExt($image['mime_type']);
-        $dir = $this->storageDir . '/' . $conversationId;
-        $relativePath = $conversationId . '/' . $uuid . '.' . $ext;
-        $absolutePath = $this->storageDir . '/' . $relativePath;
+        $dir = $this->storageDir.'/'.$conversationId;
+        $relativePath = $conversationId.'/'.$uuid.'.'.$ext;
+        $absolutePath = $this->storageDir.'/'.$relativePath;
 
         $fs = new Filesystem();
         $fs->mkdir($dir);
@@ -44,21 +44,21 @@ class AttachmentStorageService
 
     public function delete(SynapseMessageAttachment $attachment): void
     {
-        $absolutePath = $this->storageDir . '/' . $attachment->getFilePath();
+        $absolutePath = $this->storageDir.'/'.$attachment->getFilePath();
         $fs = new Filesystem();
         if ($fs->exists($absolutePath)) {
             $fs->remove($absolutePath);
         }
         // Supprimer le dossier parent s'il est vide
         $dir = dirname($absolutePath);
-        if (is_dir($dir) && count((array) scandir($dir)) === 2) {
+        if (is_dir($dir) && 2 === count((array) scandir($dir))) {
             $fs->remove($dir);
         }
     }
 
     public function getAbsolutePath(SynapseMessageAttachment $attachment): string
     {
-        return $this->storageDir . '/' . $attachment->getFilePath();
+        return $this->storageDir.'/'.$attachment->getFilePath();
     }
 
     /**
@@ -76,11 +76,11 @@ class AttachmentStorageService
     private function generateUuid(): string
     {
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF),
+            mt_rand(0, 0xFFFF),
+            mt_rand(0, 0x0FFF) | 0x4000,
+            mt_rand(0, 0x3FFF) | 0x8000,
+            mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF)
         );
     }
 

@@ -17,9 +17,9 @@ interface EncryptionServiceInterface
      *
      * @param string $plaintext le texte original à protéger
      *
-     * @return string le texte chiffré (souvent encodé en base64 ou hex)
-     *
      * @throws \RuntimeException si le chiffrement échoue ou si la clé est manquante
+     *
+     * @return string le texte chiffré (souvent encodé en base64 ou hex)
      */
     public function encrypt(string $plaintext): string;
 
@@ -28,9 +28,9 @@ interface EncryptionServiceInterface
      *
      * @param string $ciphertext le texte sous forme chiffrée
      *
-     * @return string le texte original déchiffré
-     *
      * @throws \RuntimeException si le déchiffrement est impossible (clé incorrecte, corruption)
+     *
+     * @return string le texte original déchiffré
      */
     public function decrypt(string $ciphertext): string;
 

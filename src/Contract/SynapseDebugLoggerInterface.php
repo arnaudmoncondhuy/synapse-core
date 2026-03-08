@@ -15,8 +15,8 @@ interface SynapseDebugLoggerInterface
     /**
      * Enregistre un échange complet avec ses métadonnées et son payload brut.
      *
-     * @param string               $debugId    ID unique de l'échange (ex: dbg_...).
-     * @param array<string, mixed> $metadata   données légères (modèle, tokens, durée)
+     * @param string $debugId ID unique de l'échange (ex: dbg_...).
+     * @param array<string, mixed> $metadata données légères (modèle, tokens, durée)
      * @param array<string, mixed> $rawPayload corps complet de la requête et de la réponse API
      */
     public function logExchange(string $debugId, array $metadata, array $rawPayload): void;

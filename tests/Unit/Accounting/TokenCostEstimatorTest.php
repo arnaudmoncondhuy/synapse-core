@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Accounting;
 
-use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
 use ArnaudMoncondhuy\SynapseCore\Accounting\TokenCostEstimator;
+use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +39,7 @@ class TokenCostEstimatorTest extends TestCase
         $this->configProvider->method('getConfig')->willReturn(['model' => 'gpt-4']);
         $this->truncationService->method('estimateTokensForContents')->willReturn(100);
         $this->modelRepo->method('findAllPricingMap')->willReturn([
-            'gpt-4' => ['input' => 30.0, 'output' => 60.0, 'currency' => 'USD']
+            'gpt-4' => ['input' => 30.0, 'output' => 60.0, 'currency' => 'USD'],
         ]);
 
         $this->accountingService->method('calculateCost')->willReturn(0.123);

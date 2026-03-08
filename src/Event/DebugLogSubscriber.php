@@ -25,7 +25,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
     public function __construct(
         private SynapseDebugLoggerInterface $debugLogger,
         private CacheInterface $cache,
-    ) {}
+    ) {
+    }
 
     public static function getSubscribedEvents(): array
     {
@@ -90,7 +91,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'prompt_metadata' => $promptMetadata,
             'turns' => [],
             'tool_executions' => [],
-            'tool_definitions' => array_values(array_filter(is_array($toolDefinitions) ? $toolDefinitions : [], fn($v) => is_array($v))),
+            'tool_definitions' => array_values(array_filter($toolDefinitions, fn ($v) => is_array($v))),
             'raw_request_body' => null,
             'raw_response' => [],
             'raw_api_chunks' => [],

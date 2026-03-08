@@ -33,7 +33,7 @@ class SynapseAgentBuilderTest extends TestCase
 
     public function testBuildThrowsExceptionIfToolNotSupported(): void
     {
-        $caps = new ModelCapabilities('gpt-4', 'openai', functionCalling: false);
+        $caps = new ModelCapabilities('gpt-4', 'openai', supportsFunctionCalling: false);
 
         $this->capabilityRegistry->method('getCapabilities')->willReturn($caps);
 
@@ -46,7 +46,7 @@ class SynapseAgentBuilderTest extends TestCase
 
     public function testBuildSuccess(): void
     {
-        $caps = new ModelCapabilities('gpt-4', 'openai', functionCalling: true);
+        $caps = new ModelCapabilities('gpt-4', 'openai', supportsFunctionCalling: true);
 
         $this->capabilityRegistry->method('getCapabilities')->willReturn($caps);
 

@@ -24,7 +24,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
      * Trouve les messages d'une conversation.
      *
      * @param SynapseConversation $conversation SynapseConversation
-     * @param int                 $limit        Nombre maximum de messages (0 = illimité)
+     * @param int $limit Nombre maximum de messages (0 = illimité)
      *
      * @return SynapseMessage[] Liste des messages
      */
@@ -71,7 +71,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     {
         $since = new \DateTimeImmutable('-7 days');
 
-        /** @var array<int, array{day: string, total: string|int|float|null}> $results */
+        /** @var array<int, array{day: string, total: float|int|string|null}> $results */
         $results = $this->createQueryBuilder('m')
             ->select('SUBSTRING(m.createdAt, 1, 10) as day, SUM(m.totalTokens) as total')
             ->where('m.createdAt >= :since')
@@ -138,7 +138,7 @@ abstract class SynapseMessageRepository extends ServiceEntityRepository
     {
         $since = new \DateTimeImmutable('-30 days');
 
-        /** @var array<int, array{role: string|\BackedEnum|\UnitEnum, count: string|int}> $results */
+        /** @var array<int, array{role: \BackedEnum|string|\UnitEnum, count: int|string}> $results */
         $results = $this->createQueryBuilder('m')
             ->select('m.role, COUNT(m.id) as count')
             ->where('m.createdAt >= :since')

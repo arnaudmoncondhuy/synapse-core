@@ -19,9 +19,9 @@ class LlmClientRegistry
     private array $clientMap = [];
 
     /**
-     * @param iterable<LlmClientInterface> $clients         Clients tagués `synapse.llm_client`
-     * @param ConfigProviderInterface      $configProvider  Fournisseur de config DB
-     * @param string                       $defaultProvider Provider YAML par défaut (bootstrap)
+     * @param iterable<LlmClientInterface> $clients Clients tagués `synapse.llm_client`
+     * @param ConfigProviderInterface $configProvider Fournisseur de config DB
+     * @param string $defaultProvider Provider YAML par défaut (bootstrap)
      */
     public function __construct(
         iterable $clients,
@@ -41,7 +41,7 @@ class LlmClientRegistry
     public function getClient(): LlmClientInterface
     {
         $config = $this->configProvider->getConfig();
-        $providerName = $config['provider'] ?? $this->defaultProvider;
+        $providerName = isset($config['provider']) && is_string($config['provider']) ? $config['provider'] : $this->defaultProvider;
 
         return $this->getClientByProvider($providerName);
     }

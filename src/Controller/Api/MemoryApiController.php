@@ -48,7 +48,7 @@ class MemoryApiController extends AbstractController
 
         /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
-        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : '';;
+        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : '';
 
         if (empty($fact)) {
             return $this->json(['error' => 'Le fait à retenir est requis.'], 400);

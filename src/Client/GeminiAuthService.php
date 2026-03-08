@@ -28,7 +28,8 @@ class GeminiAuthService
     public function __construct(
         private HttpClientInterface $httpClient,
         private ?string $serviceAccountJsonPath = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Injecte les credentials depuis un contenu JSON (depuis la DB).
@@ -92,9 +93,9 @@ class GeminiAuthService
      *
      * Priorité : DB (setCredentialsJson) > fichier YAML
      *
-     * @return array<string, mixed>
-     *
      * @throws \RuntimeException Si aucune source de credentials n'est disponible
+     *
+     * @return array<string, mixed>
      */
     private function loadCredentials(): array
     {
@@ -107,10 +108,10 @@ class GeminiAuthService
         if (is_string($this->serviceAccountJsonPath) && file_exists($this->serviceAccountJsonPath)) {
             $credentials = json_decode((string) file_get_contents($this->serviceAccountJsonPath), true);
             if (is_array($credentials)) {
-                /** @var array<string, mixed> $credentials */
+                /* @var array<string, mixed> $credentials */
                 return $credentials;
             }
-            throw new \RuntimeException('Invalid Service Account JSON file: ' . $this->serviceAccountJsonPath);
+            throw new \RuntimeException('Invalid Service Account JSON file: '.$this->serviceAccountJsonPath);
         }
 
         throw new \RuntimeException('Google credentials not configured. Add a Gemini provider in the Synapse admin (Providers → Gemini).');
@@ -138,7 +139,7 @@ class GeminiAuthService
         $header64 = $this->base64UrlEncode((string) json_encode($header));
         $payload64 = $this->base64UrlEncode((string) json_encode($payload));
 
-        $signatureInput = $header64 . '.' . $payload64;
+        $signatureInput = $header64.'.'.$payload64;
 
         openssl_sign(
             $signatureInput,
@@ -147,7 +148,7 @@ class GeminiAuthService
             OPENSSL_ALGO_SHA256
         );
 
-        return $signatureInput . '.' . $this->base64UrlEncode($signature);
+        return $signatureInput.'.'.$this->base64UrlEncode($signature);
     }
 
     private function base64UrlEncode(string $data): string

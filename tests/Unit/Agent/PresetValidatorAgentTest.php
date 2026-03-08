@@ -8,7 +8,6 @@ use ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;

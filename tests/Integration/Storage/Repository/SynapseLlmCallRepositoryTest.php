@@ -14,7 +14,7 @@ class SynapseLlmCallRepositoryTest extends TestCase
 {
     private function createRepository(
         array $mockResultFetch = [],
-        array $mockResultAll = []
+        array $mockResultAll = [],
     ): SynapseLlmCallRepository {
         $mockStatement = $this->createMock(\Doctrine\DBAL\Result::class);
         $mockStatement->method('fetchAssociative')->willReturn($mockResultFetch ?: ($mockResultAll[0] ?? false));

@@ -69,7 +69,7 @@ class DoctrineVectorStore implements VectorStoreInterface
     }
 
     /**
-     * @param float[]              $vector
+     * @param float[] $vector
      * @param array<string, mixed> $filters
      *
      * @return array<int, array{payload: array<string, mixed>, score: float}>
@@ -91,7 +91,7 @@ class DoctrineVectorStore implements VectorStoreInterface
     /**
      * Recherche haute performance utilisant l'opérateur <=> (cosine distance) de pgvector.
      *
-     * @param float[]              $vector
+     * @param float[] $vector
      * @param array<string, mixed> $filters
      *
      * @return array<int, array{payload: array<string, mixed>, score: float}>
@@ -141,7 +141,7 @@ class DoctrineVectorStore implements VectorStoreInterface
                 ORDER BY embedding::text::vector <=> :vector::text::vector 
                 LIMIT :limit";
 
-        /** @var array<int, array{payload: string, score: string|int|float}> $result */
+        /** @var array<int, array{payload: string, score: float|int|string}> $result */
         $result = $this->em->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
 
         return array_map(function ($row) {
@@ -157,7 +157,7 @@ class DoctrineVectorStore implements VectorStoreInterface
     /**
      * Recherche "Best-Effort" en PHP.
      *
-     * @param float[]              $vector
+     * @param float[] $vector
      * @param array<string, mixed> $filters
      *
      * @return array<int, array{payload: array<string, mixed>, score: float}>

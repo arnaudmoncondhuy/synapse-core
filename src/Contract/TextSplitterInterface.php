@@ -15,9 +15,9 @@ interface TextSplitterInterface
     /**
      * Découpe un texte en un tableau de segments (chunks).
      *
-     * @param string $text         le texte complet à découper
-     * @param int    $chunkSize    taille maximale de chaque segment (souvent en caractères ou tokens)
-     * @param int    $chunkOverlap nombre de caractères/tokens chevauchant entre deux segments
+     * @param string $text le texte complet à découper
+     * @param int $chunkSize taille maximale de chaque segment (souvent en caractères ou tokens)
+     * @param int $chunkOverlap nombre de caractères/tokens chevauchant entre deux segments
      *
      * @return string[] liste des segments de texte
      */

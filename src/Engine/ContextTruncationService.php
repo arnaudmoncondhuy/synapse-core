@@ -14,8 +14,8 @@ class ContextTruncationService
     /**
      * Tronque un historique de messages pour qu'il tienne dans le budget de tokens spécifié.
      *
-     * @param array<int, array<string, mixed>> $messages  Tableau de messages (Ex: [['role' => '...', 'content' => '...'], ...])
-     * @param int                              $maxTokens Capacité maximale de la fenêtre de contexte
+     * @param array<int, array<string, mixed>> $messages Tableau de messages (Ex: [['role' => '...', 'content' => '...'], ...])
+     * @param int $maxTokens Capacité maximale de la fenêtre de contexte
      *
      * @return array<int, array<string, mixed>> L'historique tronqué, remis dans le bon ordre chronologique
      */
@@ -107,7 +107,7 @@ class ContextTruncationService
     private function estimateTokens(array $message): int
     {
         $content = $message['content'] ?? '';
-        $text = is_string($content) ? $content : (is_array($content) ? (string) json_encode($content) : (string) $content);
+        $text = is_string($content) ? $content : (is_array($content) ? (string) json_encode($content) : (is_scalar($content) ? (string) $content : ''));
 
         if (isset($message['tool_calls'])) {
             $text .= json_encode($message['tool_calls'], JSON_UNESCAPED_UNICODE);

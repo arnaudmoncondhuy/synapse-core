@@ -41,9 +41,9 @@ class SynapsePrePromptEvent extends Event
     private array $images = [];
 
     /**
-     * @param array<string, mixed>                         $options
-     * @param array<string, mixed>                         $prompt
-     * @param array<string, mixed>                         $config
+     * @param array<string, mixed> $options
+     * @param array<string, mixed> $prompt
+     * @param array<string, mixed> $config
      * @param list<array{mime_type: string, data: string}> $images Images attachées au message courant
      */
     public function __construct(
@@ -123,7 +123,7 @@ class SynapsePrePromptEvent extends Event
 
     /**
      * Retourne les images attachées au message courant.
-     * Format : [['mime_type' => 'image/jpeg', 'data' => 'base64...'], ...]
+     * Format : [['mime_type' => 'image/jpeg', 'data' => 'base64...'], ...].
      *
      * @return list<array{mime_type: string, data: string}>
      */

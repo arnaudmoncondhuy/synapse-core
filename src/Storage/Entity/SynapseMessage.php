@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;

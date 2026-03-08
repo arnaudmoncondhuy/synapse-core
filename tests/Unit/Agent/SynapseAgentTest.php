@@ -30,11 +30,11 @@ class SynapseAgentTest extends TestCase
             ->with(
                 'hello',
                 $this->callback(function ($options) use ($preset) {
-                    return $options['stateless'] === true
+                    return true === $options['stateless']
                         && $options['preset'] === $preset
-                        && $options['system_prompt'] === 'System Instruction'
+                        && 'System Instruction' === $options['system_prompt']
                         && $options['tools_override'] === ['tool1']
-                        && $options['max_turns'] === 3;
+                        && 3 === $options['max_turns'];
                 })
             )
             ->willReturn(['answer' => 'hi']);

@@ -24,15 +24,16 @@ class SynapseAgent
         private ?string $systemPrompt = null,
         private array $allowedTools = [],
         private int $maxTurns = 5,
-    ) {}
+    ) {
+    }
 
     /**
      * Exécute une requête auprès de l'agent.
      *
-     * @param string                           $message Le message de l'utilisateur
+     * @param string $message Le message de l'utilisateur
      * @param array<int, array<string, mixed>> $history Historique optionnel (OpenAI format)
-     * @param callable|null                    $onToken Callback pour le streaming de tokens
-     * @param array<string, mixed>             $options Options supplémentaires pour la requête
+     * @param callable|null $onToken Callback pour le streaming de tokens
+     * @param array<string, mixed> $options Options supplémentaires pour la requête
      *
      * @return array<string, mixed> Résultat normalisé Synapse
      */

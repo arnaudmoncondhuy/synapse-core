@@ -31,8 +31,8 @@ class SynapseChunkReceivedEvent extends Event
     private ?array $rawChunk = null;
 
     /**
-     * @param array<string, mixed>      $chunk    Le chunk normalisé reçu (text, function_calls, usage, etc.)
-     * @param int                       $turn     L'index du tour de parole actuel
+     * @param array<string, mixed> $chunk Le chunk normalisé reçu (text, function_calls, usage, etc.)
+     * @param int $turn L'index du tour de parole actuel
      * @param array<string, mixed>|null $rawChunk Le payload brut reçu de l'API provider (pour debug avancé)
      */
     public function __construct(

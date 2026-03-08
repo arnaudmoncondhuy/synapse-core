@@ -21,7 +21,8 @@ final class PresetValidator
         private SynapseProviderRepository $providerRepo,
         private ModelCapabilityRegistry $capabilityRegistry,
         private EntityManagerInterface $em,
-    ) {}
+    ) {
+    }
 
     /**
      * Vérifie si un preset est valide.
@@ -75,14 +76,14 @@ final class PresetValidator
 
         $provider = $this->providerRepo->findOneBy(['name' => $providerName]);
         if (!$provider) {
-            return 'Fournisseur "' . $providerName . '" introuvable';
+            return 'Fournisseur "'.$providerName.'" introuvable';
         }
         if (!$provider->isConfigured()) {
-            return 'Fournisseur "' . $provider->getLabel() . '" non configuré';
+            return 'Fournisseur "'.$provider->getLabel().'" non configuré';
         }
 
         if (!$this->capabilityRegistry->isKnownModel($model)) {
-            return 'Modèle "' . $model . '" inexistant ou désactivé';
+            return 'Modèle "'.$model.'" inexistant ou désactivé';
         }
 
         return null;
@@ -109,7 +110,7 @@ final class PresetValidator
 
         // 🔍 Chercher un autre preset valide pour l'activer
         $repo = $this->em->getRepository(SynapseModelPreset::class);
-        /** @var \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository $repo */
+        /** @var Storage\Repository\SynapseModelPresetRepository $repo */
         $allPresets = $repo->findAll();
         foreach ($allPresets as $preset) {
             if ($preset->getId() === $activePreset->getId()) {

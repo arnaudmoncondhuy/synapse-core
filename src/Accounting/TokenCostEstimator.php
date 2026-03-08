@@ -25,9 +25,9 @@ class TokenCostEstimator
     /**
      * Estime le coût d'une requête à partir du contenu (historique + nouveau message).
      *
-     * @param array<int, array{role: string, content?: string|null}> $contents  Historique au format OpenAI (optionnel) + nouveau message
-     * @param string|null                                            $model     Modèle (null = modèle actif depuis la config)
-     * @param int|null                                               $maxOutput Max tokens en sortie (null = config ou défaut 2048)
+     * @param array<int, array{role: string, content?: string|null}> $contents Historique au format OpenAI (optionnel) + nouveau message
+     * @param string|null $model Modèle (null = modèle actif depuis la config)
+     * @param int|null $maxOutput Max tokens en sortie (null = config ou défaut 2048)
      *
      * @return array{prompt_tokens: int, estimated_output_tokens: int, cost_model_currency: float, cost_reference: float, currency: string}
      */
@@ -42,12 +42,12 @@ class TokenCostEstimator
 
         $pricingMap = $this->modelRepo->findAllPricingMap();
         /** @var array{input: float, output: float, currency: string} $pricing */
-        $pricing = isset($pricingMap[$effectiveModel]) && is_array($pricingMap[$effectiveModel]) 
+        $pricing = isset($pricingMap[$effectiveModel]) && is_array($pricingMap[$effectiveModel])
             ? [
                 'input' => (float) ($pricingMap[$effectiveModel]['input'] ?? 0.0),
                 'output' => (float) ($pricingMap[$effectiveModel]['output'] ?? 0.0),
                 'currency' => is_string($pricingMap[$effectiveModel]['currency'] ?? null) ? (string) $pricingMap[$effectiveModel]['currency'] : 'USD',
-            ] 
+            ]
             : ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
 
         $usage = [

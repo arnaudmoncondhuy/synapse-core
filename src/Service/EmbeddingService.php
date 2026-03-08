@@ -43,7 +43,7 @@ class EmbeddingService
      * Génère des embeddings pour un texte ou un tableau de textes.
      *
      * @param string|string[] $input texte unique ou liste de textes
-     * @param string|null     $model modèle optionnel (si null, le défaut est résolu dynamiquement)
+     * @param string|null $model modèle optionnel (si null, le défaut est résolu dynamiquement)
      *
      * @return array{embeddings: float[][], usage: array{prompt_tokens: int, total_tokens: int}}
      */

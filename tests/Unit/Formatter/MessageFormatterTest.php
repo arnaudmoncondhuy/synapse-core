@@ -36,7 +36,7 @@ class MessageFormatterTest extends TestCase
     {
         $formatter = new MessageFormatter();
         $entities = [
-            ['role' => 'user', 'content' => 'Raw message']
+            ['role' => 'user', 'content' => 'Raw message'],
         ];
 
         $result = $formatter->entitiesToApiFormat($entities);

@@ -36,10 +36,10 @@ class SpendingLimitChecker
     /**
      * Vérifie que l'utilisateur / le preset / la mission peut encore dépenser le montant estimé.
      *
-     * @param string   $userId           ID utilisateur (string)
-     * @param int|null $presetId         ID du preset utilisé (optionnel)
-     * @param float    $estimatedCostRef Coût estimé en devise de référence
-     * @param int|null $agentId          ID de l'agent utilisé (optionnel)
+     * @param string $userId ID utilisateur (string)
+     * @param int|null $presetId ID du preset utilisé (optionnel)
+     * @param float $estimatedCostRef Coût estimé en devise de référence
+     * @param int|null $agentId ID de l'agent utilisé (optionnel)
      *
      * @throws LlmQuotaException Si un plafond serait dépassé
      */
@@ -68,7 +68,7 @@ class SpendingLimitChecker
         foreach ($limits as $limit) {
             [$start, $end] = $this->getWindow($limit->getPeriod());
             $scopeId = (string) $limit->getScopeId();
-            /** @var 'user'|'preset'|'agent' $scope */
+            /** @var 'agent'|'preset'|'user' $scope */
             $scope = $limit->getScope()->value;
 
             $consumption = $this->getConsumptionFromCacheOrDb($scope, $scopeId, $limit->getPeriod(), $start, $end);
@@ -83,7 +83,7 @@ class SpendingLimitChecker
     /**
      * Récupère la consommation (devise de référence) depuis le cache ou la DB.
      *
-     * @param 'user'|'preset'|'agent' $scope
+     * @param 'agent'|'preset'|'user' $scope
      */
     private function getConsumptionFromCacheOrDb(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start, \DateTimeInterface $end): float
     {
@@ -111,11 +111,11 @@ class SpendingLimitChecker
 
     private function buildCacheKey(string $scope, string $scopeId, SpendingLimitPeriod $period, \DateTimeInterface $start): string
     {
-        $base = self::CACHE_PREFIX . $scope . ':' . $scopeId . ':' . $period->value;
+        $base = self::CACHE_PREFIX.$scope.':'.$scopeId.':'.$period->value;
 
         return match ($period) {
-            SpendingLimitPeriod::CALENDAR_DAY => $base . ':' . $start->format('Y-m-d'),
-            SpendingLimitPeriod::CALENDAR_MONTH => $base . ':' . $start->format('Y-m'),
+            SpendingLimitPeriod::CALENDAR_DAY => $base.':'.$start->format('Y-m-d'),
+            SpendingLimitPeriod::CALENDAR_MONTH => $base.':'.$start->format('Y-m'),
             default => $base,
         };
     }
@@ -131,7 +131,7 @@ class SpendingLimitChecker
 
         return match ($period) {
             SpendingLimitPeriod::SLIDING_DAY => [
-                $now->modify('-' . $this->slidingDayHours . ' hours'),
+                $now->modify('-'.$this->slidingDayHours.' hours'),
                 $now,
             ],
             SpendingLimitPeriod::SLIDING_MONTH => [

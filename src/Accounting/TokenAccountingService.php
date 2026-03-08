@@ -35,12 +35,13 @@ class TokenAccountingService
         private ?CacheItemPoolInterface $cache = null,
         private ?EventDispatcherInterface $dispatcher = null,
         private ?ModelCapabilityRegistry $capabilityRegistry = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Log l'usage de tokens pour une action IA.
      *
-     * @param array<string, int>        $usage
+     * @param array<string, int> $usage
      * @param array<string, mixed>|null $metadata
      */
     public function logUsage(
@@ -160,22 +161,22 @@ class TokenAccountingService
         $date = $at->format('Y-m-d');
         $month = $at->format('Y-m');
         if (null !== $userId) {
-            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_day'] = 90000;   // 25h
-            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_sliding_month'] = 2678400; // 31d
-            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_day_' . $date] = 172800;   // 2d
-            $keys[self::CACHE_PREFIX . 'user_' . $userId . '_calendar_month_' . $month] = 5184000; // 60d
+            $keys[self::CACHE_PREFIX.'user_'.$userId.'_sliding_day'] = 90000;   // 25h
+            $keys[self::CACHE_PREFIX.'user_'.$userId.'_sliding_month'] = 2678400; // 31d
+            $keys[self::CACHE_PREFIX.'user_'.$userId.'_calendar_day_'.$date] = 172800;   // 2d
+            $keys[self::CACHE_PREFIX.'user_'.$userId.'_calendar_month_'.$month] = 5184000; // 60d
         }
         if (null !== $presetId) {
-            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_day'] = 90000;
-            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_sliding_month'] = 2678400;
-            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_day_' . $date] = 172800;
-            $keys[self::CACHE_PREFIX . 'preset_' . $presetId . '_calendar_month_' . $month] = 5184000;
+            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_sliding_day'] = 90000;
+            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_sliding_month'] = 2678400;
+            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_calendar_day_'.$date] = 172800;
+            $keys[self::CACHE_PREFIX.'preset_'.$presetId.'_calendar_month_'.$month] = 5184000;
         }
         if (null !== $agentId) {
-            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_sliding_day'] = 90000;
-            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_sliding_month'] = 2678400;
-            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_calendar_day_' . $date] = 172800;
-            $keys[self::CACHE_PREFIX . 'agent_' . $agentId . '_calendar_month_' . $month] = 5184000;
+            $keys[self::CACHE_PREFIX.'agent_'.$agentId.'_sliding_day'] = 90000;
+            $keys[self::CACHE_PREFIX.'agent_'.$agentId.'_sliding_month'] = 2678400;
+            $keys[self::CACHE_PREFIX.'agent_'.$agentId.'_calendar_day_'.$date] = 172800;
+            $keys[self::CACHE_PREFIX.'agent_'.$agentId.'_calendar_month_'.$month] = 5184000;
         }
 
         return $keys;
@@ -184,7 +185,7 @@ class TokenAccountingService
     /**
      * Calcule le coût estimé d'un usage dans la devise du modèle.
      *
-     * @param array<string, int>                                $usage   Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
+     * @param array<string, int> $usage Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
      * @param array{input: float, output: float, currency: string} $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
      *
      * @return float Coût dans la devise du modèle

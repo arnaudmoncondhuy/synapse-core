@@ -39,7 +39,7 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      * Trouve les conversations actives d'un propriétaire.
      *
      * @param ConversationOwnerInterface $owner Propriétaire
-     * @param int                        $limit Nombre maximum de résultats
+     * @param int $limit Nombre maximum de résultats
      *
      * @return SynapseConversation[] Liste des conversations
      */
@@ -120,7 +120,7 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      * Trouve les conversations par statut.
      *
      * @param ConversationStatus $status Statut recherché
-     * @param int                $limit  Nombre maximum de résultats
+     * @param int $limit Nombre maximum de résultats
      *
      * @return SynapseConversation[] Liste des conversations
      */
@@ -144,9 +144,9 @@ abstract class SynapseConversationRepository extends ServiceEntityRepository
      * Note : La recherche dans les titres chiffrés n'est pas possible.
      *        Seule la recherche dans les résumés (non chiffrés) fonctionne.
      *
-     * @param string                          $query Terme de recherche
+     * @param string $query Terme de recherche
      * @param ConversationOwnerInterface|null $owner Filtrer par propriétaire
-     * @param int                             $limit Nombre maximum de résultats
+     * @param int $limit Nombre maximum de résultats
      *
      * @return SynapseConversation[] Résultats de recherche
      */

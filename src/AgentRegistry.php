@@ -18,7 +18,8 @@ class AgentRegistry
 {
     public function __construct(
         private SynapseAgentRepository $repository,
-    ) {}
+    ) {
+    }
 
     /**
      * Récupère tous les agents actifs, indexés par clé.

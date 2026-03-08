@@ -73,7 +73,7 @@ class ConversationManager
      * Crée une nouvelle conversation.
      *
      * @param ConversationOwnerInterface $owner Propriétaire
-     * @param string|null                $title Titre (sera chiffré si encryption activée)
+     * @param string|null $title Titre (sera chiffré si encryption activée)
      *
      * @return SynapseConversation Nouvelle conversation
      */
@@ -98,7 +98,7 @@ class ConversationManager
      * Met à jour le titre d'une conversation.
      *
      * @param SynapseConversation $conversation SynapseConversation
-     * @param string              $title        Nouveau titre (sera chiffré si encryption activée)
+     * @param string $title Nouveau titre (sera chiffré si encryption activée)
      */
     public function updateTitle(SynapseConversation $conversation, string $title): void
     {
@@ -118,8 +118,8 @@ class ConversationManager
      * le message à son enregistrement LLM exact.
      *
      * @param SynapseConversation $conversation la conversation concernée
-     * @param MessageRole         $role         Rôle de l'émetteur (USER, MODEL, etc.).
-     * @param string              $content      contenu textuel brut
+     * @param MessageRole $role Rôle de l'émetteur (USER, MODEL, etc.).
+     * @param string $content contenu textuel brut
      * @param array{
      *     prompt_tokens?: int,
      *     completion_tokens?: int,
@@ -131,7 +131,7 @@ class ConversationManager
      *     metadata?: array<string, mixed>
      * } $metadata Données techniques de l'échange
      * @param string|null $callId UUID de l'appel LLM (SynapseLlmCall.callId) — pour les messages MODEL.
-     * @param array<int, array{mime_type: string, data: string}> $images Images à stocker comme pièces jointes.
+     * @param array<int, array{mime_type: string, data: string}> $images images à stocker comme pièces jointes
      *
      * @return SynapseMessage L'entité message créée
      */
@@ -213,12 +213,12 @@ class ConversationManager
     /**
      * Récupère une conversation avec vérification des permissions.
      *
-     * @param string                          $id    ID de la conversation
+     * @param string $id ID de la conversation
      * @param ConversationOwnerInterface|null $owner Propriétaire (optionnel, pour filtrer)
      *
-     * @return SynapseConversation|null SynapseConversation ou null si non trouvée
-     *
      * @throws AccessDeniedException Si pas de permission
+     *
+     * @return SynapseConversation|null SynapseConversation ou null si non trouvée
      */
     public function getConversation(string $id, ?ConversationOwnerInterface $owner = null): ?SynapseConversation
     {
@@ -242,9 +242,9 @@ class ConversationManager
     /**
      * Récupère les conversations d'un utilisateur avec déchiffrement des titres.
      *
-     * @param ConversationOwnerInterface $owner  Propriétaire
-     * @param ConversationStatus|null    $status Filtrer par statut
-     * @param int                        $limit  Nombre maximum de résultats
+     * @param ConversationOwnerInterface $owner Propriétaire
+     * @param ConversationStatus|null $status Filtrer par statut
+     * @param int $limit Nombre maximum de résultats
      *
      * @return SynapseConversation[] Conversations avec titres déchiffrés
      */
@@ -282,7 +282,7 @@ class ConversationManager
      * Aucun filtrage par owner — réservé à l'administration uniquement.
      * Toujours auditer cet accès dans le contrôleur appelant.
      *
-     * @param int $limit  Nombre maximum de résultats par page
+     * @param int $limit Nombre maximum de résultats par page
      * @param int $offset Décalage pour la pagination
      *
      * @return SynapseConversation[]
@@ -309,7 +309,7 @@ class ConversationManager
      * Récupère les messages d'une conversation avec déchiffrement.
      *
      * @param SynapseConversation $conversation SynapseConversation
-     * @param int                 $limit        Nombre maximum de messages (0 = tous)
+     * @param int $limit Nombre maximum de messages (0 = tous)
      *
      * @return SynapseMessage[] Messages déchiffrés
      */
@@ -393,7 +393,7 @@ class ConversationManager
      * @param bool $forDisplay When true (Twig rendering), includes attachments info.
      *                         When false (LLM), replaces image content with placeholder text.
      *
-     * @return array<int, array{role: string, content: string|array<mixed>, metadata: array<string, mixed>, attachments?: array<int, array{uuid: string, mime_type: string}>}>
+     * @return array<int, array{role: string, content: array<mixed>|string, metadata: array<string, mixed>, attachments?: array<int, array{uuid: string, mime_type: string}>}>
      */
     public function getHistoryArray(SynapseConversation $conversation, bool $forDisplay = false): array
     {
@@ -435,9 +435,9 @@ class ConversationManager
                 if (!empty($attachments) && !isset($metadata['parts'])) {
                     $placeholders = [];
                     foreach ($attachments as $att) {
-                        $placeholders[] = '[Image jointe : ' . $att['mime_type'] . ']';
+                        $placeholders[] = '[Image jointe : '.$att['mime_type'].']';
                     }
-                    $contentForHistory = $textContent . "\n" . implode("\n", $placeholders);
+                    $contentForHistory = $textContent."\n".implode("\n", $placeholders);
                 }
 
                 $entry = [

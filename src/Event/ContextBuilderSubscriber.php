@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
-use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
@@ -30,7 +30,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private AgentRegistry $agentRegistry,
         private SynapseModelPresetRepository $modelPresetRepository,
         private SynapseProfiler $profiler,
-    ) {}
+    ) {
+    }
 
     /**
      * Décrit l'événement écouté : SynapsePrePromptEvent avec haute priorité (100).
@@ -75,7 +76,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 if (null !== $agent->getTone() && $agent->getTone()->isActive()) {
                     $tonePrompt = $agent->getTone()->getSystemPrompt();
                     if (!empty($tonePrompt)) {
-                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n" . $tonePrompt;
+                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n".$tonePrompt;
                     }
                 }
                 $systemMessage = ['role' => 'system', 'content' => $systemContent];
@@ -118,7 +119,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // ── 4. Load history ──
         $contents = [];
         if (isset($options['history']) && is_array($options['history'])) {
-            $contents = $this->sanitizeHistoryForNewTurn($options['history']);
+            /** @var array<int, array<string, mixed>> $history */
+            $history = array_values(array_filter($options['history'], fn ($v) => is_array($v)));
+            $contents = $this->sanitizeHistoryForNewTurn($history);
         }
         // Vision: construire un content multipart si des images sont attachées
         $images = $event->getImages();
@@ -130,7 +133,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             foreach ($images as $image) {
                 $parts[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => 'data:' . $image['mime_type'] . ';base64,' . $image['data']],
+                    'image_url' => ['url' => 'data:'.$image['mime_type'].';base64,'.$image['data']],
                 ];
             }
             $contents[] = ['role' => 'user', 'content' => $parts];

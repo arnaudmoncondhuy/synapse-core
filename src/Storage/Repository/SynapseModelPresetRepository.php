@@ -71,7 +71,7 @@ class SynapseModelPresetRepository extends ServiceEntityRepository
 
         // Désactiver tous les presets
         $em->createQuery(
-            'UPDATE ' . SynapseModelPreset::class . ' p SET p.isActive = false'
+            'UPDATE '.SynapseModelPreset::class.' p SET p.isActive = false'
         )->execute();
 
         // Activer le preset cible

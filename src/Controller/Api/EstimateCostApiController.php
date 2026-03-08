@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Controller\Api;
 
+use ArnaudMoncondhuy\SynapseCore\Accounting\TokenCostEstimator;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
-use ArnaudMoncondhuy\SynapseCore\Accounting\TokenCostEstimator;
 use ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter;
 use ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,7 +25,8 @@ class EstimateCostApiController extends AbstractController
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?MessageFormatter $messageFormatter = null,
-    ) {}
+    ) {
+    }
 
     #[Route('/estimate-cost', name: 'synapse_api_estimate_cost', methods: ['POST'])]
     public function estimateCost(Request $request): JsonResponse

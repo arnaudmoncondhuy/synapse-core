@@ -45,7 +45,7 @@ class SynapseToolCallRequestedEvent extends Event
      * Enregistre le résultat de l'exécution d'un outil.
      *
      * @param string $toolName nom technique de l'outil
-     * @param mixed  $result   donnée renvoyée par l'application (sera JSON-sérialisée pour le LLM)
+     * @param mixed $result donnée renvoyée par l'application (sera JSON-sérialisée pour le LLM)
      */
     public function setToolResult(string $toolName, mixed $result): self
     {

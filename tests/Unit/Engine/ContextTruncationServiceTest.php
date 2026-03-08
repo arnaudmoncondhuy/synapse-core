@@ -64,9 +64,9 @@ class ContextTruncationServiceTest extends TestCase
                 'role' => 'assistant',
                 'content' => '',
                 'tool_calls' => [
-                    ['id' => '123', 'type' => 'function', 'function' => ['name' => 'test', 'arguments' => '{}']]
-                ]
-            ]
+                    ['id' => '123', 'type' => 'function', 'function' => ['name' => 'test', 'arguments' => '{}']],
+                ],
+            ],
         ];
 
         // JSON of tool_calls will be counted.
