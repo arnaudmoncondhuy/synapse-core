@@ -594,10 +594,35 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
             if ('user' === $role) {
                 $content = $msg['content'] ?? '';
-                $geminiMessages[] = [
-                    'role' => 'user',
-                    'parts' => [['text' => is_scalar($content) ? (string) $content : json_encode($content)]],
-                ];
+
+                if (is_array($content)) {
+                    // Contenu multipart : texte + images (vision)
+                    $parts = [];
+                    foreach ($content as $part) {
+                        $partType = $part['type'] ?? '';
+                        if ('text' === $partType) {
+                            $parts[] = ['text' => $part['text'] ?? ''];
+                        } elseif ('image_url' === $partType) {
+                            $url = $part['image_url']['url'] ?? '';
+                            if (str_starts_with($url, 'data:')) {
+                                // data URL base64 → inlineData Gemini
+                                [$meta, $b64] = explode(',', $url, 2);
+                                $mimeType = str_replace('data:', '', explode(';', $meta)[0]);
+                                $parts[] = ['inlineData' => ['mimeType' => $mimeType, 'data' => $b64]];
+                            } else {
+                                // URL externe → fileData
+                                $parts[] = ['fileData' => ['fileUri' => $url]];
+                            }
+                        }
+                        // Extensible : audio, video, document en Phase 3
+                    }
+                    $geminiMessages[] = ['role' => 'user', 'parts' => $parts];
+                } else {
+                    $geminiMessages[] = [
+                        'role' => 'user',
+                        'parts' => [['text' => is_scalar($content) ? (string) $content : json_encode($content)]],
+                    ];
+                }
             } elseif ('assistant' === $role) {
                 $parts = [];
 

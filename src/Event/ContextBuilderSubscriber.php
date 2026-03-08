@@ -120,7 +120,23 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         if (isset($options['history']) && is_array($options['history'])) {
             $contents = $this->sanitizeHistoryForNewTurn($options['history']);
         }
-        $contents[] = ['role' => 'user', 'content' => $message];
+        // Vision: construire un content multipart si des images sont attachées
+        $images = $event->getImages();
+        if (!empty($images)) {
+            $parts = [];
+            if ('' !== $message) {
+                $parts[] = ['type' => 'text', 'text' => $message];
+            }
+            foreach ($images as $image) {
+                $parts[] = [
+                    'type' => 'image_url',
+                    'image_url' => ['url' => 'data:' . $image['mime_type'] . ';base64,' . $image['data']],
+                ];
+            }
+            $contents[] = ['role' => 'user', 'content' => $parts];
+        } else {
+            $contents[] = ['role' => 'user', 'content' => $message];
+        }
 
         // System instruction is now the first message in contents (OpenAI canonical format)
         $toolsOptionRaw = $options['tools'] ?? null;
@@ -171,9 +187,10 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
 
             if ('user' === $role || 'assistant' === $role) {
                 $contentRaw = $message['content'] ?? '';
-                $content = is_string($contentRaw) ? $contentRaw : null;
+                // Accept string (text) or array (multipart parts for vision)
+                $content = is_string($contentRaw) ? $contentRaw : (is_array($contentRaw) ? $contentRaw : null);
 
-                // Skip user messages with non-string content
+                // Skip user messages with neither string nor array content
                 if ('user' === $role && null === $content) {
                     continue;
                 }
@@ -181,7 +198,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 /** @var array{role: string, content: string|null, tool_calls?: array<mixed>} $entry */
                 $entry = [
                     'role' => $role,
-                    'content' => null !== $content ? TextUtil::sanitizeUtf8($content) : null,
+                    'content' => is_string($content) ? TextUtil::sanitizeUtf8($content) : $content,
                 ];
 
                 // Preserve tool_calls for assistant messages

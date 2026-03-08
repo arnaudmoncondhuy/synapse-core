@@ -50,7 +50,8 @@ class ChatService
      * Cette méthode gère l'orchestration complète : recherche du contexte, appel du client LLM,
      * exécution des outils (si nécessaire) et persistance des messages.
      *
-     * @param string $message le texte envoyé par l'utilisateur
+     * @param string                                       $message le texte envoyé par l'utilisateur
+     * @param list<array{mime_type: string, data: string}> $images  Images attachées au message (vision)
      * @param array{
      *     tone?: string,
      *     history?: array<int, array<string, mixed>>,
@@ -84,6 +85,7 @@ class ChatService
         ?callable $onStatusUpdate = null,
         ?callable $onToken = null,
         ?callable $onToolExecuted = null,
+        array $images = [],
     ): array {
         if (empty($message) && ($options['reset_conversation'] ?? false)) {
             return [
@@ -109,7 +111,7 @@ class ChatService
 
         // ── DISPATCH PRE-PROMPT EVENT ──
         // ContextBuilderSubscriber will populate prompt, config, and tool definitions
-        $prePromptEvent = $this->dispatcher->dispatch(new SynapsePrePromptEvent($message, $askOptions));
+        $prePromptEvent = $this->dispatcher->dispatch(new SynapsePrePromptEvent($message, $askOptions, [], [], $images));
         /** @var array{contents: array<int, array<string, mixed>>, toolDefinitions?: array<int, array<string, mixed>>} $prompt */
         $prompt = $prePromptEvent->getPrompt();
         /** @var array<string, mixed> $config */

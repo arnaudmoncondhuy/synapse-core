@@ -37,19 +37,25 @@ class SynapsePrePromptEvent extends Event
     /** @var array<string, mixed> */
     private array $config;
 
+    /** @var list<array{mime_type: string, data: string}> */
+    private array $images = [];
+
     /**
-     * @param array<string, mixed> $options
-     * @param array<string, mixed> $prompt
-     * @param array<string, mixed> $config
+     * @param array<string, mixed>                         $options
+     * @param array<string, mixed>                         $prompt
+     * @param array<string, mixed>                         $config
+     * @param list<array{mime_type: string, data: string}> $images Images attachées au message courant
      */
     public function __construct(
         private string $message,
         private array $options,
         array $prompt = [],
         array $config = [],
+        array $images = [],
     ) {
         $this->prompt = $prompt;
         $this->config = $config;
+        $this->images = $images;
     }
 
     /**
@@ -111,6 +117,29 @@ class SynapsePrePromptEvent extends Event
     public function setConfig(array $config): self
     {
         $this->config = $config;
+
+        return $this;
+    }
+
+    /**
+     * Retourne les images attachées au message courant.
+     * Format : [['mime_type' => 'image/jpeg', 'data' => 'base64...'], ...]
+     *
+     * @return list<array{mime_type: string, data: string}>
+     */
+    public function getImages(): array
+    {
+        return $this->images;
+    }
+
+    /**
+     * Définit les images attachées au message courant.
+     *
+     * @param list<array{mime_type: string, data: string}> $images
+     */
+    public function setImages(array $images): self
+    {
+        $this->images = $images;
 
         return $this;
     }

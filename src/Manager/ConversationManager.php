@@ -381,14 +381,17 @@ class ConversationManager
                 continue;
             }
             $role = $msg->getRole()->value;
-            $content = $msg->getDecryptedContent() ?? $msg->getContent();
+            $textContent = $msg->getDecryptedContent() ?? $msg->getContent();
             $metadata = $msg->getMetadata() ?? [];
-            $parts = [['text' => $content]];
+
+            // Reconstruire le content multipart depuis metadata si le message contient des images
+            $contentForHistory = isset($metadata['parts']) && is_array($metadata['parts'])
+                ? $metadata['parts']
+                : $textContent;
 
             $history[] = [
                 'role' => $role,
-                'content' => $content,
-                'parts' => $parts,
+                'content' => $contentForHistory,
                 'metadata' => $metadata,
             ];
         }
