@@ -43,12 +43,10 @@ class GeminiAuthService
         }
 
         // Invalider le cache si les credentials ont changé
-        if (is_array($credentials) && $this->credentialsOverride !== $credentials) {
+        if ($this->credentialsOverride !== $credentials) {
             $this->cachedToken = null;
             $this->tokenExpiry = null;
-            /** @var array<string, mixed>|null $credArray */
-            $credArray = is_array($credentials) ? $credentials : null;
-            $this->credentialsOverride = $credArray;
+            $this->credentialsOverride = $credentials;
         }
     }
 

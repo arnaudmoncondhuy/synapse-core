@@ -567,7 +567,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $funcData = is_array($tc['function'] ?? null) ? $tc['function'] : [];
                     $normalized['function_calls'][] = [
                         'name' => is_string($funcData['name'] ?? null) ? (string) $funcData['name'] : 'unknown',
-                        'args' => is_array($args) ? $args : [],
+                        'args' => $args,
                     ];
                 }
             }

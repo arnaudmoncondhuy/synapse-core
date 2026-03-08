@@ -167,8 +167,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
 
     public function onToolCallCompleted(SynapseToolCallCompletedEvent $event): void
     {
-        $toolCallDataRaw = $event->getToolCallData();
-        $toolCallData = is_array($toolCallDataRaw) ? (array) $toolCallDataRaw : [];
+        $toolCallData = (array) $event->getToolCallData();
         $functionData = is_array($toolCallData['function'] ?? null) ? $toolCallData['function'] : [];
 
         $this->debugAccumulator['tool_executions'][] = [
@@ -195,7 +194,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
 
         // Merge raw API data captured from the LLM client
         $rawData = $event->getRawData();
-        if (!empty($rawData) && is_array($rawData)) {
+        if (!empty($rawData)) {
             if (!empty($rawData['raw_request_body'])) {
                 $this->debugAccumulator['raw_request_body'] = $rawData['raw_request_body'];
             }

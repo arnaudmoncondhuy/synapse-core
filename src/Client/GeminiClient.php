@@ -360,7 +360,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         $textParts = [];
         $thinkingParts = [];
 
-        if (is_array($parts) && !empty($parts)) {
+        if (!empty($parts)) {
             foreach ($parts as $part) {
                 /** @var array<string, mixed> $part */
                 if (!is_array($part)) {
@@ -976,7 +976,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             throw new \Exception('Service Account JSON manquant');
         }
 
-        /** @var string $jsonStrStr */
+        /** @var non-falsy-string $jsonStrStr */
         $jsonStrStr = (string) $jsonStr;
         $json = json_decode($jsonStrStr, true);
         if (!is_array($json) || empty($json['project_id'])) {

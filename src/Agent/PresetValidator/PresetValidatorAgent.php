@@ -191,7 +191,7 @@ class PresetValidatorAgent implements AgentInterface
 
         // ── Comparaison preset déclaré vs paramètres réellement envoyés à l'API ──
         /** @var array<string, mixed> $debugArray */
-        $debugArray = is_array($debugData) ? $debugData : [];
+        $debugArray = $debugData;
         /** @var array<string, mixed> $actualParams */
         $actualParams = is_array($debugArray['preset_config'] ?? null) ? $debugArray['preset_config'] : [];
         /** @var array<string, mixed> $rawRequest */
