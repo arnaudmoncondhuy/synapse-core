@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -154,19 +153,10 @@ abstract class SynapseMessage
      */
     protected ?string $decryptedContent = null;
 
-    /**
-     * Pièces jointes (images) associées à ce message.
-     *
-     * @var Collection<int, SynapseMessageAttachment>
-     */
-    #[ORM\OneToMany(targetEntity: SynapseMessageAttachment::class, mappedBy: 'message', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    protected Collection $attachments;
-
     public function __construct()
     {
         $this->id = (string) new Ulid();
         $this->createdAt = new \DateTimeImmutable();
-        $this->attachments = new ArrayCollection();
     }
 
     // Getters et Setters
@@ -461,16 +451,6 @@ abstract class SynapseMessage
         $this->feedback = null;
 
         return $this;
-    }
-
-    /**
-     * Retourne les pièces jointes du message.
-     *
-     * @return Collection<int, SynapseMessageAttachment>
-     */
-    public function getAttachments(): Collection
-    {
-        return $this->attachments;
     }
 
     // Méthodes abstraites (à implémenter dans les projets)

@@ -12,6 +12,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ConversationStatus;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConversationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -200,7 +201,7 @@ class ConversationManager
         // Store images as file attachments (replaces base64 storage in metadata)
         if (!empty($images) && null !== $this->attachmentStorage) {
             foreach ($images as $image) {
-                $this->attachmentStorage->store($image, $message);
+                $this->attachmentStorage->store($image, $message->getId(), $conversation->getId());
             }
         }
 
@@ -371,12 +372,10 @@ class ConversationManager
         $this->checkPermission($conversation, 'delete');
 
         // Supprimer les fichiers d'attachments avant le soft delete
-        // (le soft delete ne déclenche pas les cascades Doctrine ni preRemove)
+        // (le soft delete ne déclenche pas les cascades SQL ni les events Doctrine)
         if (null !== $this->attachmentStorage) {
             foreach ($conversation->getMessages() as $message) {
-                foreach ($message->getAttachments() as $attachment) {
-                    $this->em->remove($attachment); // déclenche preRemove → supprime le fichier physique
-                }
+                $this->attachmentStorage->deleteByMessageId($message->getId());
             }
         }
 
@@ -409,9 +408,10 @@ class ConversationManager
             $textContent = $msg->getDecryptedContent() ?? $msg->getContent();
             $metadata = $msg->getMetadata() ?? [];
 
-            // Build attachments list from entity relation
+            // Load attachments via repository (pas de relation Doctrine directe — SynapseMessage est abstraite)
             $attachments = [];
-            foreach ($msg->getAttachments() as $att) {
+            $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $msg->getId()]);
+            foreach ($attachmentEntities as $att) {
                 $attachments[] = ['uuid' => $att->getId(), 'mime_type' => $att->getMimeType()];
             }
 

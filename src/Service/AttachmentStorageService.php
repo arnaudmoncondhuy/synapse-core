@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Service;
 
-use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -25,11 +24,10 @@ class AttachmentStorageService
      *
      * @param array{mime_type: string, data: string} $image
      */
-    public function store(array $image, SynapseMessage $message): SynapseMessageAttachment
+    public function store(array $image, string $messageId, string $conversationId): SynapseMessageAttachment
     {
         $uuid = $this->generateUuid();
         $ext = $this->mimeToExt($image['mime_type']);
-        $conversationId = $message->getConversation()->getId();
         $dir = $this->storageDir . '/' . $conversationId;
         $relativePath = $conversationId . '/' . $uuid . '.' . $ext;
         $absolutePath = $this->storageDir . '/' . $relativePath;
@@ -38,7 +36,7 @@ class AttachmentStorageService
         $fs->mkdir($dir);
         $fs->dumpFile($absolutePath, base64_decode($image['data']));
 
-        $attachment = new SynapseMessageAttachment($uuid, $message, $image['mime_type'], $relativePath);
+        $attachment = new SynapseMessageAttachment($uuid, $messageId, $image['mime_type'], $relativePath);
         $this->em->persist($attachment);
 
         return $attachment;
@@ -51,9 +49,9 @@ class AttachmentStorageService
         if ($fs->exists($absolutePath)) {
             $fs->remove($absolutePath);
         }
-        // Try to remove empty parent dir
+        // Supprimer le dossier parent s'il est vide
         $dir = dirname($absolutePath);
-        if (is_dir($dir) && count(scandir($dir)) === 2) {
+        if (is_dir($dir) && count((array) scandir($dir)) === 2) {
             $fs->remove($dir);
         }
     }
@@ -61,6 +59,18 @@ class AttachmentStorageService
     public function getAbsolutePath(SynapseMessageAttachment $attachment): string
     {
         return $this->storageDir . '/' . $attachment->getFilePath();
+    }
+
+    /**
+     * Supprime tous les attachments d'un message (fichiers + entités).
+     */
+    public function deleteByMessageId(string $messageId): void
+    {
+        $attachments = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $messageId]);
+        foreach ($attachments as $attachment) {
+            $this->delete($attachment);
+            $this->em->remove($attachment);
+        }
     }
 
     private function generateUuid(): string
