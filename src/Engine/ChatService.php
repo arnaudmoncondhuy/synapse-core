@@ -144,7 +144,10 @@ class ChatService
             // Get LLM client and config
             $activeClient = $this->llmRegistry->getClient();
             // $options['streaming'] permet de forcer le mode sync (false) ou streaming (true) indépendamment du preset
-            $streamingEnabled = isset($askOptions['streaming']) ? (bool) $askOptions['streaming'] : ($config['streaming_enabled'] ?? true);
+            $disabledCaps = is_array($config['disabled_capabilities'] ?? null) ? $config['disabled_capabilities'] : [];
+            $streamingEnabled = isset($askOptions['streaming'])
+                ? (bool) $askOptions['streaming']
+                : (($config['streaming_enabled'] ?? true) && !in_array('streaming', $disabledCaps, true));
 
             // Ensure multi-turn usage is accumulated correctly
             $fullTextAccumulator = '';

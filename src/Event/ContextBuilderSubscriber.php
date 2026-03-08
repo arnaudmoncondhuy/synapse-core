@@ -64,6 +64,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $toneKeyMixed = $options['tone'] ?? null;
         $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
         $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
+        if (null !== $toneKey && '' !== $toneKey) {
+            $config['active_tone'] = $toneKey;
+        }
 
         // ── 2. METIER (Agent) ──
         if (isset($options['agent']) && is_string($options['agent'])) {
@@ -86,6 +89,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                     $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
                 }
                 $config['agent_id'] = $agent->getId();
+                $config['agent_name'] = $agent->getName();
+                $config['agent_emoji'] = $agent->getEmoji();
 
                 // Injecter les outils autorisés de l'agent
                 // (sauf si le développeur a déjà défini tools_override)
@@ -112,6 +117,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 // Conserver l'ID de l'agent pour le tracking si on avait un agent
                 if (isset($options['agent']) && isset($agent)) {
                     $config['agent_id'] = $agent->getId();
+                $config['agent_name'] = $agent->getName();
+                $config['agent_emoji'] = $agent->getEmoji();
                 }
             }
         }
@@ -149,9 +156,12 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         /** @var list<string>|null $toolsOverride */
         $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
 
-        $toolDefinitions = null !== $toolsOverride
-            ? $this->toolRegistry->getDefinitions($toolsOverride)
-            : (is_array($toolsOption) ? $this->toolRegistry->getDefinitions($toolsOption) : $this->toolRegistry->getDefinitions());
+        $disabledCaps = is_array($config['disabled_capabilities'] ?? null) ? $config['disabled_capabilities'] : [];
+        $toolDefinitions = in_array('function_calling', $disabledCaps, true)
+            ? []
+            : (null !== $toolsOverride
+                ? $this->toolRegistry->getDefinitions($toolsOverride)
+                : (is_array($toolsOption) ? $this->toolRegistry->getDefinitions($toolsOption) : $this->toolRegistry->getDefinitions()));
 
         $prompt = [
             'contents' => array_merge([$systemMessage], $contents),

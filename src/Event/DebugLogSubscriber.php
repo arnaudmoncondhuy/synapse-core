@@ -58,6 +58,12 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $safetySettings = is_array($config['safety_settings'] ?? null) ? $config['safety_settings'] : [];
 
         $presetConfig = [
+            'preset_id' => is_numeric($config['preset_id'] ?? null) ? (int) $config['preset_id'] : null,
+            'preset_name' => is_string($config['preset_name'] ?? null) ? $config['preset_name'] : null,
+            'agent_id' => is_numeric($config['agent_id'] ?? null) ? (int) $config['agent_id'] : null,
+            'agent_name' => is_string($config['agent_name'] ?? null) ? $config['agent_name'] : null,
+            'agent_emoji' => is_string($config['agent_emoji'] ?? null) ? $config['agent_emoji'] : null,
+            'active_tone' => is_string($config['active_tone'] ?? null) ? $config['active_tone'] : null,
             'model' => is_string($config['model'] ?? null) ? $config['model'] : null,
             'provider' => is_string($config['provider'] ?? null) ? $config['provider'] : null,
             'temperature' => $genConfig['temperature'] ?? null,
@@ -71,6 +77,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'safety_default_threshold' => is_string($safetySettings['default_threshold'] ?? null) ? $safetySettings['default_threshold'] : null,
             'tools_sent' => !empty($prompt['toolDefinitions']),
             'streaming_enabled' => (bool) ($config['streaming_enabled'] ?? false),
+            'pricing_input' => is_numeric($config['pricing_input'] ?? null) ? (float) $config['pricing_input'] : null,
+            'pricing_output' => is_numeric($config['pricing_output'] ?? null) ? (float) $config['pricing_output'] : null,
         ];
 
         // Capture tool definitions for display
@@ -218,6 +226,19 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $this->debugAccumulator['safety'] = $event->getSafety();
         $this->debugAccumulator['timings'] = $event->getTimings();
         $this->debugAccumulator['created_at'] = new \DateTimeImmutable();
+
+        // Calcul du coût estimé à partir du pricing et des tokens
+        $presetCfg = is_array($this->debugAccumulator['preset_config'] ?? null) ? $this->debugAccumulator['preset_config'] : [];
+        $usageData = is_array($this->debugAccumulator['usage'] ?? null) ? $this->debugAccumulator['usage'] : [];
+        $pricingIn = is_numeric($presetCfg['pricing_input'] ?? null) ? (float) $presetCfg['pricing_input'] : null;
+        $pricingOut = is_numeric($presetCfg['pricing_output'] ?? null) ? (float) $presetCfg['pricing_output'] : null;
+        if (null !== $pricingIn && null !== $pricingOut) {
+            $promptTokens = (int) ($usageData['prompt_tokens'] ?? 0);
+            $completionTokens = (int) ($usageData['completion_tokens'] ?? 0);
+            $cost = ($promptTokens / 1_000_000) * $pricingIn + ($completionTokens / 1_000_000) * $pricingOut;
+            $this->debugAccumulator['estimated_cost'] = round($cost, 6);
+            $this->debugAccumulator['estimated_cost_currency'] = 'USD';
+        }
 
         // Prepare lightweight metadata for DB storage
         $metadata = [

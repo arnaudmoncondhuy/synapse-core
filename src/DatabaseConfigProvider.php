@@ -91,6 +91,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     {
         $config = $preset->toArray();
         $config['preset_id'] = $preset->getId();
+        $config['preset_name'] = $preset->getName();
 
         // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
@@ -174,6 +175,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
 
         $config = $preset->toArray();
         $config['preset_id'] = $preset->getId();
+        $config['preset_name'] = $preset->getName();
 
         // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
