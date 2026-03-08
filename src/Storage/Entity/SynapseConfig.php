@@ -102,6 +102,13 @@ class SynapseConfig
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $spendingLimitsEnabled = true;
 
+    /**
+     * Nombre maximum de tours dans la boucle multi-tours (function calling).
+     * Limite le nombre d'allers-retours LLM↔outils par échange.
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 5])]
+    private int $maxTurns = 5;
+
     // Getters et Setters
 
     public function getId(): ?int
@@ -253,6 +260,18 @@ class SynapseConfig
         return $this;
     }
 
+    public function getMaxTurns(): int
+    {
+        return $this->maxTurns;
+    }
+
+    public function setMaxTurns(int $maxTurns): self
+    {
+        $this->maxTurns = max(1, $maxTurns);
+
+        return $this;
+    }
+
     /**
      * Convertit la config globale en tableau.
      *
@@ -270,6 +289,7 @@ class SynapseConfig
             'system_prompt' => $this->systemPrompt,
             'debug_mode' => $this->debugMode,
             'spending_limits_enabled' => $this->spendingLimitsEnabled,
+            'max_turns' => $this->maxTurns,
         ];
     }
 }
