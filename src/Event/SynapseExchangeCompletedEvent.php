@@ -22,7 +22,7 @@ class SynapseExchangeCompletedEvent extends Event
      * @param string $model Modèle technique utilisé (ex: 'gemini-1.5-flash').
      * @param string $provider nom du client provider (ex: 'gemini')
      * @param array<string, mixed> $usage détails de consommation
-     * @param array<string, mixed> $safety évaluations de sécurité
+     * @param array<int, array<string, mixed>> $safety évaluations de sécurité
      * @param bool $debugMode indique si le mode debug était activé par l'utilisateur
      * @param array<string, mixed> $rawData données brutes de la requête et de la réponse (payloads)
      * @param array<string, mixed> $timings données chronométriques des étapes d'exécution (en millisecondes)
@@ -63,7 +63,7 @@ class SynapseExchangeCompletedEvent extends Event
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<int, array<string, mixed>>
      */
     public function getSafety(): array
     {

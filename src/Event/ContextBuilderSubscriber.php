@@ -117,8 +117,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 // Conserver l'ID de l'agent pour le tracking si on avait un agent
                 if (isset($options['agent']) && isset($agent)) {
                     $config['agent_id'] = $agent->getId();
-                $config['agent_name'] = $agent->getName();
-                $config['agent_emoji'] = $agent->getEmoji();
+                    $config['agent_name'] = $agent->getName();
+                    $config['agent_emoji'] = $agent->getEmoji();
                 }
             }
         }

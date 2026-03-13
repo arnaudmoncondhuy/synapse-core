@@ -54,6 +54,7 @@ class MemoryApiController extends AbstractController
 
         if (empty($fact)) {
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.fact_required', [], 'synapse_core') : 'Le fait à retenir est requis.';
+
             return $this->json(['error' => $msg], 400);
         }
 
@@ -80,7 +81,7 @@ class MemoryApiController extends AbstractController
             if ($user instanceof ConversationOwnerInterface) {
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
-                    $feedbackMessage = $this->translator 
+                    $feedbackMessage = $this->translator
                         ? $this->translator->trans('synapse.core.api.memory.feedback.confirmed', ['%fact%' => $fact], 'synapse_core')
                         : sprintf("✅ J'ai validé la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
@@ -125,7 +126,7 @@ class MemoryApiController extends AbstractController
             if ($user instanceof ConversationOwnerInterface) {
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
-                    $feedbackMessage = $this->translator 
+                    $feedbackMessage = $this->translator
                         ? $this->translator->trans('synapse.core.api.memory.feedback.rejected', ['%fact%' => $fact], 'synapse_core')
                         : sprintf("❌ Je refuse la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
@@ -159,6 +160,7 @@ class MemoryApiController extends AbstractController
 
         if (!$userId) {
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.error.user_not_identified', [], 'synapse_core') : 'Utilisateur non identifié.';
+
             return $this->json(['error' => $msg], 401);
         }
 
@@ -195,6 +197,7 @@ class MemoryApiController extends AbstractController
 
         if (empty($fact)) {
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.fact_required', [], 'synapse_core') : 'Le texte du souvenir est requis.';
+
             return $this->json(['error' => $msg], 400);
         }
 
@@ -233,6 +236,7 @@ class MemoryApiController extends AbstractController
 
         if (empty($newText)) {
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.text_required', [], 'synapse_core') : 'Le nouveau texte est requis.';
+
             return $this->json(['error' => $msg], 400);
         }
 
@@ -242,6 +246,7 @@ class MemoryApiController extends AbstractController
             $this->memoryManager->update($id, $newText, $userId);
 
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.success.updated', [], 'synapse_core') : 'Souvenir mis à jour.';
+
             return $this->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);
@@ -266,6 +271,7 @@ class MemoryApiController extends AbstractController
             $this->memoryManager->forget($id, $userId);
 
             $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.success.deleted', [], 'synapse_core') : 'Souvenir supprimé.';
+
             return $this->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);

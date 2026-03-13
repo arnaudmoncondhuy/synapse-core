@@ -196,11 +196,11 @@ class ContextTruncationService
         // Pour les URLs externes, $bytes reste 0 → forfait par catégorie ci-dessous
 
         return match ($category) {
-            'image'    => 0 === $bytes ? 512 : max(85, min(1700, (int) ($bytes / 100))),
-            'audio'    => 0 === $bytes ? 360 : max(100, (int) ($bytes / 12_000)),
-            'video'    => 0 === $bytes ? 2000 : max(500, (int) ($bytes / 1_000)),
+            'image' => 0 === $bytes ? 512 : max(85, min(1700, (int) ($bytes / 100))),
+            'audio' => 0 === $bytes ? 360 : max(100, (int) ($bytes / 12_000)),
+            'video' => 0 === $bytes ? 2000 : max(500, (int) ($bytes / 1_000)),
             'document' => 0 === $bytes ? 1000 : max(50, (int) ($bytes / 400)),
-            default    => 0 === $bytes ? 512 : max(85, (int) ($bytes / 100)),
+            default => 0 === $bytes ? 512 : max(85, (int) ($bytes / 100)),
         };
     }
 }

@@ -228,8 +228,8 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $this->debugAccumulator['created_at'] = new \DateTimeImmutable();
 
         // Calcul du coût estimé à partir du pricing et des tokens
-        $presetCfg = is_array($this->debugAccumulator['preset_config'] ?? null) ? $this->debugAccumulator['preset_config'] : [];
-        $usageData = is_array($this->debugAccumulator['usage'] ?? null) ? $this->debugAccumulator['usage'] : [];
+        $presetCfg = $this->debugAccumulator['preset_config'] ?? [];
+        $usageData = $this->debugAccumulator['usage'];
         $pricingIn = is_numeric($presetCfg['pricing_input'] ?? null) ? (float) $presetCfg['pricing_input'] : null;
         $pricingOut = is_numeric($presetCfg['pricing_output'] ?? null) ? (float) $presetCfg['pricing_output'] : null;
         if (null !== $pricingIn && null !== $pricingOut) {

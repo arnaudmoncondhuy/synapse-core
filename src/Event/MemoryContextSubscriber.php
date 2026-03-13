@@ -52,7 +52,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $memories = [];
 
         if (!$userId) {
-            $error = $this->translator 
+            $error = $this->translator
                 ? $this->translator->trans('synapse.core.memory.error.user_not_identified', [], 'synapse_core')
                 : "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
         } else {

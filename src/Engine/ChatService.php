@@ -198,7 +198,7 @@ class ChatService
      * Résout le mode debug en combinant l'option appelant et la config globale.
      * - Si l'appelant passe explicitement `debug: true`  → activé
      * - Si l'appelant ne précise pas `debug`             → suit debug_mode de la config
-     * - Si l'appelant passe explicitement `debug: false` → désactivé même si config active
+     * - Si l'appelant passe explicitement `debug: false` → désactivé même si config active.
      *
      * @param array<string, mixed> $askOptions
      * @param array<string, mixed> $config
@@ -230,8 +230,7 @@ class ChatService
     /**
      * Traite l'itérable de chunks reçus du LLM et accumule les données du tour courant.
      *
-     * @param iterable<mixed>  $chunks
-     * @param callable|null    $onToken
+     * @param iterable<mixed> $chunks
      *
      * @return array{
      *     modelText: string,
@@ -343,10 +342,8 @@ class ChatService
      * Fix Bug 1 : un tool result null génère quand même un message role:tool (contenu vide),
      * ce qui évite que le LLM re-demande indéfiniment le même outil jusqu'à MAX_TURNS.
      *
-     * @param array<string, mixed>         $prompt         Modifié par référence : les résultats sont ajoutés à contents
-     * @param list<array<string, mixed>>   $modelToolCalls Tool calls en format OpenAI
-     * @param callable|null                $onStatusUpdate
-     * @param callable|null                $onToolExecuted
+     * @param array<string, mixed> $prompt Modifié par référence : les résultats sont ajoutés à contents
+     * @param list<array<string, mixed>> $modelToolCalls Tool calls en format OpenAI
      */
     private function executeToolCalls(
         array &$prompt,
@@ -405,10 +402,7 @@ class ChatService
      *
      * Fix Bug 2 : les données raw de TOUS les tours sont accumulées (pas seulement le tour 0).
      *
-     * @param array<string, mixed>  $prompt          Modifié par référence (historique ajouté à chaque tour)
-     * @param callable|null         $onStatusUpdate
-     * @param callable|null         $onToken
-     * @param callable|null         $onToolExecuted
+     * @param array<string, mixed> $prompt Modifié par référence (historique ajouté à chaque tour)
      *
      * @return array{
      *     fullText: string,
@@ -525,10 +519,10 @@ class ChatService
     /**
      * Finalise l'échange : calcule les totaux, dispatche les events de complétion, retourne le résultat.
      *
-     * @param array<string, int>              $usage
+     * @param array<string, int> $usage
      * @param array<int, array<string, mixed>> $safetyRatings
-     * @param array<string, mixed>             $rawData
-     * @param array<string, mixed>             $config
+     * @param array<string, mixed> $rawData
+     * @param array<string, mixed> $config
      *
      * @return array{
      *     answer: string,
