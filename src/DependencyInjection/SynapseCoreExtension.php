@@ -88,6 +88,19 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                 ]);
             }
         }
+
+        // 4. Configuration des traductions pour le Core.
+        if ($container->hasExtension('framework')) {
+            $container->prependExtensionConfig('framework', [
+                'translator' => [
+                    'default_path' => '%kernel.project_dir%/translations',
+                    'fallbacks' => ['fr', 'en'],
+                    'paths' => [
+                        \dirname(__DIR__, 2).'/translations',
+                    ],
+                ],
+            ]);
+        }
     }
 
     /**

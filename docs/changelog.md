@@ -106,6 +106,14 @@ Nouveau système de mémoire conversationnelle avec consentement explicite :
 - Calcul automatique des coûts basé sur la pricing
 - Analytics : coûts par modèle, par utilisateur, par période
 
+#### 🌐 Internationalisation (I18n)
+
+Support complet du multilingue pour les trois bundles :
+- **Domaines dédiés** : `synapse_admin`, `synapse_chat`, `synapse_core`.
+- **Infrastructure Core** : Injection de `TranslatorInterface` dans les services de contexte et les contrôleurs API.
+- **Prompts Systèmes** : Traduction dynamique des instructions, de la date et des informations de mémoire.
+- **UI Admin & Chat** : Remplacement de 100% des textes en dur par des tags de traduction.
+
 ### Refactoring
 
 #### Architecture domain-driven

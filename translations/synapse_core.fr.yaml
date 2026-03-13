@@ -1,0 +1,35 @@
+synapse.core.api.error.access_denied: "Accès refusé."
+synapse.core.api.error.user_not_identified: "Utilisateur non identifié."
+synapse.core.api.error.csrf_invalid: "Jeton CSRF invalide."
+
+synapse.core.api.memory.error.fact_required: "Le fait à retenir est requis."
+synapse.core.api.memory.error.text_required: "Le nouveau texte est requis."
+synapse.core.api.memory.success.recorded: "Souvenir enregistré avec succès."
+synapse.core.api.memory.success.ignored: "Proposition ignorée."
+synapse.core.api.memory.success.created: "Souvenir créé avec succès."
+synapse.core.api.memory.success.updated: "Souvenir mis à jour."
+synapse.core.api.memory.success.deleted: "Souvenir supprimé."
+
+synapse.core.api.memory.feedback.confirmed: "✅ J'ai validé la mémorisation de l'information : %fact%"
+synapse.core.api.memory.feedback.rejected: "❌ Je refuse la mémorisation de l'information : %fact%"
+synapse.core.api.memory.fact_fallback: "une information"
+
+synapse.core.memory.error.user_not_identified: "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme)."
+synapse.core.memory.profile.title: "PgVector Memory Search"
+synapse.core.memory.profile.description: "Calcul d'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL."
+
+synapse.core.prompt.date_time: "Nous sommes le %date% à %time%"
+synapse.core.prompt.user_connected: "Utilisateur connecté : %identifier%"
+synapse.core.prompt.instructions: |
+  Instructions :
+  - Réponds TOUJOURS en français
+  - Sois concis mais complet
+  - Si tu ne sais pas, dis-le clairement
+  - Reste professionnel et bienveillant
+
+synapse.core.prompt.memory_block_header: |
+  ### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR
+  Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :
+  %memories%
+  
+  Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.

@@ -9,6 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Injecte silencieusement les souvenirs de l'utilisateur dans le contexte avant l'envoi au LLM.
@@ -23,6 +24,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         private ?TokenStorageInterface $tokenStorage = null,
         private int $maxMemories = 5,
         private ?SynapseProfiler $profiler = null,
+        private ?TranslatorInterface $translator = null,
     ) {
     }
 
@@ -50,11 +52,15 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $memories = [];
 
         if (!$userId) {
-            $error = "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
+            $error = $this->translator 
+                ? $this->translator->trans('synapse.core.memory.error.user_not_identified', [], 'synapse_core')
+                : "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme).";
         } else {
             try {
                 if ($this->profiler) {
-                    $this->profiler->start('Memory', 'PgVector Memory Search', 'Calcul d\'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL.');
+                    $profileTitle = $this->translator ? $this->translator->trans('synapse.core.memory.profile.title', [], 'synapse_core') : 'PgVector Memory Search';
+                    $profileDesc = $this->translator ? $this->translator->trans('synapse.core.memory.profile.description', [], 'synapse_core') : "Calcul d'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL.";
+                    $this->profiler->start('Memory', $profileTitle, $profileDesc);
                 }
 
                 $memories = $this->memoryManager->recall($message, $userId, $conversationId, $this->maxMemories);
@@ -117,9 +123,16 @@ class MemoryContextSubscriber implements EventSubscriberInterface
 
         $memoryBlock = implode("\n", $memoryLines);
 
-        $memoryString = "\n\n---\n\n### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR\n";
-        $memoryString .= "Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :\n{$memoryBlock}\n";
-        $memoryString .= "Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.";
+        $memoryString = "\n\n---\n\n";
+        if ($this->translator) {
+            $memoryString .= $this->translator->trans('synapse.core.prompt.memory_block_header', [
+                '%memories%' => $memoryBlock,
+            ], 'synapse_core');
+        } else {
+            $memoryString .= "### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR\n";
+            $memoryString .= "Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :\n{$memoryBlock}\n";
+            $memoryString .= "Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.";
+        }
 
         $contentsRaw = $prompt['contents'] ?? [];
         $messages = is_array($contentsRaw) ? $contentsRaw : [];

@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Context;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Fournisseur de contexte avec support utilisateur.
@@ -25,6 +26,7 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     public function __construct(
         protected ?Security $security = null,
         protected string $language = 'fr',
+        protected ?TranslatorInterface $translator = null,
     ) {
     }
 
@@ -84,6 +86,13 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     {
         $now = new \DateTimeImmutable();
 
+        if ($this->translator) {
+            return $this->translator->trans('synapse.core.prompt.date_time', [
+                '%date%' => $now->format('d/m/Y'),
+                '%time%' => $now->format('H:i'),
+            ], 'synapse_core');
+        }
+
         return sprintf(
             'Nous sommes le %s à %s',
             $now->format('d/m/Y'),
@@ -99,6 +108,12 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
      */
     protected function getUserContext(ConversationOwnerInterface $user): string
     {
+        if ($this->translator) {
+            return $this->translator->trans('synapse.core.prompt.user_connected', [
+                '%identifier%' => $user->getIdentifier(),
+            ], 'synapse_core');
+        }
+
         return 'Utilisateur connecté : '.$user->getIdentifier();
     }
 
@@ -110,6 +125,10 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
      */
     protected function getInstructions(): string
     {
+        if ($this->translator) {
+            return $this->translator->trans('synapse.core.prompt.instructions', [], 'synapse_core');
+        }
+
         return match ($this->language) {
             'fr' => <<<FR
             Instructions :

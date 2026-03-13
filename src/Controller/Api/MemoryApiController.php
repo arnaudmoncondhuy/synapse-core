@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * API REST pour la gestion de la mémoire sémantique "Human-in-the-loop".
@@ -29,6 +30,7 @@ class MemoryApiController extends AbstractController
         private PermissionCheckerInterface $permissionChecker,
         private ?ConversationManager $conversationManager = null,
         private ?CsrfTokenManagerInterface $csrfTokenManager = null,
+        private ?TranslatorInterface $translator = null,
     ) {
     }
 
@@ -51,7 +53,8 @@ class MemoryApiController extends AbstractController
         $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : '';
 
         if (empty($fact)) {
-            return $this->json(['error' => 'Le fait à retenir est requis.'], 400);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.fact_required', [], 'synapse_core') : 'Le fait à retenir est requis.';
+            return $this->json(['error' => $msg], 400);
         }
 
         $scopeRaw = is_string($data['scope'] ?? null) ? (string) $data['scope'] : 'user';
@@ -77,7 +80,9 @@ class MemoryApiController extends AbstractController
             if ($user instanceof ConversationOwnerInterface) {
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
-                    $feedbackMessage = sprintf("✅ J'ai validé la mémorisation de l'information : %s", $fact);
+                    $feedbackMessage = $this->translator 
+                        ? $this->translator->trans('synapse.core.api.memory.feedback.confirmed', ['%fact%' => $fact], 'synapse_core')
+                        : sprintf("✅ J'ai validé la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
                         $conversation,
                         MessageRole::USER,
@@ -90,7 +95,7 @@ class MemoryApiController extends AbstractController
 
         return $this->json([
             'success' => true,
-            'message' => 'Souvenir enregistré avec succès.',
+            'message' => $this->translator ? $this->translator->trans('synapse.core.api.memory.success.recorded', [], 'synapse_core') : 'Souvenir enregistré avec succès.',
             'feedback_message' => $feedbackMessage,
         ]);
     }
@@ -110,7 +115,8 @@ class MemoryApiController extends AbstractController
         /** @var array<string, mixed> $data */
         $data = json_decode($request->getContent(), true) ?? [];
         $conversationId = is_string($data['conversation_id'] ?? null) ? (string) $data['conversation_id'] : null;
-        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : 'une information';
+        $factFallback = $this->translator ? $this->translator->trans('synapse.core.api.memory.fact_fallback', [], 'synapse_core') : 'une information';
+        $fact = is_string($data['fact'] ?? null) ? (string) $data['fact'] : $factFallback;
 
         // Loopback : Ajouter un message de rejet à la conversation
         $feedbackMessage = null;
@@ -119,7 +125,9 @@ class MemoryApiController extends AbstractController
             if ($user instanceof ConversationOwnerInterface) {
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
-                    $feedbackMessage = sprintf("❌ Je refuse la mémorisation de l'information : %s", $fact);
+                    $feedbackMessage = $this->translator 
+                        ? $this->translator->trans('synapse.core.api.memory.feedback.rejected', ['%fact%' => $fact], 'synapse_core')
+                        : sprintf("❌ Je refuse la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
                         $conversation,
                         MessageRole::USER,
@@ -132,7 +140,7 @@ class MemoryApiController extends AbstractController
 
         return $this->json([
             'success' => true,
-            'message' => 'Proposition ignorée.',
+            'message' => $this->translator ? $this->translator->trans('synapse.core.api.memory.success.ignored', [], 'synapse_core') : 'Proposition ignorée.',
             'feedback_message' => $feedbackMessage,
         ]);
     }
@@ -150,7 +158,8 @@ class MemoryApiController extends AbstractController
         $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->json(['error' => 'Utilisateur non identifié.'], 401);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.error.user_not_identified', [], 'synapse_core') : 'Utilisateur non identifié.';
+            return $this->json(['error' => $msg], 401);
         }
 
         $page = max(1, (int) $request->query->get('page', 1));
@@ -185,7 +194,8 @@ class MemoryApiController extends AbstractController
         $fact = trim(is_string($data['fact'] ?? null) ? (string) $data['fact'] : '');
 
         if (empty($fact)) {
-            return $this->json(['error' => 'Le texte du souvenir est requis.'], 400);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.fact_required', [], 'synapse_core') : 'Le texte du souvenir est requis.';
+            return $this->json(['error' => $msg], 400);
         }
 
         $userId = $this->getUserId();
@@ -201,7 +211,7 @@ class MemoryApiController extends AbstractController
 
         return $this->json([
             'success' => true,
-            'message' => 'Souvenir créé avec succès.',
+            'message' => $this->translator ? $this->translator->trans('synapse.core.api.memory.success.created', [], 'synapse_core') : 'Souvenir créé avec succès.',
         ]);
     }
 
@@ -222,7 +232,8 @@ class MemoryApiController extends AbstractController
         $newText = trim(is_string($data['fact'] ?? null) ? (string) $data['fact'] : '');
 
         if (empty($newText)) {
-            return $this->json(['error' => 'Le nouveau texte est requis.'], 400);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.error.text_required', [], 'synapse_core') : 'Le nouveau texte est requis.';
+            return $this->json(['error' => $msg], 400);
         }
 
         $userId = $this->getUserId();
@@ -230,7 +241,8 @@ class MemoryApiController extends AbstractController
         try {
             $this->memoryManager->update($id, $newText, $userId);
 
-            return $this->json(['success' => true, 'message' => 'Souvenir mis à jour.']);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.success.updated', [], 'synapse_core') : 'Souvenir mis à jour.';
+            return $this->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);
         }
@@ -253,7 +265,8 @@ class MemoryApiController extends AbstractController
         try {
             $this->memoryManager->forget($id, $userId);
 
-            return $this->json(['success' => true, 'message' => 'Souvenir supprimé.']);
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.memory.success.deleted', [], 'synapse_core') : 'Souvenir supprimé.';
+            return $this->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 403);
         }
@@ -266,7 +279,8 @@ class MemoryApiController extends AbstractController
         }
         $token = $request->headers->get('X-CSRF-Token') ?? $request->request->get('_csrf_token');
         if (!$this->isCsrfTokenValid('synapse_api', (string) $token)) {
-            throw $this->createAccessDeniedException('Invalid CSRF token.');
+            $msg = $this->translator ? $this->translator->trans('synapse.core.api.error.csrf_invalid', [], 'synapse_core') : 'Invalid CSRF token.';
+            throw $this->createAccessDeniedException($msg);
         }
     }
 

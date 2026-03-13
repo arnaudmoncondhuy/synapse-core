@@ -105,6 +105,28 @@ Ces paramètres sont gérés globalement dans l'interface d'administration Synap
 *   **Chevauchement (Overlap)** : Nombre de caractères partagés entre deux segments pour garder le contexte.
 *   **Stratégie** : `Recursive` (recommandé pour la qualité sémantique) ou `Fixed`.
 
+*   **Stratégie** : `Recursive` (recommandé pour la qualité sémantique) ou `Fixed`.
+
+## Internationalisation (I18n)
+
+Synapse utilise le composant Translation de Symfony pour gérer le multilingue.
+
+### Domaines de traduction
+- **`synapse_core`** : Promps système (date, instructions), messages d'erreur de mémoire.
+- **`synapse_admin`** : Toute l'interface d'administration.
+- **`synapse_chat`** : Composants Twig du chat, boutons, placeholders.
+
+### Personnalisation
+Pour modifier un texte par défaut, créez un fichier YAML dans votre projet :
+`translations/synapse_chat.fr.yaml` (ou `.en.yaml`).
+
+```yaml
+synapse.chat.input_area.placeholder: "Votre message ici..."
+```
+
+### Langue par défaut
+La langue est pilotée par le paramètre `synapse.context.language` (configurable par preset ou mission) et s'appuie sur la locale Symfony de la requête.
+
 ## Variables d'environnement
 
 Voici les variables recommandées à définir dans votre `.env` :

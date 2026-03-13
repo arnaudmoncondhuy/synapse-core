@@ -117,9 +117,14 @@ synapse-core
 
 Les bundles **admin** et **chat** dépendent de **core**.
 
-## Licence
+## Internationalisation
 
-PolyForm Noncommercial 1.0.0 (usage non-commercial uniquement)
+Le Core fournit l'infrastructure pour les traductions des autres bundles.
+- **Domaine de traduction** : `synapse_core`
+- **Éléments traduits** : Prompts système (date/heure, contexte utilisateur, instructions), messages d'erreur de mémoire.
+- **Support multilingue** : Basé sur `TranslatorInterface`, avec repli (fallback) sur la propriété `language` des contextes.
+
+---
 
 ## 🩺 Synapse Doctor
 

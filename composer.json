@@ -19,6 +19,7 @@
         "symfony/http-client": "^7.0 || ^8.0",
         "symfony/messenger": "^7.0 || ^8.0",
         "symfony/security-bundle": "^7.0 || ^8.0",
+        "symfony/translation": "^7.0 || ^8.0",
         "symfony/uid": "^7.0 || ^8.0",
         "symfony/yaml": "^7.0 || ^8.0"
     },
