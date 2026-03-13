@@ -10,9 +10,10 @@ Permet d'enregistrer les conversations et messages en base de données.
 
 | Option | Type | Défaut | Description |
 |---|---|---|---|
-| `enabled` | bool | `false` | Activer la persistance Doctrine. |
 | `conversation_class` | string | `null` | FQCN de votre entité Conversation (ex: `App\Entity\Conversation`). |
 | `message_class` | string | `null` | FQCN de votre entité Message. |
+
+> La persistance est automatiquement activée dès que `conversation_class` et `message_class` sont définis.
 
 ### Sécurité (`security`)
 
@@ -34,14 +35,27 @@ Permet de personnaliser les préfixes d'URL du bundle.
 | `chat_ui_prefix` | string | `/synapse/chat` | Préfixe pour l'interface de chat principale. |
 | `chat_api_prefix` | string | `/synapse/api` | Préfixe pour les endpoints API (chat complet, CSRF, etc.). |
 
-### Plafonds & Coûts (`spending_limits` & `accounting`)
+### Suivi de tokens & coûts (`token_tracking`)
 
 Synapse permet de suivre l'usage et de brider la consommation.
 
 | Option | Type | Défaut | Description |
 |---|---|---|---|
-| `spending_limits.enabled` | bool | `true` | Active la vérification des quotas avant chaque requête. |
-| `accounting.reference_currency` | string | `EUR` | Devise utilisée pour les plafonds et agrégats (EUR/USD). |
+| `enabled` | bool | `false` | Active l'enregistrement des tokens et des coûts en base. |
+| `reference_currency` | string | `EUR` | Devise de référence pour les plafonds et agrégats. |
+| `currency_rates` | array | `{}` | Taux de conversion (ex: `{ USD: 0.92, GBP: 1.17 }`). |
+| `sliding_day_hours` | int | `4` | Durée (en heures) de la fenêtre glissante pour les quotas journaliers (1–8760). |
+
+```yaml
+synapse:
+    token_tracking:
+        enabled: true
+        reference_currency: EUR
+        currency_rates:
+            USD: 0.92
+            GBP: 1.17
+        sliding_day_hours: 4
+```
 
 ### Protection CSRF
 
@@ -78,13 +92,9 @@ synapse:
 > [!WARNING]
 > N'activez le chiffrement que si vous avez configuré une clé 32 bytes valide.
 
-### Rétention RGPD (`retention`)
+### Rétention RGPD
 
-Suppression automatique des anciennes conversations.
-
-| Option | Type | Défaut | Description |
-|---|---|---|---|
-| `days` | int | `30` | Nombre de jours avant que les conversations ne soient purgées par `synapse:purge`. |
+La durée de rétention est configurable depuis l'interface d'administration (Paramètres → Rétention RGPD). Elle définit le nombre de jours avant que les conversations soient purgées par `synapse:purge`. Ce n'est pas une option YAML.
 
 ### Mémoire Vectorielle (`vector_store`)
 

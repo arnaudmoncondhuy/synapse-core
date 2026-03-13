@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Service;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Uid\Uuid;
 
 class AttachmentStorageService
 {
@@ -75,13 +76,7 @@ class AttachmentStorageService
 
     private function generateUuid(): string
     {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF),
-            mt_rand(0, 0xFFFF),
-            mt_rand(0, 0x0FFF) | 0x4000,
-            mt_rand(0, 0x3FFF) | 0x8000,
-            mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF), mt_rand(0, 0xFFFF)
-        );
+        return Uuid::v4()->toRfc4122();
     }
 
     private function mimeToExt(string $mime): string

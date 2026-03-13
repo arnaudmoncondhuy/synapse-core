@@ -37,6 +37,30 @@ php bin/console synapse:purge --dry-run
 php bin/console synapse:purge
 ```
 
-## `synapse:test-preset` (Interne)
+## `synapse:debug:embedding`
 
-Utilisé par l'interface d'administration pour valider qu'un preset est fonctionnel avant son activation.
+Teste la génération d'un embedding avec le provider actif. Utile pour diagnostiquer les problèmes de connexion au service d'embeddings.
+
+```bash
+# Tester avec un texte
+php bin/console synapse:debug:embedding "Bonjour monde"
+
+# Tester avec un texte et afficher le vecteur complet
+php bin/console synapse:debug:embedding "Bonjour monde" --show-vector
+```
+
+## `synapse:spending:warm-cache`
+
+Recalcule les compteurs de dépenses depuis la base de données et met à jour le cache. Utile après une migration, une correction manuelle en base, ou si le cache a été vidé.
+
+```bash
+php bin/console synapse:spending:warm-cache
+```
+
+## `synapse:version:update` (Interne)
+
+Met à jour le fichier `VERSION` avec la date courante au format `dev 0.YYMMDD`. Utilisé lors du process de release.
+
+```bash
+php bin/console synapse:version:update
+```

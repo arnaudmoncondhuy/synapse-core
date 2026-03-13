@@ -34,6 +34,8 @@ Cliquez sur une interface pour découvrir son guide d'implémentation premium.
 | :--- | :--- |
 | [**ContextProvider**](../contracts/context-provider-interface.md) | **L'Injection.** Ajoute des données dynamiques au prompt système. |
 | [**ConfigProvider**](../contracts/config-provider-interface.md) | **Le Réglage.** Ajuste la température et les filtres dynamiquement. |
+| **MessageFormatterInterface** | **Le Normalisateur.** Convertit les entités `SynapseMessage` vers le format OpenAI canonique et vice-versa. |
+| **SynapseDebugLoggerInterface** | **Le Débogueur.** Enregistre les payloads bruts (requêtes/réponses API) pour l'analyse d'erreurs et la qualité. Méthodes : `logExchange(debugId, metadata, rawPayload)`, `findByDebugId(debugId)`. |
 
 ---
 

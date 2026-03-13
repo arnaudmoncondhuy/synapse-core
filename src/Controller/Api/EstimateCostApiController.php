@@ -31,8 +31,12 @@ class EstimateCostApiController extends AbstractController
     #[Route('/estimate-cost', name: 'synapse_api_estimate_cost', methods: ['POST'])]
     public function estimateCost(Request $request): JsonResponse
     {
-        $payload = json_decode($request->getContent(), true);
-        $data = is_array($payload) ? $payload : [];
+        try {
+            $data = json_decode($request->getContent() ?: '{}', true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $data = [];
+        }
+        $data = is_array($data) ? $data : [];
         $modelId = is_string($data['model_id'] ?? null) ? (string) $data['model_id'] : 'default';
 
         if (!$this->permissionChecker->canCreateConversation()) {

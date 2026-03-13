@@ -15,6 +15,34 @@ Voici l'ordre d'apparition des événements lors d'un appel à `ChatService::ask
 7.  **`SynapseGenerationCompletedEvent`** : Fin de la génération textuelle.
 8.  **`SynapseExchangeCompletedEvent`** : Fin technique de l'échange (Debug & Logs).
 
+## Événements hors cycle de chat
+
+### `SynapseEmbeddingCompletedEvent`
+
+Déclenché à chaque fois qu'un embedding est généré (via `EmbeddingService`). Utilisé notamment par `TokenAccountingService` pour enregistrer la consommation en tokens liée aux embeddings.
+
+```php
+use ArnaudMoncondhuy\SynapseCore\Shared\Event\SynapseEmbeddingCompletedEvent;
+
+class MyEmbeddingSubscriber implements EventSubscriberInterface
+{
+    public function onEmbeddingCompleted(SynapseEmbeddingCompletedEvent $event): void
+    {
+        echo $event->getModel();        // ex: "text-embedding-004"
+        echo $event->getProvider();     // ex: "gemini"
+        echo $event->getPromptTokens(); // tokens consommés
+        echo $event->getTotalTokens();  // total tokens
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [SynapseEmbeddingCompletedEvent::class => 'onEmbeddingCompleted'];
+    }
+}
+```
+
+> **Note** : `SynapseSpendingLimitExceededEvent` est planifié mais pas encore implémenté.
+
 ## Diagramme des flux
 
 ```mermaid
