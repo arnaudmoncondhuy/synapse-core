@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Accounting;
 
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseSpendingLimitExceededEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Vérifie les plafonds de dépense avant une requête LLM.
@@ -29,6 +31,7 @@ class SpendingLimitChecker
         private int $slidingDayHours = 4,
         private ?\DateTimeZone $timezone = null,
         private ?CacheItemPoolInterface $cache = null,
+        private ?EventDispatcherInterface $eventDispatcher = null,
     ) {
         $this->timezone ??= new \DateTimeZone('UTC');
     }
@@ -75,6 +78,17 @@ class SpendingLimitChecker
             $limitAmount = (float) $limit->getAmount();
 
             if ($consumption + $estimatedCostRef > $limitAmount) {
+                $this->eventDispatcher?->dispatch(new SynapseSpendingLimitExceededEvent(
+                    userId: $userId,
+                    scope: $scope,
+                    scopeId: $scopeId,
+                    period: $limit->getPeriod(),
+                    limitAmount: $limitAmount,
+                    consumption: $consumption,
+                    estimatedCost: $estimatedCostRef,
+                    currency: $limit->getCurrency(),
+                ));
+
                 throw new LlmQuotaException(sprintf('Plafond de dépense atteint (%s / %s %s). Réessayez plus tard ou contactez l\'administrateur.', number_format($consumption + $estimatedCostRef, 4), number_format($limitAmount, 4), $limit->getCurrency()));
             }
         }

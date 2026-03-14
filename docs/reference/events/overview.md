@@ -41,7 +41,43 @@ class MyEmbeddingSubscriber implements EventSubscriberInterface
 }
 ```
 
-> **Note** : `SynapseSpendingLimitExceededEvent` est planifié mais pas encore implémenté.
+### `SynapseSpendingLimitExceededEvent`
+
+Déclenché par `SpendingLimitChecker::assertCanSpend()` juste **avant** de lever `LlmQuotaException`, lorsqu'une requête dépasserait un plafond de dépense configuré.
+
+Permet à l'application hôte de réagir sans modifier le core : envoyer une notification, logger l'incident, ou déclencher un fallback.
+
+```php
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseSpendingLimitExceededEvent;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
+class SpendingAlertSubscriber implements EventSubscriberInterface
+{
+    public function onLimitExceeded(SynapseSpendingLimitExceededEvent $event): void
+    {
+        // Qui a déclenché le blocage ?
+        $event->getUserId();         // ex: "user-42"
+        $event->getScope();          // 'user' | 'preset' | 'agent'
+        $event->getScopeId();        // identifiant de la ressource
+
+        // Chiffres
+        $event->getLimitAmount();    // ex: 10.0
+        $event->getConsumption();    // ex: 9.5
+        $event->getEstimatedCost(); // ex: 1.2
+        $event->getProjectedConsumption(); // 10.7 (au-dessus du plafond)
+        $event->getOverrunAmount();  // 0.7 (dépassement)
+        $event->getCurrency();       // 'EUR'
+        $event->getPeriod();         // SpendingLimitPeriod::SLIDING_DAY
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [SynapseSpendingLimitExceededEvent::class => 'onLimitExceeded'];
+    }
+}
+```
+
+> `LlmQuotaException` est toujours levée après le dispatch — cet event ne permet pas d'annuler le blocage.
 
 ## Diagramme des flux
 

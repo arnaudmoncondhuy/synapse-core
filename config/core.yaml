@@ -216,6 +216,11 @@ services:
             $registry: '@doctrine'
         tags: ['doctrine.repository_service']
 
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitLogRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
     ArnaudMoncondhuy\SynapseCore\Accounting\SpendingLimitChecker:
         arguments:
             $configRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository'
@@ -314,3 +319,4 @@ services:
     # ── Memory Tools ─────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Memory\Tool\ProposeMemoryTool:
         tags: [{ name: synapse.tool }]
+

@@ -224,7 +224,7 @@ class ConversationManager
     {
         $conversation = $this->getConversationRepo()->find($id);
 
-        if (null === $conversation) {
+        if (null === $conversation || $conversation->isDeleted()) {
             return null;
         }
 

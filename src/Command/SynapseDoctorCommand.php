@@ -63,6 +63,7 @@ class SynapseDoctorCommand extends Command
         $checks = [];
 
         $checks['PHP version (8.2+)'] = $this->checkPhpVersion($io);
+        $checks['Intl extension'] = $this->checkIntl($io);
         $checks['Sodium extension'] = $this->checkSodium($io);
         $checks['Bundle registration'] = $this->checkBundleRegistration($projectDir, $fix, $io);
         $checks['Core config (synapse.yaml)'] = $this->checkCoreConfig($projectDir, $fix, $io);
@@ -119,6 +120,18 @@ class SynapseDoctorCommand extends Command
             return false;
         }
         $io->writeln(sprintf('  <info>[OK]</info> PHP %s', PHP_VERSION));
+
+        return true;
+    }
+
+    private function checkIntl(SymfonyStyle $io): bool
+    {
+        if (!extension_loaded('intl')) {
+            $io->error('[PHP] Extension "intl" not found. It is required for translations and localization.');
+
+            return false;
+        }
+        $io->writeln('  <info>[OK]</info> Intl extension');
 
         return true;
     }
