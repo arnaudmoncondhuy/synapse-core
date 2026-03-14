@@ -88,8 +88,8 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
 
         if ($this->translator) {
             return $this->translator->trans('synapse.core.prompt.date_time', [
-                '%date%' => $now->format('d/m/Y'),
-                '%time%' => $now->format('H:i'),
+                'date' => $now->format('d/m/Y'),
+                'time' => $now->format('H:i'),
             ], 'synapse_core');
         }
 
@@ -110,7 +110,7 @@ abstract class UserAwareContextProvider implements ContextProviderInterface
     {
         if ($this->translator) {
             return $this->translator->trans('synapse.core.prompt.user_connected', [
-                '%identifier%' => $user->getIdentifier(),
+                'identifier' => $user->getIdentifier(),
             ], 'synapse_core');
         }
 

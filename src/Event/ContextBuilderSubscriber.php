@@ -11,6 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
+use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -29,6 +30,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private ToolRegistry $toolRegistry,
         private AgentRegistry $agentRegistry,
         private SynapseModelPresetRepository $modelPresetRepository,
+        private ToneRegistry $toneRegistry,
         private SynapseProfiler $profiler,
     ) {
     }
@@ -69,17 +71,26 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // ── 2. METIER (Agent) ──
+        $effectiveToneKey = $toneKey;
         if (isset($options['agent']) && is_string($options['agent'])) {
             $agent = $this->agentRegistry->get($options['agent']);
             if (null !== $agent && $agent->isActive()) {
+                // Si pas de ton spécifié dans le chat (null ou vide), on utilise celui de l'agent
+                if (empty($effectiveToneKey) && null !== $agent->getTone() && $agent->getTone()->isActive()) {
+                    $effectiveToneKey = $agent->getTone()->getKey();
+                }
+
                 // Surcharge le prompt système par celui de l'agent
                 $systemContent = $agent->getSystemPrompt();
 
-                // Fusionner le tone de l'agent si défini
-                if (null !== $agent->getTone() && $agent->getTone()->isActive()) {
-                    $tonePrompt = $agent->getTone()->getSystemPrompt();
+                // Fusionner le tone effectif s'il existe (Chat > Agent)
+                if (null !== $effectiveToneKey) {
+                    $tonePrompt = $this->toneRegistry->getSystemPrompt($effectiveToneKey);
                     if (!empty($tonePrompt)) {
-                        $systemContent .= "\n\n### TONE INSTRUCTIONS\n".$tonePrompt;
+                        $systemContent .= "\n\n---\n\n### 🎭 TONE INSTRUCTIONS\n";
+                        $systemContent .= "IMPORTANT : Les instructions suivantes s'appliquent UNIQUEMENT à ton TON et ton STYLE d'expression.\n";
+                        $systemContent .= "Elles n'affectent PAS tes capacités de raisonnement, ta logique ou le respect strict des contraintes techniques.\n\n";
+                        $systemContent .= $tonePrompt;
                     }
                 }
                 $systemMessage = ['role' => 'system', 'content' => $systemContent];
@@ -87,6 +98,10 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 // Surcharge la config technique par le PresetModel de l'agent (s'il y en a un)
                 if (null !== $agent->getModelPreset()) {
                     $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
+                    // On s'assure de ré-injecter le ton actif dans la nouvelle config
+                    if (null !== $effectiveToneKey && '' !== $effectiveToneKey) {
+                        $config['active_tone'] = $effectiveToneKey;
+                    }
                 }
                 $config['agent_id'] = $agent->getId();
                 $config['agent_name'] = $agent->getName();

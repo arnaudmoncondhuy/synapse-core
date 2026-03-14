@@ -12,6 +12,7 @@ use ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
+use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use PHPUnit\Framework\TestCase;
 
 class ContextBuilderSubscriberTest extends TestCase
@@ -21,6 +22,7 @@ class ContextBuilderSubscriberTest extends TestCase
     private ToolRegistry $toolRegistry;
     private AgentRegistry $agentRegistry;
     private SynapseModelPresetRepository $presetRepo;
+    private ToneRegistry $toneRegistry;
     private SynapseProfiler $profiler;
 
     protected function setUp(): void
@@ -45,6 +47,9 @@ class ContextBuilderSubscriberTest extends TestCase
 
         $this->presetRepo = $this->createStub(SynapseModelPresetRepository::class);
         $this->presetRepo->method('findByKey')->willReturn(null);
+
+        $this->toneRegistry = $this->createStub(ToneRegistry::class);
+        $this->toneRegistry->method('getSystemPrompt')->willReturn(null);
 
         $this->profiler = $this->createStub(SynapseProfiler::class);
     }
@@ -251,6 +256,7 @@ class ContextBuilderSubscriberTest extends TestCase
             toolRegistry: $toolRegistry ?? $this->toolRegistry,
             agentRegistry: $this->agentRegistry,
             modelPresetRepository: $this->presetRepo,
+            toneRegistry: $this->toneRegistry,
             profiler: $this->profiler,
         );
     }

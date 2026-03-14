@@ -122,6 +122,8 @@ services:
         arguments:
             $adminRole: '%synapse.security.admin_role%'
 
+    ArnaudMoncondhuy\SynapseCore\Security\RoleProvider: ~
+
     ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter:
         arguments:
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'

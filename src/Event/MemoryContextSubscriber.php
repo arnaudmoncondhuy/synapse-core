@@ -126,7 +126,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $memoryString = "\n\n---\n\n";
         if ($this->translator) {
             $memoryString .= $this->translator->trans('synapse.core.prompt.memory_block_header', [
-                '%memories%' => $memoryBlock,
+                'memories' => $memoryBlock,
             ], 'synapse_core');
         } else {
             $memoryString .= "### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR\n";

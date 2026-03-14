@@ -82,7 +82,7 @@ class MemoryApiController extends AbstractController
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
                     $feedbackMessage = $this->translator
-                        ? $this->translator->trans('synapse.core.api.memory.feedback.confirmed', ['%fact%' => $fact], 'synapse_core')
+                        ? $this->translator->trans('synapse.core.api.memory.feedback.confirmed', ['fact' => $fact], 'synapse_core')
                         : sprintf("✅ J'ai validé la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
                         $conversation,
@@ -127,7 +127,7 @@ class MemoryApiController extends AbstractController
                 $conversation = $this->conversationManager->getConversation($conversationId, $user);
                 if ($conversation) {
                     $feedbackMessage = $this->translator
-                        ? $this->translator->trans('synapse.core.api.memory.feedback.rejected', ['%fact%' => $fact], 'synapse_core')
+                        ? $this->translator->trans('synapse.core.api.memory.feedback.rejected', ['fact' => $fact], 'synapse_core')
                         : sprintf("❌ Je refuse la mémorisation de l'information : %s", $fact);
                     $this->conversationManager->saveMessage(
                         $conversation,
