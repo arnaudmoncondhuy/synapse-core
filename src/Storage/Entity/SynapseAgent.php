@@ -101,6 +101,23 @@ class SynapseAgent
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $sortOrder = 0;
 
+    /**
+     * Contrôle d'accès à l'agent (rôles et utilisateurs autorisés).
+     *
+     * Structure :
+     * [
+     *     'roles' => ['ROLE_TEACHER', 'ROLE_ADMIN'],           // Rôles Symfony autorisés
+     *     'userIdentifiers' => ['user@example.com', 'jdoe']   // Identifiants utilisateur autorisés
+     * ]
+     *
+     * - Si null ou vide : agent public (accessible à tous).
+     * - Si configuré : l'utilisateur doit avoir au moins un rôle OU son identifiant dans la liste.
+     *
+     * @var array{roles: string[], userIdentifiers: string[]}|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $accessControl = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -276,6 +293,41 @@ class SynapseAgent
     }
 
     /**
+     * @return array{roles: string[], userIdentifiers: string[]}|null
+     */
+    public function getAccessControl(): ?array
+    {
+        return $this->accessControl;
+    }
+
+    /**
+     * @param array{roles?: string[], userIdentifiers?: string[]}|null $accessControl
+     */
+    public function setAccessControl(?array $accessControl): self
+    {
+        // Normalisation pour garantir la structure
+        if (null !== $accessControl) {
+            $this->accessControl = [
+                'roles' => array_values(array_filter($accessControl['roles'] ?? [], 'is_string')),
+                'userIdentifiers' => array_values(array_filter($accessControl['userIdentifiers'] ?? [], 'is_string')),
+            ];
+        } else {
+            $this->accessControl = null;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Vérifie si l'agent est public (accessible à tous).
+     */
+    public function isPublic(): bool
+    {
+        return null === $this->accessControl
+            || (empty($this->accessControl['roles']) && empty($this->accessControl['userIdentifiers']));
+    }
+
+    /**
      * Représentation tableau pour Twig.
      */
     /**
@@ -294,6 +346,7 @@ class SynapseAgent
             'allowedToolNames' => $this->allowedToolNames,
             'isBuiltin' => $this->isBuiltin,
             'isActive' => $this->isActive,
+            'isPublic' => $this->isPublic(),
         ];
     }
 }

@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Security;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
@@ -95,5 +96,46 @@ class DefaultPermissionChecker implements PermissionCheckerInterface
         }
 
         return null !== $this->security->getUser();
+    }
+
+    public function canUseAgent(SynapseAgent $agent): bool
+    {
+        $accessControl = $agent->getAccessControl();
+
+        // Pas de restriction configurée = agent public (accessible à tous)
+        if (null === $accessControl || (empty($accessControl['roles']) && empty($accessControl['userIdentifiers']))) {
+            return true;
+        }
+
+        // Si restrictions configurées mais pas d'auth = refusé
+        if (null === $this->security) {
+            return false;
+        }
+
+        $user = $this->security->getUser();
+        if (!$user) {
+            return false;
+        }
+
+        $allowedRoles = $accessControl['roles'] ?? [];
+        $allowedUserIdentifiers = $accessControl['userIdentifiers'] ?? [];
+
+        // Vérification 1 : Vérifier si l'utilisateur a au moins un des rôles autorisés
+        foreach ($allowedRoles as $role) {
+            if ($this->authChecker?->isGranted($role)) {
+                return true;
+            }
+        }
+
+        // Vérification 2 : Vérifier si l'identifiant utilisateur est dans la liste
+        if ($user instanceof ConversationOwnerInterface) {
+            $userIdentifier = $user->getIdentifier();
+
+            if (in_array($userIdentifier, $allowedUserIdentifiers, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
