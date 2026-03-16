@@ -139,6 +139,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.admin_prefix', $config['routing']['admin_prefix'] ?? '/synapse/admin');
         $container->setParameter('synapse.chat_ui_prefix', $config['routing']['chat_ui_prefix'] ?? '/synapse/chat');
         $container->setParameter('synapse.chat_api_prefix', $config['routing']['chat_api_prefix'] ?? '/synapse/api');
+        $container->setParameter('synapse.admin_outer_layout', $config['routing']['admin_outer_layout'] ?? null);
 
         // ── Version ──────────────────────────────────────────────────────────
         $versionFile = __DIR__.'/../../../VERSION';
