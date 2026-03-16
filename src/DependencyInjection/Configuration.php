@@ -146,10 +146,6 @@ class Configuration implements ConfigurationInterface
             ->defaultValue('/synapse/api')
             ->info('Préfixe des points de terminaison API du chat')
             ->end()
-            ->scalarNode('admin_outer_layout')
-            ->defaultNull()
-            ->info('Layout de l\'app hôte à utiliser pour l\'admin (ex: "core/base.html.twig"). null = layout standalone Synapse.')
-            ->end()
             ->end()
             ->end()
 
