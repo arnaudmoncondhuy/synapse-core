@@ -276,6 +276,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         foreach ($results as $result) {
             $modelId = (string) ($result['model'] ?? 'unknown');
             $usage[$modelId] = [
+                'model_id' => $modelId,
                 'count' => (int) ($result['count'] ?? 0),
                 'total_tokens' => (int) ($result['total_tokens'] ?? 0),
                 'cost' => (float) ($result['cost'] ?? 0.0),

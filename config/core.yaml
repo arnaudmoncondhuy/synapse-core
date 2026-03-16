@@ -318,6 +318,11 @@ services:
         autoconfigure: true
         public: false
 
+    ArnaudMoncondhuy\SynapseCore\Event\MasterPromptSubscriber:
+        autowire: true
+        autoconfigure: true
+        public: false
+
     # ── Memory Tools ─────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Memory\Tool\ProposeMemoryTool:
         tags: [{ name: synapse.tool }]

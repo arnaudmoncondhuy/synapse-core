@@ -130,25 +130,25 @@ class SynapseLlmCall
      * Snapshot du coût dans la devise du modèle au moment de la requête (ex: USD).
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 6, nullable: true)]
-    private ?float $costModelCurrency = null;
+    private ?string $costModelCurrency = null;
 
     /**
      * Snapshot du coût converti en devise de référence au moment de la requête (ex: EUR).
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 6, nullable: true)]
-    private ?float $costReference = null;
+    private ?string $costReference = null;
 
     /**
      * Snapshot du tarif input ($/1M tokens) appliqué au moment de la requête.
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
-    private ?float $pricingInput = null;
+    private ?string $pricingInput = null;
 
     /**
      * Snapshot du tarif output ($/1M tokens) appliqué au moment de la requête.
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
-    private ?float $pricingOutput = null;
+    private ?string $pricingOutput = null;
 
     /**
      * Devise du snapshot de tarif (USD, EUR…).
@@ -366,7 +366,7 @@ class SynapseLlmCall
 
     public function setCostModelCurrency(?float $costModelCurrency): self
     {
-        $this->costModelCurrency = $costModelCurrency;
+        $this->costModelCurrency = null !== $costModelCurrency ? (string) $costModelCurrency : null;
 
         return $this;
     }
@@ -378,7 +378,7 @@ class SynapseLlmCall
 
     public function setCostReference(?float $costReference): self
     {
-        $this->costReference = $costReference;
+        $this->costReference = null !== $costReference ? (string) $costReference : null;
 
         return $this;
     }
@@ -390,7 +390,7 @@ class SynapseLlmCall
 
     public function setPricingInput(?float $pricingInput): self
     {
-        $this->pricingInput = $pricingInput;
+        $this->pricingInput = null !== $pricingInput ? (string) $pricingInput : null;
 
         return $this;
     }
@@ -402,7 +402,7 @@ class SynapseLlmCall
 
     public function setPricingOutput(?float $pricingOutput): self
     {
-        $this->pricingOutput = $pricingOutput;
+        $this->pricingOutput = null !== $pricingOutput ? (string) $pricingOutput : null;
 
         return $this;
     }

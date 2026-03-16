@@ -89,7 +89,7 @@ class PromptBuilder
      *
      * @return string Le template avec les variables remplacées
      */
-    private function interpolateVariables(string $template, array $context): string
+    public function interpolateVariables(string $template, array $context): string
     {
         $replacements = [];
 
