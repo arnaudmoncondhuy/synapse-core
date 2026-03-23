@@ -253,8 +253,18 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     }
 
     /**
+     * Batch size maximal autorisé par OVH AI pour l'endpoint embeddings.
+     *
+     * @see https://endpoints.ai.cloud.ovh.net/docs/embeddings
+     */
+    private const MAX_EMBEDDING_BATCH_SIZE = 25;
+
+    /**
      * Génère des embeddings vectoriels pour un ou plusieurs textes d'entrée.
      * Compatible avec l'endpoint /v1/embeddings de type OpenAI (comme OVH).
+     *
+     * OVH AI limite le batch à 25 éléments maximum. Si l'entrée est un tableau
+     * plus grand, il est automatiquement découpé en micro-batches de 25.
      */
     public function generateEmbeddings(string|array $input, ?string $model = null, array $options = []): array
     {
@@ -262,8 +272,54 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         $effectiveModel = $model ?? $this->model;
 
+        // Si l'entrée est un tableau, on découpe en micro-batches pour respecter la limite OVH
+        if (is_array($input) && count($input) > self::MAX_EMBEDDING_BATCH_SIZE) {
+            return $this->generateEmbeddingsInBatches($input, $effectiveModel);
+        }
+
+        return $this->doGenerateEmbeddings($input, $effectiveModel);
+    }
+
+    /**
+     * Découpe un grand tableau de textes en micro-batches et agrège les résultats.
+     *
+     * @param string[] $inputs
+     *
+     * @return array{embeddings: list<list<float>>, usage: array{prompt_tokens: int, total_tokens: int}}
+     */
+    private function generateEmbeddingsInBatches(array $inputs, string $model): array
+    {
+        $allEmbeddings = [];
+        $totalPromptTokens = 0;
+        $totalTokens = 0;
+
+        foreach (array_chunk($inputs, self::MAX_EMBEDDING_BATCH_SIZE) as $batch) {
+            $result = $this->doGenerateEmbeddings($batch, $model);
+            $allEmbeddings = array_merge($allEmbeddings, $result['embeddings']);
+            $totalPromptTokens += $result['usage']['prompt_tokens'];
+            $totalTokens += $result['usage']['total_tokens'];
+        }
+
+        return [
+            'embeddings' => $allEmbeddings,
+            'usage' => [
+                'prompt_tokens' => $totalPromptTokens,
+                'total_tokens' => $totalTokens,
+            ],
+        ];
+    }
+
+    /**
+     * Effectue un appel HTTP unique à l'endpoint /embeddings.
+     *
+     * @param string|string[] $input
+     *
+     * @return array{embeddings: list<list<float>>, usage: array{prompt_tokens: int, total_tokens: int}}
+     */
+    private function doGenerateEmbeddings(string|array $input, string $model): array
+    {
         $payload = [
-            'model' => $effectiveModel,
+            'model' => $model,
             'input' => $input,
         ];
 
@@ -281,7 +337,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
             $embeddings = [];
             if (isset($data['data']) && is_array($data['data'])) {
-                // OpenAI returns data sorted by index, but it's good practice to ensure it
+                // OVH retourne les données triées par index, on s'en assure quand même
                 /** @var array<int, array<string, mixed>> $dataList */
                 $dataList = $data['data'];
                 usort($dataList, function (array $a, array $b) {
