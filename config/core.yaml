@@ -330,7 +330,8 @@ services:
     # ── RAG Sources ─────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Rag\RagSourceRegistry:
         arguments:
-            $providers: !tagged_iterator synapse.rag_source
+            $staticProviders: !tagged_iterator synapse.rag_source
+            $factories: !tagged_iterator synapse.rag_source_factory
 
     ArnaudMoncondhuy\SynapseCore\Rag\RagManager:
         arguments:
