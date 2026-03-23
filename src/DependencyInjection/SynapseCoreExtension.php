@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\DependencyInjection;
 use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\RagSourceProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager;
 use ArnaudMoncondhuy\SynapseCore\Security\LibsodiumEncryptionService;
 use Symfony\Component\Config\FileLocator;
@@ -189,6 +190,9 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
 
         $container->registerForAutoconfiguration(ContextProviderInterface::class)
             ->addTag('synapse.context_provider');
+
+        $container->registerForAutoconfiguration(RagSourceProviderInterface::class)
+            ->addTag('synapse.rag_source');
 
         // ── Vector Store Configuration ────────────────────────────────────────
         // L'alias est désormais géré dynamiquement par DynamicVectorStore via core.yaml

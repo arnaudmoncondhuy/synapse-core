@@ -31,5 +31,8 @@ synapse.core.prompt.memory_block_header: |
   ### 🧠 MÉMOIRE ET CONTEXTE UTILISATEUR
   Les informations suivantes ont été mémorisées lors de conversations précédentes avec l'utilisateur :
   {memories}
-  
+
   Instruction: Utilise ces informations de manière naturelle si elles sont pertinentes pour répondre, mais ne dis jamais explicitement 'd'après mes souvenirs' ou 'je me souviens que'. Agis simplement en tenant compte de ce contexte.
+
+synapse.core.prompt.rag_block_header: "### CONTEXTE DOCUMENTAIRE (Base de connaissance)\nLes informations suivantes proviennent de la base de connaissance de l'organisation et sont pertinentes pour la question de l'utilisateur :"
+synapse.core.prompt.rag_block_instruction: "Instruction : Utilise ces informations pour répondre à la question de l'utilisateur. Cite la source si cela est pertinent."

@@ -84,6 +84,27 @@ class SynapseAgent
     private array $allowedToolNames = [];
 
     /**
+     * Liste des slugs de sources RAG assignées à cet agent.
+     * Tableau vide [] = aucune source RAG.
+     *
+     * @var string[]
+     */
+    #[ORM\Column(type: Types::JSON)]
+    private array $allowedRagSources = [];
+
+    /**
+     * Nombre maximum de résultats RAG injectés dans le contexte.
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 5])]
+    private int $ragMaxResults = 5;
+
+    /**
+     * Score de similarité minimum pour qu'un résultat RAG soit injecté.
+     */
+    #[ORM\Column(type: Types::FLOAT, options: ['default' => 0.4])]
+    private float $ragMinScore = 0.4;
+
+    /**
      * Agent fournie par le bundle (ne peut pas être supprimée depuis l'admin).
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
@@ -246,6 +267,44 @@ class SynapseAgent
         return !empty($this->allowedToolNames);
     }
 
+    /** @return string[] */
+    public function getAllowedRagSources(): array
+    {
+        return $this->allowedRagSources;
+    }
+
+    /** @param string[] $allowedRagSources */
+    public function setAllowedRagSources(array $allowedRagSources): self
+    {
+        $this->allowedRagSources = array_values(array_filter($allowedRagSources, 'is_string'));
+
+        return $this;
+    }
+
+    public function getRagMaxResults(): int
+    {
+        return $this->ragMaxResults;
+    }
+
+    public function setRagMaxResults(int $ragMaxResults): self
+    {
+        $this->ragMaxResults = $ragMaxResults;
+
+        return $this;
+    }
+
+    public function getRagMinScore(): float
+    {
+        return $this->ragMinScore;
+    }
+
+    public function setRagMinScore(float $ragMinScore): self
+    {
+        $this->ragMinScore = $ragMinScore;
+
+        return $this;
+    }
+
     public function isBuiltin(): bool
     {
         return $this->isBuiltin;
@@ -344,6 +403,9 @@ class SynapseAgent
             'modelPreset' => $this->modelPreset?->getName(),
             'tone' => $this->tone?->getKey(),
             'allowedToolNames' => $this->allowedToolNames,
+            'allowedRagSources' => $this->allowedRagSources,
+            'ragMaxResults' => $this->ragMaxResults,
+            'ragMinScore' => $this->ragMinScore,
             'isBuiltin' => $this->isBuiltin,
             'isActive' => $this->isActive,
             'isPublic' => $this->isPublic(),

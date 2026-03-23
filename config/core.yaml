@@ -327,3 +327,32 @@ services:
     ArnaudMoncondhuy\SynapseCore\Memory\Tool\ProposeMemoryTool:
         tags: [{ name: synapse.tool }]
 
+    # ── RAG Sources ─────────────────────────────────────────────────────────
+    ArnaudMoncondhuy\SynapseCore\Rag\RagSourceRegistry:
+        arguments:
+            $providers: !tagged_iterator synapse.rag_source
+
+    ArnaudMoncondhuy\SynapseCore\Rag\RagManager:
+        arguments:
+            $em: '@doctrine.orm.entity_manager'
+            $logger: '@?logger'
+
+    ArnaudMoncondhuy\SynapseCore\Event\RagContextSubscriber:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseRagSourceRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseRagDocumentRepository:
+        arguments:
+            $registry: '@doctrine'
+        tags: ['doctrine.repository_service']
+
+    ArnaudMoncondhuy\SynapseCore\Command\RagReindexCommand:
+        autowire: true
+        autoconfigure: true
+
