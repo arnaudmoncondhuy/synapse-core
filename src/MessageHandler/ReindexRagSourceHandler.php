@@ -70,7 +70,9 @@ final class ReindexRagSourceHandler
 
         try {
             foreach ($provider->fetchDocuments() as $document) {
-                $chunks = $this->ragManager->ingest($source->getSlug(), [$document]);
+                /** @var iterable<array<string, mixed>> $documents */
+                $documents = [$document];
+                $chunks = $this->ragManager->ingest($source->getSlug(), $documents);
                 $totalChunks += $chunks;
                 ++$processedFiles;
 

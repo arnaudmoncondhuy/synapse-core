@@ -41,7 +41,7 @@ class RagManager
      * La source est auto-créée si elle n'existe pas encore.
      *
      * @param string $slug identifiant de la source
-     * @param iterable<array{content: string, sourceIdentifier: string, metadata?: array<string, mixed>}> $documents
+     * @param iterable<array<string, mixed>> $documents documents avec 'content' et 'sourceIdentifier'
      *
      * @return int nombre de chunks créés
      */
