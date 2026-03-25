@@ -11,8 +11,8 @@ use Doctrine\Persistence\ObjectManager;
 /**
  * Charge les 20 tons de réponse par défaut du bundle.
  *
- * Ces tones sont marqués isBuiltin = true et ne peuvent pas être supprimés
- * depuis l'interface d'administration.
+ * Ces tones sont marqués isBuiltin = true pour les identifier comme tones par défaut.
+ * Ils peuvent être supprimés depuis l'interface d'administration et restaurés via le bouton dédié.
  *
  * Usage : php bin/console doctrine:fixtures:load --append
  */

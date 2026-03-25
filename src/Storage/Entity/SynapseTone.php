@@ -15,8 +15,8 @@ use Doctrine\ORM\Mapping as ORM;
  * ton, posture. N'affecte pas la capacité de raisonnement, uniquement la
  * façon dont les réponses sont formulées.
  *
- * Les tones builtin (isBuiltin = true) sont fournis par le bundle et ne
- * peuvent pas être supprimés depuis l'admin.
+ * Les tones builtin (isBuiltin = true) sont fournis par le bundle par défaut
+ * et peuvent être restaurés via l'interface d'administration.
  */
 #[ORM\Entity(repositoryClass: SynapseToneRepository::class)]
 #[ORM\Table(name: 'synapse_tone')]

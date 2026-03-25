@@ -12,8 +12,8 @@ Il n'affecte pas la capacité de raisonnement, uniquement la façon dont les ré
 Les tons sont stockés en base de données et gérables depuis **Intelligence › Tons de réponse** dans l'admin Synapse V2.
 
 - **20 tons builtin** sont fournis par le bundle (efficace, zen, senior_dev, etc.)
-- Vous pouvez en **créer**, **modifier** et **désactiver** librement
-- Les tons builtin ne peuvent pas être supprimés (marqués `isBuiltin = true`)
+- Vous pouvez en **créer**, **modifier**, **supprimer** et **désactiver** librement
+- Les tons par défaut peuvent être restaurés à tout moment via le bouton "Restaurer les défauts"
 
 ### Chargement initial des tons builtin
 
