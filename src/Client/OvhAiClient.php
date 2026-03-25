@@ -227,7 +227,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             'system_prompt_sent' => $caps->supportsSystemPrompt && !empty($contents) && ($contents[0]['role'] ?? '') === 'system',
             'context_caching' => false,  // OVH n'a pas de context caching
         ];
-        $debugOut['raw_request_body'] = $payload;
+        $debugOut['raw_request_body'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($payload);
 
         try {
             $response = $this->httpClient->request('POST', rtrim((string) $this->endpoint, '/').'/chat/completions', [
@@ -242,7 +242,7 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             $data = $response->toArray();
 
             // Passer la réponse brute de l'API au debug (VRAI brut, avant normalisation)
-            $debugOut['raw_api_response'] = $data;
+            $debugOut['raw_api_response'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($data);
 
             return $this->normalizeCompletionResponse($data);
         } catch (\Throwable $e) {
@@ -413,15 +413,15 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
 
         // Text content
         if (isset($delta['content']) && is_string($delta['content']) && '' !== $delta['content']) {
-            $normalized['text'] = (string) $delta['content'];
+            $normalized['text'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $delta['content']);
         }
 
         // Reasoning/Thinking content (OpenAI compatible format)
         // OVH may return reasoning in 'reasoning' or 'reasoning_content' fields
         if (isset($delta['reasoning']) && is_string($delta['reasoning']) && '' !== $delta['reasoning']) {
-            $normalized['thinking'] = (string) $delta['reasoning'];
+            $normalized['thinking'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $delta['reasoning']);
         } elseif (isset($delta['reasoning_content']) && is_string($delta['reasoning_content']) && '' !== $delta['reasoning_content']) {
-            $normalized['thinking'] = (string) $delta['reasoning_content'];
+            $normalized['thinking'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $delta['reasoning_content']);
         }
 
         // Tool calls (streamed incrementally — name in first chunk, args accumulated)
@@ -603,12 +603,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         $message = is_array($choice['message'] ?? null) ? $choice['message'] : [];
 
         if (!empty($message['content']) && is_string($message['content'])) {
-            $normalized['text'] = (string) $message['content'];
+            $normalized['text'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $message['content']);
         }
 
         // OVH retourne le reasoning dans message.reasoning_content (mode synchrone)
         if (!empty($message['reasoning_content']) && is_string($message['reasoning_content'])) {
-            $normalized['thinking'] = (string) $message['reasoning_content'];
+            $normalized['thinking'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $message['reasoning_content']);
         }
 
         if (!empty($message['tool_calls']) && is_array($message['tool_calls'])) {

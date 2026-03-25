@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Logger;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\SynapseDebugLoggerInterface;
+use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseDebugLog;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseDebugLogRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,7 +34,8 @@ class DoctrineAdminLogger implements SynapseDebugLoggerInterface
 
         // Store the COMPLETE payload for template rendering
         // (template needs 'turns', 'system_prompt', etc.)
-        $debugLog->setData($rawPayload);
+        // Sanitize UTF-8 to prevent serialization errors during DB storage
+        $debugLog->setData(TextUtil::sanitizeArrayUtf8($rawPayload));
 
         if (isset($metadata['conversation_id'])) {
             $conversationId = $metadata['conversation_id'];

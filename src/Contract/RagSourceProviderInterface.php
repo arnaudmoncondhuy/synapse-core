@@ -43,4 +43,10 @@ interface RagSourceProviderInterface
      * @return iterable<array{content: string, sourceIdentifier: string, metadata?: array<string, mixed>}>
      */
     public function fetchDocuments(): iterable;
+
+    /**
+     * Retourne le nombre total de documents à indexer, si connu.
+     * Utile pour afficher une barre de progression.
+     */
+    public function countDocuments(): ?int;
 }

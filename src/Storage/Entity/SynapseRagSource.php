@@ -60,6 +60,22 @@ class SynapseRagSource
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $lastIndexedAt = null;
 
+    /** Statut de la dernière réindexation : ready, indexing, error. */
+    #[ORM\Column(type: Types::STRING, length: 20, options: ['default' => 'ready'])]
+    private string $indexingStatus = 'ready';
+
+    /** Message d'erreur de la dernière réindexation, si applicable. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $lastError = null;
+
+    /** Nombre total de fichiers à traiter (estimation pour la barre de progression). */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $totalFiles = 0;
+
+    /** Nombre de fichiers déjà traités lors de la réindexation en cours. */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $processedFiles = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -153,6 +169,54 @@ class SynapseRagSource
     public function setLastIndexedAt(?\DateTimeImmutable $lastIndexedAt): self
     {
         $this->lastIndexedAt = $lastIndexedAt;
+
+        return $this;
+    }
+
+    public function getIndexingStatus(): string
+    {
+        return $this->indexingStatus;
+    }
+
+    public function setIndexingStatus(string $indexingStatus): self
+    {
+        $this->indexingStatus = $indexingStatus;
+
+        return $this;
+    }
+
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    public function setLastError(?string $lastError): self
+    {
+        $this->lastError = $lastError;
+
+        return $this;
+    }
+
+    public function getTotalFiles(): int
+    {
+        return $this->totalFiles;
+    }
+
+    public function setTotalFiles(int $totalFiles): self
+    {
+        $this->totalFiles = $totalFiles;
+
+        return $this;
+    }
+
+    public function getProcessedFiles(): int
+    {
+        return $this->processedFiles;
+    }
+
+    public function setProcessedFiles(int $processedFiles): self
+    {
+        $this->processedFiles = $processedFiles;
 
         return $this;
     }

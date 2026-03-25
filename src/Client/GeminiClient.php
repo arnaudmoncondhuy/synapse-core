@@ -108,7 +108,7 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
 
             $data = $response->toArray();
             // Passer la réponse brute de l'API au debug (VRAI brut, avant normalisation)
-            $debugOut['raw_api_response'] = $data;
+            $debugOut['raw_api_response'] = TextUtil::sanitizeArrayUtf8($data);
 
             return $this->normalizeChunk($data);
         } catch (\Throwable $e) {
@@ -399,11 +399,11 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         if (!empty($textParts)) {
-            $normalized['text'] = implode('', $textParts);
+            $normalized['text'] = TextUtil::sanitizeUtf8(implode('', $textParts));
         }
 
         if (!empty($thinkingParts)) {
-            $normalized['thinking'] = implode('', $thinkingParts);
+            $normalized['thinking'] = TextUtil::sanitizeUtf8(implode('', $thinkingParts));
         }
 
         return $normalized;

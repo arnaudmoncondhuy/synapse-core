@@ -31,7 +31,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', 0],   // Lower priority to capture prompt AFTER MemoryContextSubscriber (50)
+            SynapsePrePromptEvent::class => ['onPrePrompt', -200], // Lowest priority: capture FINAL prompt after ALL subscribers (MasterPrompt: -75, Truncation: -50)
             SynapseChunkReceivedEvent::class => ['onChunkReceived', 0],
             SynapseToolCallCompletedEvent::class => ['onToolCallCompleted', 0],
             SynapseExchangeCompletedEvent::class => ['onExchangeCompleted', -100], // Low priority, let others finish first
@@ -254,11 +254,13 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $this->debugLogger->logExchange($event->getDebugId(), $metadata, $this->debugAccumulator);
 
         // Store complete debug data in cache for quick retrieval (1 day TTL)
+        // Sanitize UTF-8 in all debug data to prevent serialization errors
         $debugId = $event->getDebugId();
-        $this->cache->get("synapse_debug_{$debugId}", function (ItemInterface $item) {
+        $cleanedDebugData = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeArrayUtf8($this->debugAccumulator);
+        $this->cache->get("synapse_debug_{$debugId}", function (ItemInterface $item) use ($cleanedDebugData) {
             $item->expiresAfter(86400); // 24 hours
 
-            return $this->debugAccumulator;
+            return $cleanedDebugData;
         });
 
         // Clean up
