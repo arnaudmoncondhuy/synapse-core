@@ -1,6 +1,0 @@
-services:
-  # — Synapse Tone Initializer ————————————————————————————————————
-  # Register ToneInitializer service (required by ToneController in synapse-admin)
-  ArnaudMoncondhuy\SynapseCore\Service\ToneInitializer:
-    arguments:
-      $toneRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository'
