@@ -74,6 +74,20 @@ class SynapseRagDocumentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Compte tous les documents RAG en base.
+     */
+    public function countAll(): int
+    {
+        /** @var int $count */
+        $count = $this->createQueryBuilder('d')
+            ->select('COUNT(d.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count;
+    }
+
+    /**
      * Supprime tous les documents d'une source (bulk DQL).
      */
     public function deleteBySource(SynapseRagSource $source): int
