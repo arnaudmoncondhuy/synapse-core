@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Agent;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Service de fabrication d'agents IA (AgentBuilder).
@@ -26,8 +27,9 @@ class SynapseAgentBuilder
     private int $maxTurns = 5;
 
     public function __construct(
-        private ChatService $chatService,
-        private ModelCapabilityRegistry $capabilityRegistry,
+        private readonly ChatService $chatService,
+        private readonly EventDispatcherInterface $dispatcher,
+        private readonly ModelCapabilityRegistry $capabilityRegistry,
     ) {
     }
 
@@ -141,6 +143,7 @@ class SynapseAgentBuilder
 
         return new SynapseAgent(
             $this->chatService,
+            $this->dispatcher,
             $preset,
             $this->systemPrompt,
             $this->allowedTools,

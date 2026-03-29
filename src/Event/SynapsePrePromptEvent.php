@@ -4,29 +4,30 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * Événement déclenché AVANT l'envoi du prompt au LLM.
+ * @deprecated Depuis le refactoring du pipeline de prompt (Mars 2026).
  *
- * C'est le point d'extension le plus puissant pour :
- * - Modifier les instructions système dynamiquement.
- * - Injecter du contexte métier supplémentaire.
- * - Nettoyer ou tronquer l'historique des messages.
- * - Ajuster les paramètres de génération (température, top-p).
+ * Remplacé par 5 events de phase explicites dans ArnaudMoncondhuy\SynapseCore\Event\Prompt\ :
+ *   - PromptBuildEvent    : construction du prompt de base (system + history + tools)
+ *   - PromptEnrichEvent   : enrichissement (mémoire utilisateur, RAG)
+ *   - PromptOptimizeEvent : troncation du contexte selon la context window
+ *   - PromptFinalizeEvent : injection du master prompt
+ *   - PromptCaptureEvent  : capture debug (lecture seule)
  *
- * @see \ArnaudMoncondhuy\SynapseCore\Engine\ChatService::ask()
+ * Migration : écouter le(s) event(s) de phase correspondant(s) à votre usage.
  *
  * @example
  * ```php
- * #[AsEventListener(event: SynapsePrePromptEvent::class)]
- * public function onPrePrompt(SynapsePrePromptEvent $event): void
- * {
- *     $prompt = $event->getPrompt();
- *     // Ajouter une règle métier globale
- *     $prompt[0]['content'] .= "\nRéponds toujours en rimes.";
- *     $event->setPrompt($prompt);
- * }
+ * // AVANT (déprécié)
+ * #[AsEventListener(event: SynapsePrePromptEvent::class, priority: 40)]
+ * public function onPrePrompt(SynapsePrePromptEvent $event): void { ... }
+ *
+ * // APRÈS
+ * #[AsEventListener(event: PromptEnrichEvent::class)]
+ * public function onEnrich(PromptEnrichEvent $event): void { ... }
  * ```
  */
 class SynapsePrePromptEvent extends Event
@@ -34,8 +35,7 @@ class SynapsePrePromptEvent extends Event
     /** @var array<string, mixed> */
     private array $prompt;
 
-    /** @var array<string, mixed> */
-    private array $config;
+    private ?SynapseRuntimeConfig $config;
 
     /** @var list<array{mime_type: string, data: string}> */
     private array $images = [];
@@ -43,14 +43,13 @@ class SynapsePrePromptEvent extends Event
     /**
      * @param array<string, mixed> $options
      * @param array<string, mixed> $prompt
-     * @param array<string, mixed> $config
-     * @param list<array{mime_type: string, data: string}> $images Images attachées au message courant
+     * @param list<array{mime_type: string, data: string}> $images
      */
     public function __construct(
         private string $message,
         private array $options,
         array $prompt = [],
-        array $config = [],
+        ?SynapseRuntimeConfig $config = null,
         array $images = [],
     ) {
         $this->prompt = $prompt;
@@ -58,17 +57,12 @@ class SynapsePrePromptEvent extends Event
         $this->images = $images;
     }
 
-    /**
-     * Retourne le message brut envoyé par l'utilisateur.
-     */
     public function getMessage(): string
     {
         return $this->message;
     }
 
     /**
-     * Retourne les options d'appel passées au ChatService.
-     *
      * @return array<string, mixed>
      */
     public function getOptions(): array
@@ -77,9 +71,6 @@ class SynapsePrePromptEvent extends Event
     }
 
     /**
-     * Retourne le prompt complet tel qu'il sera envoyé au client LLM.
-     * Le premier élément (index 0) est généralement le message système.
-     *
      * @return array<string, mixed>
      */
     public function getPrompt(): array
@@ -88,8 +79,6 @@ class SynapsePrePromptEvent extends Event
     }
 
     /**
-     * Permet de modifier ou remplacer le prompt complet.
-     *
      * @param array<string, mixed> $prompt
      */
     public function setPrompt(array $prompt): self
@@ -99,22 +88,12 @@ class SynapsePrePromptEvent extends Event
         return $this;
     }
 
-    /**
-     * Retourne la configuration technique de génération.
-     *
-     * @return array<string, mixed>
-     */
-    public function getConfig(): array
+    public function getConfig(): ?SynapseRuntimeConfig
     {
         return $this->config;
     }
 
-    /**
-     * Permet de modifier la configuration technique (ex: changer le modèle à la volée).
-     *
-     * @param array<string, mixed> $config
-     */
-    public function setConfig(array $config): self
+    public function setConfig(SynapseRuntimeConfig $config): self
     {
         $this->config = $config;
 
@@ -122,9 +101,6 @@ class SynapsePrePromptEvent extends Event
     }
 
     /**
-     * Retourne les images attachées au message courant.
-     * Format : [['mime_type' => 'image/jpeg', 'data' => 'base64...'], ...].
-     *
      * @return list<array{mime_type: string, data: string}>
      */
     public function getImages(): array
@@ -133,8 +109,6 @@ class SynapsePrePromptEvent extends Event
     }
 
     /**
-     * Définit les images attachées au message courant.
-     *
      * @param list<array{mime_type: string, data: string}> $images
      */
     public function setImages(array $images): self

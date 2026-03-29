@@ -4,40 +4,41 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptEnrichEvent;
 use ArnaudMoncondhuy\SynapseCore\Rag\RagManager;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseRagSourceRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Injecte le contexte documentaire (RAG) dans le prompt avant l'envoi au LLM.
  *
- * Écoute SynapsePrePromptEvent avec priorité 40 :
- * - Après ContextBuilderSubscriber (100) et MemoryContextSubscriber (50)
- * - Interroge les sources RAG assignées à l'agent courant
- * - Injecte les résultats dans le system prompt
+ * Phase ENRICH (priorité 40) — s'exécute après MemoryContextSubscriber (priorité 50).
+ * Interroge les sources RAG assignées à l'agent courant et injecte les résultats dans le system prompt.
  */
 class RagContextSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private RagManager $ragManager,
-        private SynapseAgentRepository $agentRepository,
-        private SynapseRagSourceRepository $ragSourceRepository,
-        private ?SynapseProfiler $profiler = null,
-        private ?TranslatorInterface $translator = null,
+        private readonly RagManager $ragManager,
+        private readonly SynapseAgentRepository $agentRepository,
+        private readonly SynapseRagSourceRepository $ragSourceRepository,
+        private readonly ?SynapseProfiler $profiler = null,
+        private readonly ?TranslatorInterface $translator = null,
+        private readonly ?LoggerInterface $logger = null,
     ) {
     }
 
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', 40],
+            PromptEnrichEvent::class => ['onPrePrompt', 40], // RAG après Memory (40 < 50)
         ];
     }
 
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptEnrichEvent $event): void
     {
         $options = $event->getOptions();
         $agentKey = $options['agent'] ?? null;
@@ -82,6 +83,10 @@ class RagContextSubscriber implements EventSubscriberInterface
                 $this->profiler->stop('RAG', 'RAG Context Search', 0);
             }
             $error = $e->getMessage();
+            $this->logger?->error('Synapse RAG: erreur lors de la recherche sémantique.', [
+                'exception' => $e,
+                'agent' => $event->getPrompt()['metadata']['agent'] ?? 'unknown',
+            ]);
         }
 
         $prompt = $event->getPrompt();

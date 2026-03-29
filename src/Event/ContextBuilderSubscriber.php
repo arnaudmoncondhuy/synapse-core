@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptBuildEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
@@ -17,7 +18,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * Builds the complete prompt (system instruction + history) for the LLM.
  *
- * Listens to SynapsePrePromptEvent and populates:
+ * Listens to PromptBuildEvent (BUILD phase) and populates:
  * - System instruction (tone-based)
  * - SynapseMessage history (from options or loaded via handler)
  * - Generation config (from active preset)
@@ -36,25 +37,19 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * Décrit l'événement écouté : SynapsePrePromptEvent avec haute priorité (100).
-     *
-     * @return array<string, array{0: string, 1: int}> Mapping : {eventClass: [methodName, priority]}
+     * @return array<string, array{0: string, 1: int}>
      */
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', 100], // High priority
+            PromptBuildEvent::class => ['onPrePrompt', 0],
         ];
     }
 
     /**
-     * Traite l'événement SynapsePrePromptEvent pour construire le prompt final.
-     * Peuple l'événement avec : système instruction, contenu message (stateless/stateful),
-     * configuration, et définitions d'outils.
-     *
-     * @param SynapsePrePromptEvent $event L'événement contenant message et options
+     * Construit le prompt de base : system message, historique, config, tool definitions.
      */
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptBuildEvent $event): void
     {
         $this->profiler->start('Context', 'Context Builder CPU', 'Temps de préparation des informations système, recherche des instructions et formatage.');
 
@@ -67,7 +62,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $toneKey = is_string($toneKeyMixed) ? $toneKeyMixed : null;
         $systemMessage = $this->promptBuilder->buildSystemMessage($toneKey);
         if (null !== $toneKey && '' !== $toneKey) {
-            $config['active_tone'] = $toneKey;
+            $config = $config->withActiveTone($toneKey);
         }
 
         // ── 2. METIER (Agent) ──
@@ -100,12 +95,10 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                     $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
                     // On s'assure de ré-injecter le ton actif dans la nouvelle config
                     if (null !== $effectiveToneKey && '' !== $effectiveToneKey) {
-                        $config['active_tone'] = $effectiveToneKey;
+                        $config = $config->withActiveTone($effectiveToneKey);
                     }
                 }
-                $config['agent_id'] = $agent->getId();
-                $config['agent_name'] = $agent->getName();
-                $config['agent_emoji'] = $agent->getEmoji();
+                $config = $config->withAgentInfo($agent->getId(), $agent->getName(), $agent->getEmoji());
 
                 // Injecter les outils autorisés de l'agent
                 // (sauf si le développeur a déjà défini tools_override)
@@ -131,9 +124,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 $config = $this->configProvider->getConfigForPreset($overridePreset);
                 // Conserver l'ID de l'agent pour le tracking si on avait un agent
                 if (isset($options['agent']) && isset($agent)) {
-                    $config['agent_id'] = $agent->getId();
-                    $config['agent_name'] = $agent->getName();
-                    $config['agent_emoji'] = $agent->getEmoji();
+                    $config = $config->withAgentInfo($agent->getId(), $agent->getName(), $agent->getEmoji());
                 }
             }
         }
@@ -171,8 +162,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         /** @var list<string>|null $toolsOverride */
         $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
 
-        $disabledCaps = is_array($config['disabled_capabilities'] ?? null) ? $config['disabled_capabilities'] : [];
-        $toolDefinitions = in_array('function_calling', $disabledCaps, true)
+        $toolDefinitions = !$config->isFunctionCallingEnabled()
             ? []
             : (null !== $toolsOverride
                 ? $this->toolRegistry->getDefinitions($toolsOverride)

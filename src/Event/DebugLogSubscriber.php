@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\SynapseDebugLoggerInterface;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptCaptureEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -13,9 +14,10 @@ use Symfony\Contracts\Cache\ItemInterface;
  * Accumulates debug data throughout the LLM exchange and persists it.
  *
  * Listens to:
- * - SynapsePrePromptEvent: captures system prompt and initial config
- * - SynapseChunkReceivedEvent: accumulates chunk data (tokens, thinking, tool calls)
- * - SynapseExchangeCompletedEvent: persists final debug data via logger
+ * - PromptCaptureEvent (phase CAPTURE) : captures final prompt and config after all pipeline phases
+ * - SynapseChunkReceivedEvent          : accumulates chunk data (tokens, thinking, tool calls)
+ * - SynapseToolCallCompletedEvent      : records tool executions
+ * - SynapseExchangeCompletedEvent      : persists final debug data via logger
  */
 class DebugLogSubscriber implements EventSubscriberInterface
 {
@@ -31,14 +33,14 @@ class DebugLogSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', -200], // Lowest priority: capture FINAL prompt after ALL subscribers (MasterPrompt: -75, Truncation: -50)
+            PromptCaptureEvent::class => ['onPrePrompt', 0], // Phase CAPTURE : toujours après FINALIZE
             SynapseChunkReceivedEvent::class => ['onChunkReceived', 0],
             SynapseToolCallCompletedEvent::class => ['onToolCallCompleted', 0],
             SynapseExchangeCompletedEvent::class => ['onExchangeCompleted', -100], // Low priority, let others finish first
         ];
     }
 
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptCaptureEvent $event): void
     {
         // Capture initial context for debug
         $prompt = $event->getPrompt();
@@ -53,33 +55,29 @@ class DebugLogSubscriber implements EventSubscriberInterface
         }
 
         // Extract preset config parameters for display
-        $genConfig = is_array($config['generation_config'] ?? null) ? $config['generation_config'] : [];
-        $thinking = is_array($config['thinking'] ?? null) ? $config['thinking'] : [];
-        $safetySettings = is_array($config['safety_settings'] ?? null) ? $config['safety_settings'] : [];
-
-        $presetConfig = [
-            'preset_id' => is_numeric($config['preset_id'] ?? null) ? (int) $config['preset_id'] : null,
-            'preset_name' => is_string($config['preset_name'] ?? null) ? $config['preset_name'] : null,
-            'agent_id' => is_numeric($config['agent_id'] ?? null) ? (int) $config['agent_id'] : null,
-            'agent_name' => is_string($config['agent_name'] ?? null) ? $config['agent_name'] : null,
-            'agent_emoji' => is_string($config['agent_emoji'] ?? null) ? $config['agent_emoji'] : null,
-            'active_tone' => is_string($config['active_tone'] ?? null) ? $config['active_tone'] : null,
-            'model' => is_string($config['model'] ?? null) ? $config['model'] : null,
-            'provider' => is_string($config['provider'] ?? null) ? $config['provider'] : null,
-            'temperature' => $genConfig['temperature'] ?? null,
-            'top_p' => $genConfig['top_p'] ?? null,
-            'top_k' => $genConfig['top_k'] ?? null,
-            'max_output_tokens' => $genConfig['max_output_tokens'] ?? null,
-            'thinking_enabled' => (bool) ($thinking['enabled'] ?? false),
-            'thinking_budget' => $thinking['budget'] ?? null,
-            'safety_enabled' => (bool) ($safetySettings['enabled'] ?? false),
-            'safety_thresholds' => is_array($safetySettings['thresholds'] ?? null) ? $safetySettings['thresholds'] : [],
-            'safety_default_threshold' => is_string($safetySettings['default_threshold'] ?? null) ? $safetySettings['default_threshold'] : null,
+        $presetConfig = null !== $config ? [
+            'preset_id' => $config->presetId,
+            'preset_name' => $config->presetName,
+            'agent_id' => $config->agentId,
+            'agent_name' => $config->agentName,
+            'agent_emoji' => $config->agentEmoji,
+            'active_tone' => $config->activeTone,
+            'model' => $config->model,
+            'provider' => $config->provider,
+            'temperature' => $config->generation->temperature,
+            'top_p' => $config->generation->topP,
+            'top_k' => $config->generation->topK,
+            'max_output_tokens' => $config->generation->maxOutputTokens,
+            'thinking_enabled' => $config->thinking->enabled,
+            'thinking_budget' => $config->thinking->budget,
+            'safety_enabled' => $config->safety->enabled,
+            'safety_thresholds' => $config->safety->thresholds,
+            'safety_default_threshold' => $config->safety->defaultThreshold,
             'tools_sent' => !empty($prompt['toolDefinitions']),
-            'streaming_enabled' => (bool) ($config['streaming_enabled'] ?? false),
-            'pricing_input' => is_numeric($config['pricing_input'] ?? null) ? (float) $config['pricing_input'] : null,
-            'pricing_output' => is_numeric($config['pricing_output'] ?? null) ? (float) $config['pricing_output'] : null,
-        ];
+            'streaming_enabled' => $config->streamingEnabled,
+            'pricing_input' => $config->pricingInput,
+            'pricing_output' => $config->pricingOutput,
+        ] : [];
 
         // Capture tool definitions for display
         $toolDefinitionsRaw = $prompt['toolDefinitions'] ?? [];
@@ -92,7 +90,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         /** @var array<string, mixed> $accumulatorData */
         $accumulatorData = [
             'system_prompt' => $systemInstruction,
-            'config' => $config,
+            'config' => $config?->toArray(),
             'preset_config' => $presetConfig,
             'history' => $messages,
             'history_size' => count($messages),
@@ -220,22 +218,20 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $this->debugAccumulator['tool_usage'] = $this->debugAccumulator['tool_executions'] ?? [];
 
         // Complete the debug accumulator with final metadata
+        $usage = $event->getUsage();
         $this->debugAccumulator['model'] = $event->getModel();
         $this->debugAccumulator['provider'] = $event->getProvider();
-        $this->debugAccumulator['usage'] = $event->getUsage();
+        $this->debugAccumulator['usage'] = $usage->toArray();
         $this->debugAccumulator['safety'] = $event->getSafety();
         $this->debugAccumulator['timings'] = $event->getTimings();
         $this->debugAccumulator['created_at'] = new \DateTimeImmutable();
 
         // Calcul du coût estimé à partir du pricing et des tokens
         $presetCfg = $this->debugAccumulator['preset_config'] ?? [];
-        $usageData = $this->debugAccumulator['usage'];
         $pricingIn = is_numeric($presetCfg['pricing_input'] ?? null) ? (float) $presetCfg['pricing_input'] : null;
         $pricingOut = is_numeric($presetCfg['pricing_output'] ?? null) ? (float) $presetCfg['pricing_output'] : null;
         if (null !== $pricingIn && null !== $pricingOut) {
-            $promptTokens = (int) ($usageData['prompt_tokens'] ?? 0);
-            $completionTokens = (int) ($usageData['completion_tokens'] ?? 0);
-            $cost = ($promptTokens / 1_000_000) * $pricingIn + ($completionTokens / 1_000_000) * $pricingOut;
+            $cost = ($usage->promptTokens / 1_000_000) * $pricingIn + ($usage->completionTokens / 1_000_000) * $pricingOut;
             $this->debugAccumulator['estimated_cost'] = round($cost, 6);
             $this->debugAccumulator['estimated_cost_currency'] = 'USD';
         }
@@ -244,7 +240,7 @@ class DebugLogSubscriber implements EventSubscriberInterface
         $metadata = [
             'model' => $event->getModel(),
             'provider' => $event->getProvider(),
-            'token_usage' => $event->getUsage(),
+            'token_usage' => $usage->toArray(),
             'safety_ratings' => $event->getSafety(),
             'timings' => $event->getTimings(),
             'thinking_enabled' => (isset($this->debugAccumulator['config']) && is_array($this->debugAccumulator['config'])) ? ($this->debugAccumulator['config']['thinking_enabled'] ?? false) : false,

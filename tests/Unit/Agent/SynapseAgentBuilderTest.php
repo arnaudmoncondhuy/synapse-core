@@ -10,6 +10,7 @@ use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class SynapseAgentBuilderTest extends TestCase
 {
@@ -21,7 +22,8 @@ class SynapseAgentBuilderTest extends TestCase
     {
         $this->chatService = $this->createMock(ChatService::class);
         $this->capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
-        $this->builder = new SynapseAgentBuilder($this->chatService, $this->capabilityRegistry);
+        $dispatcher = $this->createStub(EventDispatcherInterface::class);
+        $this->builder = new SynapseAgentBuilder($this->chatService, $dispatcher, $this->capabilityRegistry);
     }
 
     public function testBuildThrowsExceptionIfNoModel(): void

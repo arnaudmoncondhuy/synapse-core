@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Agent\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class SynapseAgentTest extends TestCase
 {
@@ -17,8 +18,11 @@ class SynapseAgentTest extends TestCase
         $preset = new SynapseModelPreset();
         $preset->setModel('gpt-4');
 
+        $dispatcher = $this->createStub(EventDispatcherInterface::class);
+
         $agent = new SynapseAgent(
             $chatService,
+            $dispatcher,
             $preset,
             'System Instruction',
             ['tool1'],

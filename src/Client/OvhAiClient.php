@@ -6,14 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
-use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmAuthenticationException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
-use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -33,7 +26,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Streaming  : SSE (data: {...}\n, terminé par data: [DONE])
  * Tool calls : format OpenAI (tool_calls / role tool)
  */
-class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
+class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface
 {
     private string $model = 'Gpt-oss-20b';
     private string $apiKey = '';
@@ -48,10 +41,11 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     private string $reasoningEffort = 'high';  // high, medium, low, minimal
 
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private ConfigProviderInterface $configProvider,
-        private ModelCapabilityRegistry $capabilityRegistry,
+        HttpClientInterface $httpClient,
+        ConfigProviderInterface $configProvider,
+        ModelCapabilityRegistry $capabilityRegistry,
     ) {
+        parent::__construct($httpClient, $configProvider, $capabilityRegistry);
     }
 
     public function getProviderName(): string
@@ -124,8 +118,6 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
                     $buffer .= $chunk->getContent();
                 } catch (\Throwable $e) {
                     $this->handleException($e);
-
-                    return;
                 }
 
                 // Process complete SSE lines from buffer
@@ -247,8 +239,6 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             return $this->normalizeCompletionResponse($data);
         } catch (\Throwable $e) {
             $this->handleException($e);
-
-            return $this->emptyChunk();
         }
     }
 
@@ -367,8 +357,6 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
             ];
         } catch (\Throwable $e) {
             $this->handleException($e);
-
-            return ['embeddings' => [], 'usage' => ['prompt_tokens' => 0, 'total_tokens' => 0]];
         }
     }
 
@@ -632,22 +620,19 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         return $normalized;
     }
 
-    /**
-     * Retourne un chunk normalisé vide (toutes les valeurs par défaut).
-     *
-     * @return array<string, mixed>
-     */
-    private function emptyChunk(): array
+    protected function getProviderLabel(): string
     {
-        return [
-            'text' => null,
-            'thinking' => null,
-            'function_calls' => [],
-            'usage' => [],
-            'safety_ratings' => [],
-            'blocked' => false,
-            'blocked_reason' => null,
-        ];
+        return 'OVH AI';
+    }
+
+    protected function parseErrorBody(string $errorBody, string $originalMessage): string
+    {
+        $errorData = json_decode($errorBody, true);
+        if (is_array($errorData) && isset($errorData['message'])) {
+            return (string) $errorData['message'];
+        }
+
+        return $originalMessage.' || OVH Raw Error: '.$errorBody;
     }
 
     /**
@@ -660,12 +645,12 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     {
         $config = $this->configProvider->getConfig();
 
-        if (!empty($config['model'])) {
-            $this->model = is_string($config['model'] ?? null) ? (string) $config['model'] : '';
+        if ('' !== $config->model) {
+            $this->model = $config->model;
         }
 
         // Provider credentials (SynapseProvider en DB)
-        $creds = is_array($config['provider_credentials'] ?? null) ? $config['provider_credentials'] : [];
+        $creds = $config->providerCredentials;
 
         if (!empty($creds)) {
             if (!empty($creds['api_key']) && is_string($creds['api_key'])) {
@@ -677,29 +662,20 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         // Generation Config
-        if (isset($config['generation_config']) && is_array($config['generation_config'])) {
-            $gen = $config['generation_config'];
-            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) {
-                $this->temperature = (float) $gen['temperature'];
-            }
-            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) {
-                $this->topP = (float) $gen['top_p'];
-            }
-            $this->maxTokens = isset($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : $this->maxTokens;
-            if (isset($gen['stop_sequences']) && is_array($gen['stop_sequences'])) {
-                /** @var array<string> $stopSeqs */
-                $stopSeqs = $gen['stop_sequences'];
-                $this->stopSequences = $stopSeqs;
-            }
+        $gen = $config->generation;
+        $this->temperature = $gen->temperature;
+        $this->topP = $gen->topP;
+        if (null !== $gen->maxOutputTokens) {
+            $this->maxTokens = $gen->maxOutputTokens;
+        }
+        if ([] !== $gen->stopSequences) {
+            $this->stopSequences = $gen->stopSequences;
         }
 
-        // Réflexion/Thinking (stocké séparément dans config)
-        if (isset($config['thinking']) && is_array($config['thinking'])) {
-            $thinking = $config['thinking'];
-            $this->thinkingEnabled = (bool) ($thinking['enabled'] ?? false);
-            $this->thinkingBudget = isset($thinking['budget']) ? (int) $thinking['budget'] : null;
-            $this->reasoningEffort = (string) ($thinking['reasoning_effort'] ?? 'high');
-        }
+        // Réflexion/Thinking
+        $this->thinkingEnabled = $config->thinking->enabled;
+        $this->thinkingBudget = $config->thinking->budget;
+        $this->reasoningEffort = $config->thinking->reasoningEffort;
     }
 
     public function getCredentialFields(): array
@@ -756,34 +732,5 @@ class OvhAiClient implements LlmClientInterface, EmbeddingClientInterface
     public function getDefaultLabel(): string
     {
         return 'OVH AI Endpoints';
-    }
-
-    private function handleException(\Throwable $e): void
-    {
-        $message = $e->getMessage();
-        $statusCode = null;
-
-        if ($e instanceof HttpExceptionInterface) {
-            $statusCode = $e->getResponse()->getStatusCode();
-            try {
-                $errorBody = $e->getResponse()->getContent(false);
-                $errorData = json_decode($errorBody, true);
-                if (is_array($errorData) && isset($errorData['message'])) {
-                    $message = (string) $errorData['message'];
-                } else {
-                    $message .= ' || OVH Raw Error: '.$errorBody;
-                }
-            } catch (\Throwable) {
-            }
-        }
-
-        $fullMsg = 'OVH AI API Error: '.((string) $message);
-
-        throw match ($statusCode) {
-            401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
-            429 => new LlmRateLimitException($fullMsg, 0, $e),
-            500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default => (str_contains(strtolower((string) $message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
-        };
     }
 }

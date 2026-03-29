@@ -19,7 +19,7 @@ use Doctrine\Persistence\ObjectManager;
 class SynapseToneFixture extends Fixture
 {
     public function __construct(
-        private ToneInitializer $toneInitializer,
+        private readonly ToneInitializer $toneInitializer,
     ) {
     }
 

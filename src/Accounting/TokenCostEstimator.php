@@ -15,10 +15,10 @@ class TokenCostEstimator
     private const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 
     public function __construct(
-        private ConfigProviderInterface $configProvider,
-        private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
-        private ContextTruncationService $contextTruncationService,
-        private TokenAccountingService $accountingService,
+        private readonly ConfigProviderInterface $configProvider,
+        private readonly \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
+        private readonly ContextTruncationService $contextTruncationService,
+        private readonly TokenAccountingService $accountingService,
     ) {
     }
 
@@ -34,9 +34,8 @@ class TokenCostEstimator
     public function estimateCost(array $contents, ?string $model = null, ?int $maxOutput = null): array
     {
         $config = $this->configProvider->getConfig();
-        $effectiveModel = $model ?? $config['model'] ?? 'unknown';
-        $genConfig = is_array($config['generation_config'] ?? null) ? $config['generation_config'] : [];
-        $maxOutputTokens = $maxOutput ?? (is_numeric($genConfig['max_output_tokens'] ?? null) ? (int) $genConfig['max_output_tokens'] : self::DEFAULT_MAX_OUTPUT_TOKENS);
+        $effectiveModel = $model ?? ($config->model ?: 'unknown');
+        $maxOutputTokens = $maxOutput ?? ($config->generation->maxOutputTokens ?? self::DEFAULT_MAX_OUTPUT_TOKENS);
 
         $promptTokens = $this->contextTruncationService->estimateTokensForContents($contents);
 
@@ -50,12 +49,8 @@ class TokenCostEstimator
             ]
             : ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
 
-        $usage = [
-            'prompt_tokens' => $promptTokens,
-            'completion_tokens' => $maxOutputTokens,
-            'thinking_tokens' => 0,
-        ];
-        $costModelCurrency = $this->accountingService->calculateCost($usage, $pricing);
+        $usage = new \ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage($promptTokens, $maxOutputTokens);
+        $costModelCurrency = $this->accountingService->calculateCostFromVO($usage, $pricing);
         $currency = $pricing['currency'] ?? 'USD';
         $costReference = $this->accountingService->convertToReferenceCurrency($costModelCurrency, $currency);
 

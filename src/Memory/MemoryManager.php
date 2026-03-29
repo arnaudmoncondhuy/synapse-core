@@ -20,10 +20,10 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 class MemoryManager
 {
     public function __construct(
-        private EmbeddingService $embeddingService,
-        private VectorStoreInterface $vectorStore,
-        private SynapseVectorMemoryRepository $repository,
-        private EntityManagerInterface $em,
+        private readonly EmbeddingService $embeddingService,
+        private readonly VectorStoreInterface $vectorStore,
+        private readonly SynapseVectorMemoryRepository $repository,
+        private readonly EntityManagerInterface $em,
     ) {
     }
 

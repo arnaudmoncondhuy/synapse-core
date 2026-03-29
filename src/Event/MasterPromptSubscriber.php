@@ -6,15 +6,15 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptFinalizeEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Injecte la Directive Fondamentale (master_prompt) en queue du message système.
  *
- * Priorité -75 : s'exécute APRÈS MemoryContextSubscriber (50) et APRÈS
- * ContextTruncationSubscriber (-50), garantissant que la directive est
- * toujours présente, jamais tronquée, et inescamotable par tout override
- * (agent, développeur, mémoire).
+ * Phase FINALIZE — s'exécute après ENRICH (mémoire, RAG) et OPTIMIZE (troncation),
+ * garantissant que la directive est toujours présente, jamais tronquée,
+ * et inescamotable par tout override (agent, développeur, mémoire).
  */
 class MasterPromptSubscriber implements EventSubscriberInterface
 {
@@ -27,21 +27,21 @@ class MasterPromptSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', -75],
+            PromptFinalizeEvent::class => ['onPrePrompt', 0],
         ];
     }
 
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptFinalizeEvent $event): void
     {
         $config = $event->getConfig();
 
-        $masterPromptRaw = $config['master_prompt'] ?? null;
+        $masterPromptRaw = $config?->masterPrompt;
         if (!is_string($masterPromptRaw) || '' === trim($masterPromptRaw)) {
             return;
         }
 
         // Respecter la règle stateless
-        $masterPromptStateless = $config['master_prompt_stateless'] ?? true;
+        $masterPromptStateless = $config->masterPromptStateless;
         $options = $event->getOptions();
         $isStateless = isset($options['stateless']) && true === $options['stateless'];
 

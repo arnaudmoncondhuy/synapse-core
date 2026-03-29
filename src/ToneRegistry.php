@@ -19,7 +19,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseToneRepository;
 class ToneRegistry
 {
     public function __construct(
-        private SynapseToneRepository $repository,
+        private readonly SynapseToneRepository $repository,
     ) {
     }
 

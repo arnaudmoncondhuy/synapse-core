@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Agent;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseTokenStreamedEvent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Représente une instance d'agent IA configurée et prête à l'emploi.
@@ -19,11 +21,12 @@ class SynapseAgent
      * @param string[] $allowedTools
      */
     public function __construct(
-        private ChatService $chatService,
-        private SynapseModelPreset $preset,
-        private ?string $systemPrompt = null,
-        private array $allowedTools = [],
-        private int $maxTurns = 5,
+        private readonly ChatService $chatService,
+        private readonly EventDispatcherInterface $dispatcher,
+        private readonly SynapseModelPreset $preset,
+        private readonly ?string $systemPrompt = null,
+        private readonly array $allowedTools = [],
+        private readonly int $maxTurns = 5,
     ) {
     }
 
@@ -32,7 +35,7 @@ class SynapseAgent
      *
      * @param string $message Le message de l'utilisateur
      * @param array<int, array<string, mixed>> $history Historique optionnel (OpenAI format)
-     * @param callable|null $onToken Callback pour le streaming de tokens
+     * @param callable|null $onToken Callback optionnel pour le streaming de tokens
      * @param array<string, mixed> $options Options supplémentaires pour la requête
      *
      * @return array<string, mixed> Résultat normalisé Synapse
@@ -57,7 +60,21 @@ class SynapseAgent
         /** @var array{tone?: string, history?: array<int, array<string, mixed>>, stateless?: bool, debug?: bool, preset?: SynapseModelPreset, conversation_id?: string, user_id?: string, estimated_cost_reference?: float, streaming?: bool, reset_conversation?: bool} $chatOptions */
         $chatOptions = $options;
 
-        return $this->chatService->ask($message, $chatOptions, null, $onToken);
+        // Support du callback onToken via un listener temporaire sur l'event
+        if (null !== $onToken) {
+            $tokenListener = function (SynapseTokenStreamedEvent $e) use ($onToken): void {
+                $onToken($e->token);
+            };
+            $this->dispatcher->addListener(SynapseTokenStreamedEvent::class, $tokenListener);
+        }
+
+        try {
+            return $this->chatService->ask($message, $chatOptions);
+        } finally {
+            if (null !== $onToken) {
+                $this->dispatcher->removeListener(SynapseTokenStreamedEvent::class, $tokenListener);
+            }
+        }
     }
 
     /**

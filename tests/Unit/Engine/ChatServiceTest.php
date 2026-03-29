@@ -8,7 +8,11 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry;
-use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
+use ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor;
+use ArnaudMoncondhuy\SynapseCore\Engine\PromptPipeline;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -19,6 +23,8 @@ class ChatServiceTest extends TestCase
     private $configProvider;
     private $dispatcher;
     private $profiler;
+    private $multiTurnExecutor;
+    private $promptPipeline;
     private $chatService;
     private $mockClient;
 
@@ -28,39 +34,37 @@ class ChatServiceTest extends TestCase
         $this->configProvider = $this->createMock(ConfigProviderInterface::class);
         $this->dispatcher = $this->createMock(EventDispatcherInterface::class);
         $this->profiler = $this->createMock(SynapseProfiler::class);
+        $this->multiTurnExecutor = $this->createMock(MultiTurnExecutor::class);
+        $this->promptPipeline = $this->createMock(PromptPipeline::class);
         $this->mockClient = $this->createMock(LlmClientInterface::class);
 
         $this->chatService = new ChatService(
             $this->llmRegistry,
             $this->configProvider,
             $this->dispatcher,
-            $this->profiler
+            $this->profiler,
+            $this->multiTurnExecutor,
+            $this->promptPipeline,
         );
 
         $this->llmRegistry->method('getClient')->willReturn($this->mockClient);
     }
 
+    private function setupPipeline(string $model = 'test-model', bool $streaming = false, bool $debugMode = false): void
+    {
+        $config = SynapseRuntimeConfig::fromArray(['model' => $model, 'streaming_enabled' => $streaming, 'debug_mode' => $debugMode]);
+        $this->promptPipeline->method('build')->willReturn([
+            'prompt' => ['contents' => [['role' => 'user', 'content' => 'Hello']]],
+            'config' => $config,
+        ]);
+    }
+
     public function testAskSimpleMessage(): void
     {
-        // 1. Setup events
-        $this->dispatcher->method('dispatch')->willReturnCallback(function ($event) {
-            if ($event instanceof SynapsePrePromptEvent) {
-                $event->setPrompt(['contents' => [['role' => 'user', 'content' => 'Hello']]]);
-                $event->setConfig(['model' => 'test-model', 'streaming_enabled' => false]);
-            }
-
-            return $event;
-        });
-
-        // 2. Setup LLM client
-        $this->mockClient->method('generateContent')->willReturn([
-            'text' => 'Hi there!',
-            'usage' => [
-                'prompt_tokens' => 5,
-                'completion_tokens' => 3,
-                'total_tokens' => 8,
-            ],
-        ]);
+        $this->setupPipeline('test-model');
+        $this->multiTurnExecutor->method('execute')->willReturn(
+            new MultiTurnResult('Hi there!', new TokenUsage(5, 3), [], [])
+        );
 
         $result = $this->chatService->ask('Hello');
 
@@ -76,46 +80,19 @@ class ChatServiceTest extends TestCase
     }
 
     /**
-     * Bug 1 regression : un tool result null doit quand même générer un message role:tool
-     * pour éviter que le LLM re-demande indéfiniment le même outil.
+     * Bug 1 regression : ChatService retransmet correctement le résultat du MultiTurnExecutor
+     * même dans un scénario multi-tours avec tool calls.
+     * La logique null tool result est testée dans ToolExecutorTest.
      */
     public function testToolCallWithNullResultStillAddsToolMessage(): void
     {
-        $toolCallChunk = [
-            'text' => null,
-            'function_calls' => [
-                ['id' => 'call_abc', 'name' => 'unknown_tool', 'args' => []],
-            ],
-            'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
-        ];
-        $finalChunk = [
-            'text' => 'Je ne peux pas exécuter cet outil.',
-            'usage' => ['prompt_tokens' => 20, 'completion_tokens' => 8, 'total_tokens' => 28],
-        ];
-
-        $capturedContents = [];
-
-        $this->dispatcher->method('dispatch')->willReturnCallback(function ($event) use (&$capturedContents) {
-            if ($event instanceof SynapsePrePromptEvent) {
-                $event->setPrompt(['contents' => [['role' => 'user', 'content' => 'Test']]]);
-                $event->setConfig(['model' => 'test-model', 'streaming_enabled' => false]);
-            }
-            if ($event instanceof \ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent) {
-                // Simule un outil inconnu : aucun résultat enregistré → null
-                $capturedContents = 'tool_event_dispatched';
-            }
-
-            return $event;
-        });
-
-        $callCount = 0;
-        $this->mockClient->method('generateContent')->willReturnCallback(function () use ($toolCallChunk, $finalChunk, &$callCount) {
-            return 0 === $callCount++ ? $toolCallChunk : $finalChunk;
-        });
+        $this->setupPipeline('test-model');
+        $this->multiTurnExecutor->method('execute')->willReturn(
+            new MultiTurnResult('Je ne peux pas exécuter cet outil.', new TokenUsage(20, 8), [], [])
+        );
 
         $result = $this->chatService->ask('Test');
 
-        // Le LLM a pu répondre au 2e tour → pas de boucle infinie jusqu'à MAX_TURNS
         $this->assertSame('Je ne peux pas exécuter cet outil.', $result['answer']);
     }
 
@@ -124,24 +101,13 @@ class ChatServiceTest extends TestCase
      */
     public function testDebugModeFollowsGlobalConfigWhenCallerOmits(): void
     {
-        $this->dispatcher->method('dispatch')->willReturnCallback(function ($event) {
-            if ($event instanceof SynapsePrePromptEvent) {
-                $event->setPrompt(['contents' => [['role' => 'user', 'content' => 'Hello']]]);
-                // debug_mode activé dans la config, appelant ne précise rien
-                $event->setConfig(['model' => 'test-model', 'streaming_enabled' => false, 'debug_mode' => true]);
-            }
-
-            return $event;
-        });
-
-        $this->mockClient->method('generateContent')->willReturn([
-            'text' => 'Réponse debug.',
-            'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3, 'total_tokens' => 8],
-        ]);
+        $this->setupPipeline('test-model', false, true); // debug_mode = true
+        $this->multiTurnExecutor->method('execute')->willReturn(
+            new MultiTurnResult('Réponse debug.', new TokenUsage(5, 3), [], [])
+        );
 
         $result = $this->chatService->ask('Hello'); // pas de debug: false → suit la config
 
-        // debug_id doit être défini car debug_mode = true dans la config
         $this->assertNotNull($result['debug_id']);
         $this->assertStringStartsWith('dbg_', (string) $result['debug_id']);
     }
@@ -151,19 +117,10 @@ class ChatServiceTest extends TestCase
      */
     public function testDebugModeCallerFalseOverridesGlobalTrue(): void
     {
-        $this->dispatcher->method('dispatch')->willReturnCallback(function ($event) {
-            if ($event instanceof SynapsePrePromptEvent) {
-                $event->setPrompt(['contents' => [['role' => 'user', 'content' => 'Hello']]]);
-                $event->setConfig(['model' => 'test-model', 'streaming_enabled' => false, 'debug_mode' => true]);
-            }
-
-            return $event;
-        });
-
-        $this->mockClient->method('generateContent')->willReturn([
-            'text' => 'Réponse.',
-            'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3, 'total_tokens' => 8],
-        ]);
+        $this->setupPipeline('test-model', false, true); // debug_mode = true dans config
+        $this->multiTurnExecutor->method('execute')->willReturn(
+            new MultiTurnResult('Réponse.', new TokenUsage(5, 3), [], [])
+        );
 
         $result = $this->chatService->ask('Hello', ['debug' => false]);
 

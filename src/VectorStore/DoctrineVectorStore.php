@@ -22,9 +22,9 @@ class DoctrineVectorStore implements VectorStoreInterface
     private bool $hasPgVector;
 
     public function __construct(
-        private EntityManagerInterface $em,
-        private SynapseVectorMemoryRepository $repository,
-        private ?LoggerInterface $logger = null,
+        private readonly EntityManagerInterface $em,
+        private readonly SynapseVectorMemoryRepository $repository,
+        private readonly ?LoggerInterface $logger = null,
     ) {
         $connection = $this->em->getConnection();
         $platform = $connection->getDatabasePlatform()::class;

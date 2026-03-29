@@ -9,7 +9,8 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber;
-use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptBuildEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
@@ -34,10 +35,9 @@ class ContextBuilderSubscriberTest extends TestCase
         ]);
 
         $this->configProvider = $this->createStub(ConfigProviderInterface::class);
-        $this->configProvider->method('getConfig')->willReturn([
-            'model' => 'gemini-flash',
-            'provider' => 'gemini',
-        ]);
+        $this->configProvider->method('getConfig')->willReturn(
+            SynapseRuntimeConfig::fromArray(['model' => 'gemini-flash', 'provider' => 'gemini'])
+        );
 
         $this->toolRegistry = $this->createStub(ToolRegistry::class);
         $this->toolRegistry->method('getDefinitions')->willReturn([]);
@@ -60,7 +60,7 @@ class ContextBuilderSubscriberTest extends TestCase
 
     public function testPromptContainsSystemMessageAsFirstContent(): void
     {
-        $event = new SynapsePrePromptEvent('Bonjour', []);
+        $event = new PromptBuildEvent('Bonjour', []);
 
         $this->buildSubscriber()->onPrePrompt($event);
 
@@ -71,7 +71,7 @@ class ContextBuilderSubscriberTest extends TestCase
 
     public function testPromptContainsUserMessageAsLastContent(): void
     {
-        $event = new SynapsePrePromptEvent('Ma question', []);
+        $event = new PromptBuildEvent('Ma question', []);
 
         $this->buildSubscriber()->onPrePrompt($event);
 
@@ -86,7 +86,7 @@ class ContextBuilderSubscriberTest extends TestCase
         $toolRegistry = $this->createStub(ToolRegistry::class);
         $toolRegistry->method('getDefinitions')->willReturn([['name' => 'my_tool']]);
 
-        $event = new SynapsePrePromptEvent('test', []);
+        $event = new PromptBuildEvent('test', []);
         $this->buildSubscriber(toolRegistry: $toolRegistry)->onPrePrompt($event);
 
         $this->assertSame([['name' => 'my_tool']], $event->getPrompt()['toolDefinitions']);
@@ -94,10 +94,11 @@ class ContextBuilderSubscriberTest extends TestCase
 
     public function testConfigIsSetOnEvent(): void
     {
-        $event = new SynapsePrePromptEvent('test', []);
+        $event = new PromptBuildEvent('test', []);
         $this->buildSubscriber()->onPrePrompt($event);
 
-        $this->assertArrayHasKey('model', $event->getConfig());
+        $this->assertNotNull($event->getConfig());
+        $this->assertNotEmpty($event->getConfig()->model);
     }
 
     // -------------------------------------------------------------------------
@@ -106,7 +107,7 @@ class ContextBuilderSubscriberTest extends TestCase
 
     public function testSystemPromptOptionOverridesDefault(): void
     {
-        $event = new SynapsePrePromptEvent('test', [
+        $event = new PromptBuildEvent('test', [
             'system_prompt' => 'Mon prompt custom',
         ]);
 
@@ -127,7 +128,7 @@ class ContextBuilderSubscriberTest extends TestCase
             ['role' => 'assistant', 'content' => 'Première réponse'],
         ];
 
-        $event = new SynapsePrePromptEvent('Nouveau message', ['history' => $history]);
+        $event = new PromptBuildEvent('Nouveau message', ['history' => $history]);
         $this->buildSubscriber()->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
@@ -146,7 +147,7 @@ class ContextBuilderSubscriberTest extends TestCase
             ['role' => 'unknown', 'content' => 'filtré'],
         ];
 
-        $event = new SynapsePrePromptEvent('question', ['history' => $history]);
+        $event = new PromptBuildEvent('question', ['history' => $history]);
         $this->buildSubscriber()->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
@@ -161,7 +162,7 @@ class ContextBuilderSubscriberTest extends TestCase
             ['role' => 'assistant', 'content' => null, 'tool_calls' => $toolCalls],
         ];
 
-        $event = new SynapsePrePromptEvent('test', ['history' => $history]);
+        $event = new PromptBuildEvent('test', ['history' => $history]);
         $this->buildSubscriber()->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
@@ -175,7 +176,7 @@ class ContextBuilderSubscriberTest extends TestCase
             ['role' => 'tool', 'tool_call_id' => 'call_1', 'content' => 'résultat'],
         ];
 
-        $event = new SynapsePrePromptEvent('test', ['history' => $history]);
+        $event = new PromptBuildEvent('test', ['history' => $history]);
         $this->buildSubscriber()->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
@@ -192,7 +193,7 @@ class ContextBuilderSubscriberTest extends TestCase
     {
         $images = [['mime_type' => 'image/png', 'data' => base64_encode('fake-png')]];
 
-        $event = new SynapsePrePromptEvent('Décris cette image', [], [], [], $images);
+        $event = new PromptBuildEvent('Décris cette image', [], [], null, $images);
         $this->buildSubscriber()->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
@@ -209,15 +210,14 @@ class ContextBuilderSubscriberTest extends TestCase
     public function testFunctionCallingDisabledCapabilitySkipsTools(): void
     {
         $configProvider = $this->createStub(ConfigProviderInterface::class);
-        $configProvider->method('getConfig')->willReturn([
-            'model' => 'gemini-flash',
-            'disabled_capabilities' => ['function_calling'],
-        ]);
+        $configProvider->method('getConfig')->willReturn(
+            SynapseRuntimeConfig::fromArray(['model' => 'gemini-flash', 'provider' => 'gemini', 'disabled_capabilities' => ['function_calling']])
+        );
 
         $toolRegistry = $this->createMock(ToolRegistry::class);
         $toolRegistry->expects($this->never())->method('getDefinitions');
 
-        $event = new SynapsePrePromptEvent('test', []);
+        $event = new PromptBuildEvent('test', []);
         $this->buildSubscriber(configProvider: $configProvider, toolRegistry: $toolRegistry)->onPrePrompt($event);
 
         $this->assertSame([], $event->getPrompt()['toolDefinitions']);
@@ -235,10 +235,10 @@ class ContextBuilderSubscriberTest extends TestCase
             ->with('formel')
             ->willReturn(['role' => 'system', 'content' => 'Ton formel']);
 
-        $event = new SynapsePrePromptEvent('test', ['tone' => 'formel']);
+        $event = new PromptBuildEvent('test', ['tone' => 'formel']);
         $this->buildSubscriber(promptBuilder: $promptBuilder)->onPrePrompt($event);
 
-        $this->assertSame('formel', $event->getConfig()['active_tone']);
+        $this->assertSame('formel', $event->getConfig()->activeTone);
     }
 
     // -------------------------------------------------------------------------

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptEnrichEvent;
 use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -14,8 +16,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * Injecte silencieusement les souvenirs de l'utilisateur dans le contexte avant l'envoi au LLM.
  *
- * Écoute SynapsePrePromptEvent avec priorité 50 (après ContextBuilderSubscriber à 100),
- * afin d'ajouter les faits mémorisés après que l'historique et le système de base aient été construits.
+ * Phase ENRICH (priorité 50) — s'exécute après ContextBuilderSubscriber (phase BUILD)
+ * et avant RagContextSubscriber (priorité 40 dans la même phase ENRICH).
  */
 class MemoryContextSubscriber implements EventSubscriberInterface
 {
@@ -25,17 +27,18 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         private int $maxMemories = 5,
         private ?SynapseProfiler $profiler = null,
         private ?TranslatorInterface $translator = null,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
     public static function getSubscribedEvents(): array
     {
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', 50], // Priorité 50 < ContextBuilderSubscriber (100)
+            PromptEnrichEvent::class => ['onPrePrompt', 50], // Memory avant RAG (50 > 40)
         ];
     }
 
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptEnrichEvent $event): void
     {
         $options = $event->getOptions();
         $userIdMixed = $options['user_id'] ?? $this->getCurrentUserId();
@@ -73,6 +76,9 @@ class MemoryContextSubscriber implements EventSubscriberInterface
                     $this->profiler->stop('Memory', 'PgVector Memory Search', 0);
                 }
                 $error = $e->getMessage();
+                $this->logger?->error('Synapse Memory: erreur lors du rappel mémoire.', [
+                    'exception' => $e,
+                ]);
             }
         }
 

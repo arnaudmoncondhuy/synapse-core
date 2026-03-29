@@ -26,8 +26,8 @@ class GeminiAuthService
     private ?array $credentialsOverride = null;
 
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private ?string $serviceAccountJsonPath = null,
+        private readonly HttpClientInterface $httpClient,
+        private readonly ?string $serviceAccountJsonPath = null,
     ) {
     }
 

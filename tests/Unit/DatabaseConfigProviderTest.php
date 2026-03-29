@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\DatabaseConfigProvider;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\PresetValidator;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConfig;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
@@ -75,12 +76,12 @@ class DatabaseConfigProviderTest extends TestCase
 
     public function testGetConfigReturnsOverrideWhenSet(): void
     {
-        $override = ['model' => 'override-model', 'provider' => 'test'];
+        $override = SynapseRuntimeConfig::fromArray(['model' => 'override-model', 'provider' => 'test']);
         $configProvider = $this->buildProvider($this->buildPassingValidator());
 
         $configProvider->setOverride($override);
 
-        $this->assertSame($override, $configProvider->getConfig());
+        $this->assertSame('override-model', $configProvider->getConfig()->model);
     }
 
     public function testGetConfigCallsDbWhenNoOverride(): void
@@ -90,7 +91,7 @@ class DatabaseConfigProviderTest extends TestCase
 
         $config = $this->buildProvider($this->buildPassingValidator())->getConfig();
 
-        $this->assertArrayHasKey('model', $config);
+        $this->assertNotEmpty($config->model);
     }
 
     public function testOverrideCanBeCleared(): void
@@ -99,11 +100,11 @@ class DatabaseConfigProviderTest extends TestCase
         $this->presetRepo->method('findActive')->willReturn($preset);
 
         $configProvider = $this->buildProvider($this->buildPassingValidator());
-        $configProvider->setOverride(['model' => 'override']);
+        $configProvider->setOverride(SynapseRuntimeConfig::fromArray(['model' => 'override']));
         $configProvider->setOverride(null);
 
         $config = $configProvider->getConfig();
-        $this->assertNotSame('override', $config['model'] ?? '');
+        $this->assertNotSame('override', $config->model);
     }
 
     // -------------------------------------------------------------------------
@@ -118,9 +119,9 @@ class DatabaseConfigProviderTest extends TestCase
         // Validator qui échoue → fallback sur config par défaut
         $config = $this->buildProvider($this->buildFailingValidator())->getConfig();
 
-        $this->assertArrayHasKey('provider', $config);
-        $this->assertArrayHasKey('model', $config);
-        $this->assertSame([], $config['provider_credentials']);
+        $this->assertNotEmpty($config->provider);
+        $this->assertNotEmpty($config->model);
+        $this->assertSame([], $config->providerCredentials);
     }
 
     // -------------------------------------------------------------------------
@@ -133,7 +134,7 @@ class DatabaseConfigProviderTest extends TestCase
 
         $config = $this->buildProvider($this->buildPassingValidator())->getConfigForPreset($preset);
 
-        $this->assertSame('gemini-pro', $config['model']);
+        $this->assertSame('gemini-pro', $config->model);
     }
 
     public function testGetConfigForPresetIncludesGlobalConfig(): void
@@ -153,7 +154,7 @@ class DatabaseConfigProviderTest extends TestCase
 
         $config = $provider->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame('Prompt global', $config['system_prompt']);
+        $this->assertSame('Prompt global', $config->systemPrompt);
     }
 
     public function testGetConfigForPresetIncludesProviderCredentials(): void
@@ -166,7 +167,7 @@ class DatabaseConfigProviderTest extends TestCase
         $config = $this->buildProvider($this->buildPassingValidator(), providerForRepo: $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame('my-secret-key', $config['provider_credentials']['api_key']);
+        $this->assertSame('my-secret-key', $config->providerCredentials['api_key']);
     }
 
     public function testGetConfigForPresetReturnsEmptyCredentialsWhenProviderDisabled(): void
@@ -179,7 +180,7 @@ class DatabaseConfigProviderTest extends TestCase
         $config = $this->buildProvider($this->buildPassingValidator(), providerForRepo: $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame([], $config['provider_credentials']);
+        $this->assertSame([], $config->providerCredentials);
     }
 
     // -------------------------------------------------------------------------
@@ -200,7 +201,7 @@ class DatabaseConfigProviderTest extends TestCase
         $config = $this->buildProvider($this->buildPassingValidator(), $encryption, $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame('decrypted-key', $config['provider_credentials']['api_key']);
+        $this->assertSame('decrypted-key', $config->providerCredentials['api_key']);
     }
 
     public function testDoesNotDecryptWhenNotEncrypted(): void
@@ -217,7 +218,7 @@ class DatabaseConfigProviderTest extends TestCase
         $config = $this->buildProvider($this->buildPassingValidator(), $encryption, $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame('plain-key', $config['provider_credentials']['api_key']);
+        $this->assertSame('plain-key', $config->providerCredentials['api_key']);
     }
 
     public function testPassesThroughCredentialsWithoutEncryptionService(): void
@@ -230,7 +231,7 @@ class DatabaseConfigProviderTest extends TestCase
         $config = $this->buildProvider($this->buildPassingValidator(), null, $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
-        $this->assertSame('plain-key', $config['provider_credentials']['api_key']);
+        $this->assertSame('plain-key', $config->providerCredentials['api_key']);
     }
 
     // -------------------------------------------------------------------------

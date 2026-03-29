@@ -111,6 +111,8 @@ services:
             $providerRepo: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
             $presetValidator: '@ArnaudMoncondhuy\SynapseCore\PresetValidator'
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
+            $logger: '@?logger'
+            $dispatcher: '@?Symfony\Contracts\EventDispatcher\EventDispatcherInterface'
 
     ArnaudMoncondhuy\SynapseCore\Impl\DefaultContextProvider: ~
 
@@ -181,12 +183,35 @@ services:
     # Pas besoin de les enregistrer comme services pour éviter les erreurs de compilation
     # dans les environnements prod sans DataFixtures installées.
 
+    # ── Extraction ChatService : ChunkProcessor, ToolExecutor, MultiTurnExecutor ──
+    ArnaudMoncondhuy\SynapseCore\Engine\ChunkProcessor:
+        arguments:
+            $dispatcher: '@event_dispatcher'
+
+    ArnaudMoncondhuy\SynapseCore\Engine\ToolExecutor:
+        arguments:
+            $dispatcher: '@event_dispatcher'
+            $profiler: '@ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler'
+
+    ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor:
+        arguments:
+            $chunkProcessor: '@ArnaudMoncondhuy\SynapseCore\Engine\ChunkProcessor'
+            $toolExecutor: '@ArnaudMoncondhuy\SynapseCore\Engine\ToolExecutor'
+            $dispatcher: '@event_dispatcher'
+            $profiler: '@ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler'
+
+    ArnaudMoncondhuy\SynapseCore\Engine\PromptPipeline:
+        arguments:
+            $dispatcher: '@event_dispatcher'
+
     # ── Main service ──────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Engine\ChatService:
         arguments:
             $llmRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
             $dispatcher: '@event_dispatcher'
+            $multiTurnExecutor: '@ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor'
+            $promptPipeline: '@ArnaudMoncondhuy\SynapseCore\Engine\PromptPipeline'
 
     ArnaudMoncondhuy\SynapseCore\Service\EmbeddingService:
         arguments:

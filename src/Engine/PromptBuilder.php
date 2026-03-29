@@ -20,9 +20,9 @@ use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 class PromptBuilder
 {
     public function __construct(
-        private ContextProviderInterface $contextProvider,
-        private ToneRegistry $toneRegistry,
-        private \ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface $configProvider,
+        private readonly ContextProviderInterface $contextProvider,
+        private readonly ToneRegistry $toneRegistry,
+        private readonly \ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface $configProvider,
     ) {
     }
 
@@ -55,7 +55,7 @@ class PromptBuilder
     public function buildSystemInstruction(?string $toneKey = null): string
     {
         $config = $this->configProvider->getConfig();
-        $systemPrompt = isset($config['system_prompt']) && is_string($config['system_prompt']) ? $config['system_prompt'] : null;
+        $systemPrompt = $config->systemPrompt;
 
         // Si un prompt système est défini en base de données, on l'interpole avec les variables du ContextProvider
         if ($systemPrompt) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
@@ -18,20 +19,15 @@ use Symfony\Contracts\EventDispatcher\Event;
 class SynapseExchangeCompletedEvent extends Event
 {
     /**
-     * @param string $debugId identifiant unique de cet échange précis
-     * @param string $model Modèle technique utilisé (ex: 'gemini-1.5-flash').
-     * @param string $provider nom du client provider (ex: 'gemini')
-     * @param array<string, mixed> $usage détails de consommation
-     * @param array<int, array<string, mixed>> $safety évaluations de sécurité
-     * @param bool $debugMode indique si le mode debug était activé par l'utilisateur
-     * @param array<string, mixed> $rawData données brutes de la requête et de la réponse (payloads)
-     * @param array<string, mixed> $timings données chronométriques des étapes d'exécution (en millisecondes)
+     * @param array<int, array<string, mixed>> $safety
+     * @param array<string, mixed> $rawData
+     * @param array<string, mixed> $timings
      */
     public function __construct(
         private string $debugId,
         private string $model,
         private string $provider,
-        private array $usage = [],
+        private TokenUsage $usage = new TokenUsage(),
         private array $safety = [],
         private bool $debugMode = false,
         private array $rawData = [],
@@ -54,10 +50,7 @@ class SynapseExchangeCompletedEvent extends Event
         return $this->provider;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function getUsage(): array
+    public function getUsage(): TokenUsage
     {
         return $this->usage;
     }
@@ -76,8 +69,6 @@ class SynapseExchangeCompletedEvent extends Event
     }
 
     /**
-     * Retourne les données API brutes (Requêtes + Réponses).
-     *
      * @return array<string, mixed>
      */
     public function getRawData(): array
@@ -86,8 +77,6 @@ class SynapseExchangeCompletedEvent extends Event
     }
 
     /**
-     * Retourne les étapes temporelles du cycle d'exécution (ms).
-     *
      * @return array<string, mixed>
      */
     public function getTimings(): array

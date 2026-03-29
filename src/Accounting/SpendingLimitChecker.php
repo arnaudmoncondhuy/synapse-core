@@ -24,16 +24,18 @@ class SpendingLimitChecker
 {
     private const CACHE_PREFIX = 'synapse:spending:';
 
+    private readonly \DateTimeZone $timezone;
+
     public function __construct(
-        private SynapseLlmCallRepository $tokenUsageRepo,
-        private SynapseSpendingLimitRepository $spendingLimitRepo,
-        private SynapseConfigRepository $configRepo,
-        private int $slidingDayHours = 4,
-        private ?\DateTimeZone $timezone = null,
-        private ?CacheItemPoolInterface $cache = null,
-        private ?EventDispatcherInterface $eventDispatcher = null,
+        private readonly SynapseLlmCallRepository $tokenUsageRepo,
+        private readonly SynapseSpendingLimitRepository $spendingLimitRepo,
+        private readonly SynapseConfigRepository $configRepo,
+        private readonly int $slidingDayHours = 4,
+        ?\DateTimeZone $timezone = null,
+        private readonly ?CacheItemPoolInterface $cache = null,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
     ) {
-        $this->timezone ??= new \DateTimeZone('UTC');
+        $this->timezone = $timezone ?? new \DateTimeZone('UTC');
     }
 
     /**

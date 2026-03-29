@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Chat;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use PHPUnit\Framework\TestCase;
 
 class LlmClientRegistryTest extends TestCase
@@ -28,7 +29,7 @@ class LlmClientRegistryTest extends TestCase
     {
         $registry = new LlmClientRegistry([$this->client1, $this->client2], $this->configProvider, 'gemini');
 
-        $this->configProvider->method('getConfig')->willReturn(['provider' => 'openai']);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'openai']));
 
         $this->assertSame($this->client2, $registry->getClient());
     }
@@ -37,7 +38,7 @@ class LlmClientRegistryTest extends TestCase
     {
         $registry = new LlmClientRegistry([$this->client1, $this->client2], $this->configProvider, 'gemini');
 
-        $this->configProvider->method('getConfig')->willReturn([]);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => '']));
 
         $this->assertSame($this->client1, $registry->getClient());
     }
@@ -46,7 +47,7 @@ class LlmClientRegistryTest extends TestCase
     {
         $registry = new LlmClientRegistry([$this->client1], $this->configProvider, 'gemini');
 
-        $this->configProvider->method('getConfig')->willReturn(['provider' => 'unknown']);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'unknown']));
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Provider LLM "unknown" non disponible.');

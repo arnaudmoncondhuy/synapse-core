@@ -17,6 +17,51 @@ Voici l'ordre d'apparition des événements lors d'un appel à `ChatService::ask
 
 ## Événements hors cycle de chat
 
+### `SynapseStatusChangedEvent`
+
+Dispatché quand le statut de la génération change (passage de la phase `thinking` à `generating`, ou fin de génération).
+
+Utile pour mettre à jour l'interface utilisateur avec le statut actuel (ex: afficher un spinner "Génération en cours...").
+
+```php
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
+
+class StatusUiSubscriber implements EventSubscriberInterface
+{
+    public function onStatusChanged(SynapseStatusChangedEvent $event): void
+    {
+        $event->getStatus();      // 'thinking' | 'generating'
+        $event->getTimestamp();   // DateTimeImmutable du changement
+    }
+
+    public static function getSubscribedEvents(): array
+    {
+        return [SynapseStatusChangedEvent::class => 'onStatusChanged'];
+    }
+}
+```
+
+### `SynapseTokenStreamedEvent`
+
+Dispatché pour **chaque token individuel** reçu en streaming (granularité maximale). Différent de `ChunkReceivedEvent` qui est au niveau du chunk.
+
+Utile pour des cas d'usage très granulaires (compteur de tokens temps réel, animations, etc.).
+
+### `SynapseFallbackActivatedEvent`
+
+Dispatché si un fallback provider est activé (ex: passage de Gemini à OpenAI en cas d'erreur).
+
+Permet à l'application hôte de notifier l'utilisateur du changement de provider.
+
+```php
+public function onFallbackActivated(SynapseFallbackActivatedEvent $event): void
+{
+    $event->getPrimaryProvider();    // ex: 'gemini' (celui qui a échoué)
+    $event->getFallbackProvider();   // ex: 'openai' (le remplacement)
+    $event->getReason();             // Raison du basculement (rate limit, unavailable, etc.)
+}
+```
+
 ### `SynapseEmbeddingCompletedEvent`
 
 Déclenché à chaque fois qu'un embedding est généré (via `EmbeddingService`). Utilisé notamment par `TokenAccountingService` pour enregistrer la consommation en tokens liée aux embeddings.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Accounting;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Event\SynapseEmbeddingCompletedEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -27,11 +28,7 @@ final class EmbeddingUsageListener
             module: 'rag',
             action: 'embedding',
             model: $event->getModel(),
-            usage: [
-                'prompt_tokens' => $event->getPromptTokens(),
-                'completion_tokens' => 0, // Les embeddings n'ont pas de completion tokens
-                'thinking_tokens' => 0,
-            ],
+            usage: new TokenUsage(promptTokens: $event->getPromptTokens()),
         );
     }
 }

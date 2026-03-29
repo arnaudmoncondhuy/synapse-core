@@ -6,15 +6,8 @@ namespace ArnaudMoncondhuy\SynapseCore\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
-use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmAuthenticationException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
-use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
-use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -23,7 +16,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Credentials (project_id, region, service_account_json) chargés dynamiquement
  * depuis SynapseProvider en DB — aucune valeur YAML requise après l'installation.
  */
-class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
+class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
 {
     private const VERTEX_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent';
     private const VERTEX_STREAM_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent';
@@ -47,11 +40,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     private array $generationStopSequences = [];
 
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private GeminiAuthService $geminiAuthService,
-        private ConfigProviderInterface $configProvider,
-        private ModelCapabilityRegistry $capabilityRegistry,
+        HttpClientInterface $httpClient,
+        private readonly GeminiAuthService $geminiAuthService,
+        ConfigProviderInterface $configProvider,
+        ModelCapabilityRegistry $capabilityRegistry,
     ) {
+        parent::__construct($httpClient, $configProvider, $capabilityRegistry);
     }
 
     public function getProviderName(): string
@@ -113,8 +107,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             return $this->normalizeChunk($data);
         } catch (\Throwable $e) {
             $this->handleException($e);
-
-            return $this->emptyChunk();
         }
     }
 
@@ -191,8 +183,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
             ];
         } catch (\Throwable $e) {
             $this->handleException($e);
-
-            return ['embeddings' => [], 'usage' => ['prompt_tokens' => 0, 'total_tokens' => 0]];
         }
     }
 
@@ -255,8 +245,6 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                     $content = $chunk->getContent();
                 } catch (\Throwable $e) {
                     $this->handleException($e);
-
-                    return;
                 }
 
                 $buffer .= $content;
@@ -409,23 +397,14 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         return $normalized;
     }
 
-    /**
-     * Retourne la structure de chunk vide au format Synapse.
-     * Utilisée comme base pour la normalisation des réponses API.
-     *
-     * @return array<string, mixed> Structure : {text, thinking, function_calls[], usage[], safety_ratings[], blocked, blocked_reason}
-     */
-    private function emptyChunk(): array
+    protected function getProviderLabel(): string
     {
-        return [
-            'text' => null,
-            'thinking' => null,
-            'function_calls' => [],
-            'usage' => [],
-            'safety_ratings' => [],
-            'blocked' => false,
-            'blocked_reason' => null,
-        ];
+        return 'Gemini';
+    }
+
+    protected function parseErrorBody(string $errorBody, string $originalMessage): string
+    {
+        return $originalMessage.' || Google Error: '.$errorBody;
     }
 
     /**
@@ -458,12 +437,12 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     {
         $config = $this->configProvider->getConfig();
 
-        if (!empty($config['model']) && is_string($config['model'])) {
-            $this->model = $config['model'];
+        if ('' !== $config->model) {
+            $this->model = $config->model;
         }
 
         // Provider credentials (SynapseProvider en DB)
-        $creds = is_array($config['provider_credentials'] ?? null) ? $config['provider_credentials'] : [];
+        $creds = $config->providerCredentials;
 
         if (!empty($creds)) {
             if (!empty($creds['project_id']) && is_string($creds['project_id'])) {
@@ -478,8 +457,8 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
                 $this->vertexRegion = $yamlRegion;
             }
             // Override explicite au niveau du preset (priorité maximale)
-            if (!empty($config['vertex_region']) && is_string($config['vertex_region'])) {
-                $this->vertexRegion = $config['vertex_region'];
+            if (null !== $config->vertexRegion) {
+                $this->vertexRegion = $config->vertexRegion;
             }
             if (!empty($creds['service_account_json']) && is_string($creds['service_account_json'])) {
                 $this->geminiAuthService->setCredentialsJson($creds['service_account_json']);
@@ -487,36 +466,24 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
         }
 
         // Thinking
-        if (isset($config['thinking']) && is_array($config['thinking'])) {
-            $this->thinkingEnabled = (bool) ($config['thinking']['enabled'] ?? $this->thinkingEnabled);
-            $this->thinkingBudget = (int) ($config['thinking']['budget'] ?? $this->thinkingBudget);
-        }
+        $this->thinkingEnabled = $config->thinking->enabled;
+        $this->thinkingBudget = $config->thinking->budget;
 
         // Safety Settings
-        if (isset($config['safety_settings']) && is_array($config['safety_settings'])) {
-            $this->safetySettingsEnabled = (bool) ($config['safety_settings']['enabled'] ?? $this->safetySettingsEnabled);
-            $this->safetyDefaultThreshold = (string) ($config['safety_settings']['default_threshold'] ?? $this->safetyDefaultThreshold);
-            if (isset($config['safety_settings']['thresholds']) && is_array($config['safety_settings']['thresholds'])) {
-                /** @var array<string, string> $thresholds */
-                $thresholds = $config['safety_settings']['thresholds'];
-                $this->safetyThresholds = $thresholds;
-            }
+        $this->safetySettingsEnabled = $config->safety->enabled;
+        $this->safetyDefaultThreshold = $config->safety->defaultThreshold;
+        if ([] !== $config->safety->thresholds) {
+            $this->safetyThresholds = $config->safety->thresholds;
         }
 
         // Generation Config
-        if (isset($config['generation_config']) && is_array($config['generation_config'])) {
-            $gen = $config['generation_config'];
-            if (isset($gen['temperature']) && is_numeric($gen['temperature'])) {
-                $this->generationTemperature = (float) $gen['temperature'];
-            }
-            if (isset($gen['top_p']) && is_numeric($gen['top_p'])) {
-                $this->generationTopP = (float) $gen['top_p'];
-            }
-            if (isset($gen['top_k']) && is_numeric($gen['top_k'])) {
-                $this->generationTopK = (int) $gen['top_k'];
-            }
-            $this->generationMaxOutputTokens = !empty($gen['max_output_tokens']) ? (int) $gen['max_output_tokens'] : null;
+        $gen = $config->generation;
+        $this->generationTemperature = $gen->temperature;
+        $this->generationTopP = $gen->topP;
+        if (null !== $gen->topK) {
+            $this->generationTopK = $gen->topK;
         }
+        $this->generationMaxOutputTokens = $gen->maxOutputTokens;
     }
 
     private function findObjectEnd(string $buffer): ?int
@@ -991,40 +958,5 @@ class GeminiClient implements LlmClientInterface, EmbeddingClientInterface
     public function getDefaultLabel(): string
     {
         return 'Google Vertex AI';
-    }
-
-    /**
-     * Transforme toute exception en RuntimeException avec contexte API.
-     * Pour les HttpExceptionInterface, enrichit le message avec la réponse d'erreur Google.
-     * Conserve la exception d'origine comme cause (previous).
-     *
-     * @param \Throwable $e Exception originelle (HttpExceptionInterface, network, etc.)
-     *
-     * @throws \RuntimeException Toujours levée avec message normalisé
-     *
-     * @return void N'existe jamais — lève toujours \RuntimeException
-     */
-    private function handleException(\Throwable $e): void
-    {
-        $message = $e->getMessage();
-        $statusCode = null;
-
-        if ($e instanceof HttpExceptionInterface) {
-            $statusCode = $e->getResponse()->getStatusCode();
-            try {
-                $errorBody = $e->getResponse()->getContent(false);
-                $message .= ' || Google Error: '.$errorBody;
-            } catch (\Throwable) {
-            }
-        }
-
-        $fullMsg = 'Gemini API Error: '.$message;
-
-        throw match ($statusCode) {
-            401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
-            429 => new LlmRateLimitException($fullMsg, 0, $e),
-            500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default => (str_contains(strtolower($message), 'quota') ? new LlmQuotaException($fullMsg, 0, $e) : new LlmException($fullMsg, 0, $e)),
-        };
     }
 }

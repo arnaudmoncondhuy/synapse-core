@@ -36,16 +36,16 @@ class ConversationManager
     private ?SynapseConversationRepository $resolvedConversationRepo = null;
 
     public function __construct(
-        private EntityManagerInterface $em,
+        private readonly EntityManagerInterface $em,
         /** @var SynapseConversationRepository<SynapseConversation>|null */
-        private ?SynapseConversationRepository $conversationRepo = null,
-        private ?EncryptionServiceInterface $encryptionService = null,
-        private ?PermissionCheckerInterface $permissionChecker = null,
+        private readonly ?SynapseConversationRepository $conversationRepo = null,
+        private readonly ?EncryptionServiceInterface $encryptionService = null,
+        private readonly ?PermissionCheckerInterface $permissionChecker = null,
         /** @var class-string<SynapseConversation>|null */
-        private ?string $conversationClass = null,
+        private readonly ?string $conversationClass = null,
         /** @var class-string<SynapseMessage>|null */
-        private ?string $messageClass = null,
-        private ?AttachmentStorageService $attachmentStorage = null,
+        private readonly ?string $messageClass = null,
+        private readonly ?AttachmentStorageService $attachmentStorage = null,
     ) {
     }
 

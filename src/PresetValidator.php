@@ -18,9 +18,9 @@ use Doctrine\ORM\EntityManagerInterface;
 final class PresetValidator
 {
     public function __construct(
-        private SynapseProviderRepository $providerRepo,
-        private ModelCapabilityRegistry $capabilityRegistry,
-        private EntityManagerInterface $em,
+        private readonly SynapseProviderRepository $providerRepo,
+        private readonly ModelCapabilityRegistry $capabilityRegistry,
+        private readonly EntityManagerInterface $em,
     ) {
     }
 

@@ -7,7 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Event;
 use ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\ContextTruncationSubscriber;
-use ArnaudMoncondhuy\SynapseCore\Event\SynapsePrePromptEvent;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptOptimizeEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
 use PHPUnit\Framework\TestCase;
 
@@ -168,11 +168,11 @@ class ContextTruncationSubscriberTest extends TestCase
     // -------------------------------------------------------------------------
 
     /** @param array<int, array<string, mixed>> $contents */
-    private function buildEvent(string $model, array $contents): SynapsePrePromptEvent
+    private function buildEvent(string $model, array $contents): PromptOptimizeEvent
     {
-        $event = new SynapsePrePromptEvent('message', []);
+        $event = new PromptOptimizeEvent('message', []);
         $event->setPrompt(['contents' => $contents]);
-        $event->setConfig(['model' => $model]);
+        $event->setConfig(\ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig::fromArray(['model' => $model]));
 
         return $event;
     }

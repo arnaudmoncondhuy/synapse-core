@@ -17,7 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: SynapseRagDocumentRepository::class)]
 #[ORM\Table(name: 'synapse_rag_document')]
-#[ORM\Index(columns: ['source_id', 'source_identifier'], name: 'idx_rag_doc_source_identifier')]
+#[ORM\Index(columns: ['source_id', 'source_identifier', 'chunk_index'], name: 'idx_rag_doc_source_identifier')]
 class SynapseRagDocument
 {
     #[ORM\Id]

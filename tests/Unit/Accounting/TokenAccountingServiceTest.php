@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Accounting;
 
 use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -168,11 +169,7 @@ class TokenAccountingServiceTest extends TestCase
             module: 'chat',
             action: 'ask',
             model: 'gemini-2.0-flash',
-            usage: [
-                'prompt_tokens' => 100,
-                'completion_tokens' => 50,
-                'thinking_tokens' => 0,
-            ],
+            usage: new TokenUsage(100, 50, 0),
         );
 
         $this->assertInstanceOf(SynapseLlmCall::class, $result);
@@ -195,11 +192,7 @@ class TokenAccountingServiceTest extends TestCase
             module: 'chat',
             action: 'ask',
             model: 'gemini-2.0-flash',
-            usage: [
-                'prompt_tokens' => 100,
-                'completion_tokens' => 50,
-                'thinking_tokens' => 0,
-            ],
+            usage: new TokenUsage(100, 50, 0),
         );
 
         $this->assertNotEmpty($llmCall->getCallId());
@@ -223,11 +216,7 @@ class TokenAccountingServiceTest extends TestCase
             module: 'chat',
             action: 'ask',
             model: 'gemini-2.0-flash',
-            usage: [
-                'prompt_tokens' => 100,
-                'completion_tokens' => 50,
-                'thinking_tokens' => 0,
-            ],
+            usage: new TokenUsage(100, 50, 0),
         );
 
         // Mock already verified with expects()

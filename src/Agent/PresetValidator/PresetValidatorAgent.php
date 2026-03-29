@@ -23,11 +23,11 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 class PresetValidatorAgent implements AgentInterface
 {
     public function __construct(
-        private ChatService $chatService,
-        private SynapseDebugLogRepository $debugLogRepo,
-        private ModelCapabilityRegistry $capabilityRegistry,
-        private SynapseProviderRepository $providerRepo,
-        private ConfigProviderInterface $configProvider,
+        private readonly ChatService $chatService,
+        private readonly SynapseDebugLogRepository $debugLogRepo,
+        private readonly ModelCapabilityRegistry $capabilityRegistry,
+        private readonly SynapseProviderRepository $providerRepo,
+        private readonly ConfigProviderInterface $configProvider,
     ) {
     }
 

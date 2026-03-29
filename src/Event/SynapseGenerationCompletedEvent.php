@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
@@ -19,46 +20,29 @@ use Symfony\Contracts\EventDispatcher\Event;
  * public function onGenerationCompleted(SynapseGenerationCompletedEvent $event): void
  * {
  *     $fullText = $event->getFullResponse();
- *     $tokens = $event->getUsage();
- *     // Enregistrer des statistiques de consommation
+ *     $tokens   = $event->getUsage();
  * }
  * ```
  */
 class SynapseGenerationCompletedEvent extends Event
 {
-    /**
-     * @param string $fullResponse la réponse textuelle complète générée
-     * @param array<string, mixed> $usage consommation finale des tokens (total)
-     * @param string|null $debugId ID de debug associé si le mode debug était actif
-     */
     public function __construct(
         private string $fullResponse,
-        private array $usage = [],
+        private TokenUsage $usage = new TokenUsage(),
         private ?string $debugId = null,
     ) {
     }
 
-    /**
-     * Retourne le texte complet de la réponse IA.
-     */
     public function getFullResponse(): string
     {
         return $this->fullResponse;
     }
 
-    /**
-     * Retourne les statistiques d'usage cumulées (input, output, thinking).
-     *
-     * @return array<string, mixed>
-     */
-    public function getUsage(): array
+    public function getUsage(): TokenUsage
     {
         return $this->usage;
     }
 
-    /**
-     * Retourne l'identifiant unique de debug (si disponible).
-     */
     public function getDebugId(): ?string
     {
         return $this->debugId;

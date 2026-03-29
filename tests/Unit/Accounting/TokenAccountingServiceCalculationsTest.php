@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseUsageRecordedEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -126,20 +127,14 @@ class TokenAccountingServiceCalculationsTest extends TestCase
             ->with($this->isInstanceOf(SynapseUsageRecordedEvent::class));
 
         $service = $this->buildService(dispatcher: $dispatcher);
-        $service->logUsage('chat', 'ask', 'gemini-flash', [
-            'prompt_tokens' => 100,
-            'completion_tokens' => 50,
-        ]);
+        $service->logUsage('chat', 'ask', 'gemini-flash', new TokenUsage(100, 50));
     }
 
     public function testLogUsageDoesNotDispatchWhenNoDispatcher(): void
     {
         // Pas de dispatcher → pas d'exception
         $service = $this->buildService(dispatcher: null);
-        $result = $service->logUsage('chat', 'ask', 'gemini-flash', [
-            'prompt_tokens' => 100,
-            'completion_tokens' => 50,
-        ]);
+        $result = $service->logUsage('chat', 'ask', 'gemini-flash', new TokenUsage(100, 50));
 
         $this->assertSame(100, $result->getPromptTokens());
         $this->assertSame(50, $result->getCompletionTokens());
@@ -162,10 +157,7 @@ class TokenAccountingServiceCalculationsTest extends TestCase
         $capabilityRegistry->method('getCapabilities')->willReturn($capabilities);
 
         $service = $this->buildService(capabilityRegistry: $capabilityRegistry);
-        $result = $service->logUsage('chat', 'ask', 'gemini-flash', [
-            'prompt_tokens' => 1_000_000,
-            'completion_tokens' => 1_000_000,
-        ]);
+        $result = $service->logUsage('chat', 'ask', 'gemini-flash', new TokenUsage(1_000_000, 1_000_000));
 
         // 1M * 0.075/1M + 1M * 0.30/1M = 0.375 USD
         $this->assertEqualsWithDelta(0.375, $result->getCostModelCurrency(), 0.0001);
@@ -174,10 +166,7 @@ class TokenAccountingServiceCalculationsTest extends TestCase
     public function testLogUsageDefaultsToZeroCostWhenNoPricing(): void
     {
         $service = $this->buildService();
-        $result = $service->logUsage('chat', 'ask', 'modele-inconnu', [
-            'prompt_tokens' => 1000,
-            'completion_tokens' => 500,
-        ]);
+        $result = $service->logUsage('chat', 'ask', 'modele-inconnu', new TokenUsage(1000, 500));
 
         $this->assertSame(0.0, $result->getCostModelCurrency());
     }

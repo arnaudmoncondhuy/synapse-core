@@ -25,8 +25,8 @@ class LlmClientRegistry
      */
     public function __construct(
         iterable $clients,
-        private ConfigProviderInterface $configProvider,
-        private string $defaultProvider = 'gemini',
+        private readonly ConfigProviderInterface $configProvider,
+        private readonly string $defaultProvider = 'gemini',
     ) {
         foreach ($clients as $client) {
             $this->clientMap[$client->getProviderName()] = $client;
@@ -41,7 +41,7 @@ class LlmClientRegistry
     public function getClient(): LlmClientInterface
     {
         $config = $this->configProvider->getConfig();
-        $providerName = isset($config['provider']) && is_string($config['provider']) ? $config['provider'] : $this->defaultProvider;
+        $providerName = $config->provider ?: $this->defaultProvider;
 
         return $this->getClientByProvider($providerName);
     }

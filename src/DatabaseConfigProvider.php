@@ -6,12 +6,16 @@ namespace ArnaudMoncondhuy\SynapseCore;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseFallbackActivatedEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Fournisseur de configuration dynamique depuis la BDD.
@@ -25,40 +29,31 @@ use Symfony\Contracts\Cache\ItemInterface;
  */
 class DatabaseConfigProvider implements ConfigProviderInterface
 {
-    /** @var string Clé de cache Symfony pour la configuration active */
     private const CACHE_KEY = 'synapse.config.active';
-
-    /** @var int Durée du cache en secondes (5 minutes) */
     private const CACHE_TTL = 300;
 
-    /** @var array<string, mixed>|null */
-    private ?array $configOverride = null;
+    private ?SynapseRuntimeConfig $configOverride = null;
 
     public function __construct(
-        private SynapseModelPresetRepository $presetRepo,
-        private SynapseConfigRepository $globalConfigRepo,
-        private SynapseProviderRepository $providerRepo,
-        private PresetValidator $presetValidator,
-        private ?CacheInterface $cache = null,
-        private ?EncryptionServiceInterface $encryptionService = null,
+        private readonly SynapseModelPresetRepository $presetRepo,
+        private readonly SynapseConfigRepository $globalConfigRepo,
+        private readonly SynapseProviderRepository $providerRepo,
+        private readonly PresetValidator $presetValidator,
+        private readonly ?CacheInterface $cache = null,
+        private readonly ?EncryptionServiceInterface $encryptionService = null,
+        private readonly ?LoggerInterface $logger = null,
+        private readonly ?EventDispatcherInterface $dispatcher = null,
     ) {
     }
 
-    /**
-     * Récupère la configuration fusionnée (preset actif + config globale + credentials provider).
-     *
-     * Si un override est défini (via setOverride()), retourne cet override au lieu du preset actif.
-     *
-     * @return array<string, mixed> Configuration structurée pour le client LLM
-     */
-    public function getConfig(): array
+    public function getConfig(): SynapseRuntimeConfig
     {
-        // Si un override est défini (test de preset), le retourner sans passer par le cache
         if (null !== $this->configOverride) {
             return $this->configOverride;
         }
 
         if (null !== $this->cache) {
+            /* @var SynapseRuntimeConfig */
             return $this->cache->get(self::CACHE_KEY, function (ItemInterface $item) {
                 $item->expiresAfter(self::CACHE_TTL);
 
@@ -69,54 +64,30 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         return $this->loadConfig();
     }
 
-    /**
-     * Configure un override temporaire (en mémoire).
-     *
-     * Utilisé par ChatService pour tester un preset sans le rendre actif en DB.
-     *
-     * @param array<string, mixed>|null $config
-     */
-    public function setOverride(?array $config): void
+    public function setOverride(?SynapseRuntimeConfig $config): void
     {
         $this->configOverride = $config;
     }
 
-    /**
-     * Retourne la configuration complète pour un preset spécifique,
-     * sans utiliser le cache et sans modifier le preset actif.
-     *
-     * @return array<string, mixed> Configuration formatée pour les services LLM
-     */
-    public function getConfigForPreset(SynapseModelPreset $preset): array
+    public function getConfigForPreset(SynapseModelPreset $preset): SynapseRuntimeConfig
     {
-        $config = $preset->toArray();
-        $config['preset_id'] = $preset->getId();
-        $config['preset_name'] = $preset->getName();
+        $raw = $preset->toArray();
+        $raw['preset_id'] = $preset->getId();
+        $raw['preset_name'] = $preset->getName();
 
-        // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
-        $config = array_merge($config, $globalConfig->toArray());
+        $raw = array_merge($raw, $globalConfig->toArray());
 
-        // Merge provider credentials from SynapseProvider (décryptées)
-        $providerNameMixed = $config['provider'] ?? '';
-        $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
+        $providerName = is_string($raw['provider'] ?? null) ? (string) $raw['provider'] : '';
         $provider = $this->providerRepo->findByName($providerName);
 
-        if (null !== $provider && $provider->isEnabled()) {
-            $config['provider_credentials'] = $this->decryptCredentials($provider->getCredentials());
-        } else {
-            $config['provider_credentials'] = [];
-        }
+        $raw['provider_credentials'] = (null !== $provider && $provider->isEnabled())
+            ? $this->decryptCredentials($provider->getCredentials())
+            : [];
 
-        /** @var array{model: string, provider: string, provider_credentials: array<string, mixed>, safety_settings: array{enabled: bool, default_threshold: string, thresholds: array<string, string>}, generation_config: array{temperature: float, top_p: float, top_k: int, max_output_tokens: int|null, stop_sequences: array<string>}, thinking: array{enabled: bool, budget: int, reasoning_effort: string}} $finalConfig */
-        $finalConfig = $config;
-
-        return $finalConfig;
+        return SynapseRuntimeConfig::fromArray($raw);
     }
 
-    /**
-     * Invalide le cache de configuration.
-     */
     public function clearCache(): void
     {
         if (null !== $this->cache) {
@@ -125,11 +96,6 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     }
 
     /**
-     * Déchiffre les champs sensibles des credentials après la lecture depuis la base.
-     *
-     * Les credentials sont stockés chiffrés en base et déchiffrés lors de la lecture.
-     * Le cache stocke les données déjà déchiffrées (déchiffrées une fois, mises en cache).
-     *
      * @param array<string, mixed> $credentials
      *
      * @return array<string, mixed>
@@ -150,79 +116,60 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         return $credentials;
     }
 
-    /**
-     * Charge et fusionne la configuration depuis la BDD.
-     *
-     * Si aucun preset valide n'existe, retourne une configuration par défaut
-     * (pour permettre la création du premier preset).
-     *
-     * @return array<string, mixed>
-     */
-    private function loadConfig(): array
+    private function loadConfig(): SynapseRuntimeConfig
     {
-        // Load active preset (LLM configuration)
         $preset = $this->presetRepo->findActive();
 
-        // 🛡️ DÉFENSE CRITIQUE : Vérifier l'intégrité du preset actif
-        // Si le preset actif est devenu invalide (provider désactivé, etc.),
-        // le désactiver automatiquement et chercher un autre
         try {
             $this->presetValidator->ensureActivePresetIsValid($preset);
         } catch (\Exception $e) {
-            // Fallback : retourner config par défaut au lieu de lever exception
+            $this->logger?->warning('Synapse: preset invalide, fallback sur config par défaut.', [
+                'reason' => $e->getMessage(),
+            ]);
+            $this->dispatcher?->dispatch(new SynapseFallbackActivatedEvent(
+                component: 'config',
+                reason: $e->getMessage(),
+                exception: $e,
+            ));
+
             return $this->getDefaultConfig();
         }
 
-        $config = $preset->toArray();
-        $config['preset_id'] = $preset->getId();
-        $config['preset_name'] = $preset->getName();
+        $raw = $preset->toArray();
+        $raw['preset_id'] = $preset->getId();
+        $raw['preset_name'] = $preset->getName();
 
-        // Load global configuration (retention, context, system_prompt)
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
-        $config = array_merge($config, $globalConfig->toArray());
+        $raw = array_merge($raw, $globalConfig->toArray());
 
-        // Merge provider credentials from SynapseProvider (décryptées)
-        $providerNameMixed = $config['provider'] ?? '';
-        $providerName = is_string($providerNameMixed) ? $providerNameMixed : '';
+        $providerName = is_string($raw['provider'] ?? null) ? (string) $raw['provider'] : '';
         $provider = $this->providerRepo->findByName($providerName);
 
-        if (null !== $provider && $provider->isEnabled()) {
-            $config['provider_credentials'] = $this->decryptCredentials($provider->getCredentials());
-        } else {
-            $config['provider_credentials'] = [];
-        }
+        $raw['provider_credentials'] = (null !== $provider && $provider->isEnabled())
+            ? $this->decryptCredentials($provider->getCredentials())
+            : [];
 
-        /** @var array{model: string, provider: string, provider_credentials: array<string, mixed>, safety_settings: array{enabled: bool, default_threshold: string, thresholds: array<string, string>}, generation_config: array{temperature: float, top_p: float, top_k: int, max_output_tokens: int|null, stop_sequences: array<string>}, thinking: array{enabled: bool, budget: int, reasoning_effort: string}} $finalConfig */
-        $finalConfig = $config;
-
-        return $finalConfig;
+        return SynapseRuntimeConfig::fromArray($raw);
     }
 
-    /**
-     * Configuration par défaut safe quand aucun preset valide n'existe.
-     * Permet la création du premier preset sans erreur.
-     *
-     * @return array<string, mixed>
-     */
-    private function getDefaultConfig(): array
+    private function getDefaultConfig(): SynapseRuntimeConfig
     {
-        // Config minimale safe — utilise Gemini comme provider par défaut
-        $config = [
+        $raw = [
             'provider' => 'gemini',
             'model' => 'gemini-2.5-flash',
-            'provider_name' => 'gemini',
             'provider_credentials' => [],
             'preset_id' => null,
         ];
 
-        // Ajouter la config globale si elle existe
         try {
             $globalConfig = $this->globalConfigRepo->getGlobalConfig();
-            $config = array_merge($config, $globalConfig->toArray());
-        } catch (\Exception) {
-            // Si pas de global config, utiliser les valeurs par défaut
+            $raw = array_merge($raw, $globalConfig->toArray());
+        } catch (\Exception $e) {
+            $this->logger?->warning('Synapse: impossible de charger la config globale.', [
+                'reason' => $e->getMessage(),
+            ]);
         }
 
-        return $config;
+        return SynapseRuntimeConfig::fromArray($raw);
     }
 }

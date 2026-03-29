@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
+use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptOptimizeEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -15,8 +16,8 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 class ContextTruncationSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private ContextTruncationService $truncationService,
-        private ModelCapabilityRegistry $capabilityRegistry,
+        private readonly ContextTruncationService $truncationService,
+        private readonly ModelCapabilityRegistry $capabilityRegistry,
     ) {
     }
 
@@ -24,15 +25,14 @@ class ContextTruncationSubscriber implements EventSubscriberInterface
     {
         // Priorité basse (-50) pour s'exécuter après la construction complète du contexte
         return [
-            SynapsePrePromptEvent::class => ['onPrePrompt', -50],
+            PromptOptimizeEvent::class => ['onPrePrompt', 0],
         ];
     }
 
-    public function onPrePrompt(SynapsePrePromptEvent $event): void
+    public function onPrePrompt(PromptOptimizeEvent $event): void
     {
         $config = $event->getConfig();
-        $modelNameMixed = $config['model'] ?? null;
-        $modelName = is_string($modelNameMixed) ? $modelNameMixed : null;
+        $modelName = $config?->model ?: null;
 
         if (!$modelName) {
             return;

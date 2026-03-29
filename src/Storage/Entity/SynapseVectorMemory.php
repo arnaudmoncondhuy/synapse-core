@@ -16,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: SynapseVectorMemoryRepository::class)]
 #[ORM\Table(name: 'synapse_vector_memory')]
+#[ORM\Index(columns: ['user_id', 'scope'], name: 'idx_vm_user_scope')]
 class SynapseVectorMemory
 {
     #[ORM\Id]

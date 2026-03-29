@@ -20,8 +20,8 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 class AgentRegistry
 {
     public function __construct(
-        private SynapseAgentRepository $repository,
-        private PermissionCheckerInterface $permissionChecker,
+        private readonly SynapseAgentRepository $repository,
+        private readonly PermissionCheckerInterface $permissionChecker,
     ) {
     }
 

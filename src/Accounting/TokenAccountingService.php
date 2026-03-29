@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Accounting;
 
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseUsageRecordedEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
@@ -28,85 +29,74 @@ class TokenAccountingService
      * @param array<string, float> $currencyRates
      */
     public function __construct(
-        private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
-        private EntityManagerInterface $em,
-        private string $referenceCurrency = 'EUR',
-        private array $currencyRates = [],
-        private ?CacheItemPoolInterface $cache = null,
-        private ?EventDispatcherInterface $dispatcher = null,
-        private ?ModelCapabilityRegistry $capabilityRegistry = null,
+        private readonly \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository $modelRepo,
+        private readonly EntityManagerInterface $em,
+        private readonly string $referenceCurrency = 'EUR',
+        private readonly array $currencyRates = [],
+        private readonly ?CacheItemPoolInterface $cache = null,
+        private readonly ?EventDispatcherInterface $dispatcher = null,
+        private readonly ?ModelCapabilityRegistry $capabilityRegistry = null,
     ) {
     }
 
     /**
      * Log l'usage de tokens pour une action IA.
      *
-     * @param array<string, int> $usage
      * @param array<string, mixed>|null $metadata
      */
     public function logUsage(
         string $module,
         string $action,
         string $model,
-        array $usage,
+        TokenUsage $usage,
         string|int|null $userId = null,
         ?string $conversationId = null,
         ?int $presetId = null,
         ?int $agentId = null,
         ?array $metadata = null,
     ): SynapseLlmCall {
-        $tokenUsage = new SynapseLlmCall();
-        $tokenUsage->setModule($module);
-        $tokenUsage->setAction($action);
-        $tokenUsage->setModel($model);
+        $llmCall = new SynapseLlmCall();
+        $llmCall->setModule($module);
+        $llmCall->setAction($action);
+        $llmCall->setModel($model);
 
         // Récupérer le tarif actuel pour ce modèle (input, output, currency)
         $modelPricing = $this->getPricingForModel($model);
 
-        // Tokens
-        $promptTokens = $usage['prompt_tokens'] ?? 0;
-        $completionTokens = $usage['completion_tokens'] ?? 0;
-        $thinkingTokens = $usage['thinking_tokens'] ?? 0;
-
-        $tokenUsage->setPromptTokens($promptTokens);
-        $tokenUsage->setCompletionTokens($completionTokens);
-        $tokenUsage->setThinkingTokens($thinkingTokens);
-        $tokenUsage->calculateTotalTokens();
+        $llmCall->setPromptTokens($usage->promptTokens);
+        $llmCall->setCompletionTokens($usage->completionTokens);
+        $llmCall->setThinkingTokens($usage->thinkingTokens);
+        $llmCall->calculateTotalTokens();
 
         if (null !== $userId) {
-            $tokenUsage->setUserId((string) $userId);
+            $llmCall->setUserId((string) $userId);
         }
 
         if (null !== $conversationId) {
-            $tokenUsage->setConversationId($conversationId);
+            $llmCall->setConversationId($conversationId);
         }
 
         if (null !== $presetId) {
-            $tokenUsage->setPresetId($presetId);
+            $llmCall->setPresetId($presetId);
         }
 
         if (null !== $agentId) {
-            $tokenUsage->setAgentId($agentId);
+            $llmCall->setAgentId($agentId);
         }
 
-        $currentUsage = [
-            'prompt_tokens' => $promptTokens,
-            'completion_tokens' => $completionTokens,
-            'thinking_tokens' => $thinkingTokens,
-        ];
-        $costInModelCurrency = $this->calculateCost($currentUsage, $modelPricing);
+        $costInModelCurrency = $this->calculateCostFromVO($usage, $modelPricing);
         $currency = $modelPricing['currency'] ?? 'USD';
         $costRef = $this->convertToReferenceCurrency($costInModelCurrency, $currency);
 
-        $tokenUsage->setCostModelCurrency($costInModelCurrency);
-        $tokenUsage->setCostReference($costRef);
-        $tokenUsage->setPricingInput($modelPricing['input'] ?? null);
-        $tokenUsage->setPricingOutput($modelPricing['output'] ?? null);
-        $tokenUsage->setPricingCurrency($currency);
+        $llmCall->setCostModelCurrency($costInModelCurrency);
+        $llmCall->setCostReference($costRef);
+        $llmCall->setPricingInput($modelPricing['input'] ?? null);
+        $llmCall->setPricingOutput($modelPricing['output'] ?? null);
+        $llmCall->setPricingCurrency($currency);
 
-        $tokenUsage->setMetadata($metadata ?: null);
+        $llmCall->setMetadata($metadata ?: null);
 
-        $this->em->persist($tokenUsage);
+        $this->em->persist($llmCall);
         $this->em->flush();
 
         if (null !== $this->cache && $costRef > 0) {
@@ -118,9 +108,9 @@ class TokenAccountingService
                 $module,
                 $action,
                 $model,
-                $promptTokens,
-                $completionTokens,
-                $thinkingTokens,
+                $usage->promptTokens,
+                $usage->completionTokens,
+                $usage->thinkingTokens,
                 $costRef,
                 null !== $userId ? (string) $userId : null,
                 $conversationId,
@@ -129,7 +119,7 @@ class TokenAccountingService
             ));
         }
 
-        return $tokenUsage;
+        return $llmCall;
     }
 
     /**
@@ -185,21 +175,25 @@ class TokenAccountingService
     /**
      * Calcule le coût estimé d'un usage dans la devise du modèle.
      *
-     * @param array<string, int> $usage Usage détaillé ['prompt_tokens' => int, 'completion_tokens' => int, 'thinking_tokens' => int]
-     * @param array{input: float, output: float, currency: string} $pricing Tarifs ['input' => float, 'output' => float, 'currency' => string]
+     * @param array{input: float, output: float, currency: string} $pricing
+     */
+    public function calculateCostFromVO(TokenUsage $usage, array $pricing): float
+    {
+        $inputCost = ($usage->promptTokens / 1_000_000) * $pricing['input'];
+        $outputCost = (($usage->completionTokens + $usage->thinkingTokens) / 1_000_000) * $pricing['output'];
+
+        return round($inputCost + $outputCost, 6);
+    }
+
+    /**
+     * @deprecated Utiliser calculateCostFromVO(TokenUsage, pricing)
      *
-     * @return float Coût dans la devise du modèle
+     * @param array<string, int> $usage
+     * @param array{input: float, output: float, currency: string} $pricing
      */
     public function calculateCost(array $usage, array $pricing): float
     {
-        $promptTokens = $usage['prompt_tokens'] ?? 0;
-        $completionTokens = $usage['completion_tokens'] ?? 0;
-        $thinkingTokens = $usage['thinking_tokens'] ?? 0;
-
-        $inputCost = ($promptTokens / 1_000_000) * $pricing['input'];
-        $outputCost = (($completionTokens + $thinkingTokens) / 1_000_000) * $pricing['output'];
-
-        return round($inputCost + $outputCost, 6);
+        return $this->calculateCostFromVO(TokenUsage::fromArray($usage), $pricing);
     }
 
     /**

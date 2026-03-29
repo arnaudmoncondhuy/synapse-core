@@ -14,8 +14,8 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 class DynamicVectorStore implements VectorStoreInterface
 {
     public function __construct(
-        private VectorStoreRegistry $registry,
-        private SynapseConfigRepository $configRepository,
+        private readonly VectorStoreRegistry $registry,
+        private readonly SynapseConfigRepository $configRepository,
     ) {
     }
 

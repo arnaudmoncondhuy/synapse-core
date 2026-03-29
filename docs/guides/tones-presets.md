@@ -49,22 +49,23 @@ Un preset est une **configuration technique** (provider LLM, modèle, températu
 
 Un seul preset peut être actif à la fois — il s'applique à l'ensemble du système.
 
-## 3. Les Missions (Agents)
+## 3. Les Agents
 
-Une mission est une abstraction de haut niveau qui combine un **prompt système**, un **preset** (optionnel) et un **ton** (optionnel). C'est le moyen recommandé pour créer des agents spécialisés.
+Un agent est une configuration de haut niveau qui combine un **prompt système**, un **preset** (optionnel), un **ton** (optionnel) et des **outils** (optionnel). C'est le moyen recommandé pour créer des agents IA spécialisés.
 
 ### Utilisation
 
 ```php
 $chatService->ask("Analyse ce code", [
-    'mission' => 'expert_symfony'  // Clé de la mission
+    'agent' => 'expert_symfony'  // Clé de l'agent
 ]);
 ```
 
 ### Avantages
-- **Modularité** : Changez le modèle ou le ton d'une mission sans toucher au code appelant.
-- **Quotas** : Vous pouvez définir des plafonds de dépense spécifiques à une mission.
+- **Modularité** : Changez le modèle, le ton ou les outils d'un agent sans toucher au code appelant.
+- **Quotas** : Vous pouvez définir des plafonds de dépense spécifiques à un agent.
 - **Réutilisabilité** : Partagez des configurations d'agents entre différents modules.
+- **Contrôle d'accès** : Restreignez l'accès d'un agent à certains rôles ou utilisateurs.
 
 
 ## Différence clé

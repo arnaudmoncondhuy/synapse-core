@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
 use ArnaudMoncondhuy\SynapseCore\Accounting\TokenCostEstimator;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ContextTruncationService;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use PHPUnit\Framework\TestCase;
 
@@ -36,13 +37,13 @@ class TokenCostEstimatorTest extends TestCase
 
     public function testEstimateCost(): void
     {
-        $this->configProvider->method('getConfig')->willReturn(['model' => 'gpt-4']);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'gpt-4', 'provider' => 'openai']));
         $this->truncationService->method('estimateTokensForContents')->willReturn(100);
         $this->modelRepo->method('findAllPricingMap')->willReturn([
             'gpt-4' => ['input' => 30.0, 'output' => 60.0, 'currency' => 'USD'],
         ]);
 
-        $this->accountingService->method('calculateCost')->willReturn(0.123);
+        $this->accountingService->method('calculateCostFromVO')->willReturn(0.123);
         $this->accountingService->method('convertToReferenceCurrency')->willReturn(0.123);
 
         $result = $this->estimator->estimateCost([['role' => 'user', 'content' => 'hello']], null, 2000);

@@ -17,7 +17,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 class ToolExecutionSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private \ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry $toolRegistry,
+        private readonly \ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry $toolRegistry,
     ) {
     }
 

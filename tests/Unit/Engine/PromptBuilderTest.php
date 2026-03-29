@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Chat;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\ToneRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -32,9 +33,9 @@ class PromptBuilderTest extends TestCase
 
     public function testBuildSystemInstructionWithConfigPrompt(): void
     {
-        $this->configProvider->method('getConfig')->willReturn([
-            'system_prompt' => 'Hello {NAME}, your email is {EMAIL}.',
-        ]);
+        $this->configProvider->method('getConfig')->willReturn(
+            SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test', 'system_prompt' => 'Hello {NAME}, your email is {EMAIL}.'])
+        );
         $this->contextProvider->method('getInitialContext')->willReturn([
             'name' => 'Alice',
             'user' => [
@@ -49,7 +50,7 @@ class PromptBuilderTest extends TestCase
 
     public function testBuildSystemInstructionFallbackToContextProvider(): void
     {
-        $this->configProvider->method('getConfig')->willReturn([]);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test']));
         $this->contextProvider->method('getSystemPrompt')->willReturn('Default system prompt');
 
         $instruction = $this->promptBuilder->buildSystemInstruction();
@@ -59,7 +60,7 @@ class PromptBuilderTest extends TestCase
 
     public function testBuildSystemInstructionWithTone(): void
     {
-        $this->configProvider->method('getConfig')->willReturn([]);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test']));
         $this->contextProvider->method('getSystemPrompt')->willReturn('Base prompt');
         $this->toneRegistry->method('getSystemPrompt')->with('friendly')->willReturn('Be friendly.');
 
@@ -72,7 +73,7 @@ class PromptBuilderTest extends TestCase
 
     public function testBuildSystemMessageFormat(): void
     {
-        $this->configProvider->method('getConfig')->willReturn([]);
+        $this->configProvider->method('getConfig')->willReturn(SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test']));
         $this->contextProvider->method('getSystemPrompt')->willReturn('Base prompt');
 
         $message = $this->promptBuilder->buildSystemMessage();
