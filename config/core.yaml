@@ -51,6 +51,8 @@ services:
             $geminiAuthService: '@ArnaudMoncondhuy\SynapseCore\Client\GeminiAuthService'
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
             $capabilityRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry'
+            $providerRepository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
+            $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
         tags:
             - { name: synapse.llm_client }
 

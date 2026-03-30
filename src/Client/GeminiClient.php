@@ -6,8 +6,10 @@ namespace ArnaudMoncondhuy\SynapseCore\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -44,6 +46,8 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         private readonly GeminiAuthService $geminiAuthService,
         ConfigProviderInterface $configProvider,
         ModelCapabilityRegistry $capabilityRegistry,
+        private readonly ?SynapseProviderRepository $providerRepository = null,
+        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
         parent::__construct($httpClient, $configProvider, $capabilityRegistry);
     }
@@ -442,7 +446,24 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         }
 
         // Provider credentials (SynapseProvider en DB)
+        // Si le preset actif utilise un autre provider (ex: OpenAI), les credentials Gemini
+        // ne sont pas dans $config->providerCredentials — on les charge directement.
         $creds = $config->providerCredentials;
+        if (empty($creds) && null !== $this->providerRepository) {
+            $geminiProvider = $this->providerRepository->findByName('gemini');
+            if (null !== $geminiProvider && $geminiProvider->isEnabled()) {
+                $rawCreds = $geminiProvider->getCredentials();
+                if (null !== $this->encryptionService) {
+                    foreach (['service_account_json', 'private_key'] as $key) {
+                        $val = $rawCreds[$key] ?? null;
+                        if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
+                            $rawCreds[$key] = $this->encryptionService->decrypt($val);
+                        }
+                    }
+                }
+                $creds = $rawCreds;
+            }
+        }
 
         if (!empty($creds)) {
             if (!empty($creds['project_id']) && is_string($creds['project_id'])) {
