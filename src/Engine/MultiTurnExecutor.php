@@ -102,6 +102,10 @@ class MultiTurnExecutor
                 if (!empty($modelToolCalls)) {
                     $entry['tool_calls'] = $modelToolCalls;
                 }
+                // Store raw Gemini parts so toGeminiMessages can re-inject thoughtSignature verbatim
+                if (!empty($chunkResult->geminiRawParts)) {
+                    $entry['_gemini_raw_parts'] = $chunkResult->geminiRawParts;
+                }
                 $prompt['contents'][] = $entry;
             }
 

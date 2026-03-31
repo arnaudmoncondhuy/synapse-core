@@ -351,6 +351,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         $parts = (is_array($candidate['content'] ?? null) && is_array($candidate['content']['parts'] ?? null)) ? $candidate['content']['parts'] : [];
         $textParts = [];
         $thinkingParts = [];
+        $rawPartsForHistory = [];
 
         if (!empty($parts)) {
             foreach ($parts as $part) {
@@ -370,6 +371,8 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                             $thinkingParts[] = (string) $textPart;
                         }
                     }
+                    // Preserve the raw thinking part (contains thoughtSignature required for multi-turn)
+                    $rawPartsForHistory[] = $part;
                 } else {
                     $textPart = $part['text'] ?? null;
                     if (isset($textPart)) {
@@ -385,13 +388,16 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                         'name' => $fcName,
                         'args' => is_array($part['functionCall']['args'] ?? null) ? $part['functionCall']['args'] : [],
                     ];
-                    // Preserve thoughtSignature for Gemini thinking models (required in multi-turn)
-                    if (isset($part['functionCall']['thoughtSignature']) && is_string($part['functionCall']['thoughtSignature'])) {
-                        $fc['thought_signature'] = $part['functionCall']['thoughtSignature'];
-                    }
                     $normalized['function_calls'][] = $fc;
+                    // Preserve the raw functionCall part for history reconstruction
+                    $rawPartsForHistory[] = $part;
                 }
             }
+        }
+
+        // Store raw Gemini parts for multi-turn history (thinking models need thoughtSignature verbatim)
+        if (!empty($rawPartsForHistory)) {
+            $normalized['_gemini_raw_parts'] = $rawPartsForHistory;
         }
 
         if (!empty($textParts)) {
@@ -649,6 +655,16 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                     ];
                 }
             } elseif ('assistant' === $role) {
+                // If raw Gemini parts are available (thinking models), use them verbatim
+                // to preserve thoughtSignature which Vertex AI requires in multi-turn exchanges
+                if (!empty($msg['_gemini_raw_parts']) && is_array($msg['_gemini_raw_parts'])) {
+                    $geminiMessages[] = [
+                        'role' => 'model',
+                        'parts' => $msg['_gemini_raw_parts'],
+                    ];
+                    continue;
+                }
+
                 $parts = [];
 
                 // Add text content if present
@@ -664,15 +680,12 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                     $argsStr = is_string($tcFunction['arguments'] ?? null) ? (string) $tcFunction['arguments'] : '{}';
                     $args = json_decode((string) $argsStr, true) ?? [];
                     if (!empty($tcFunction['name'])) {
-                        $functionCall = [
-                            'name' => (string) $tcFunction['name'],
-                            'args' => !empty($args) && is_array($args) ? $args : (object) [],
+                        $parts[] = [
+                            'functionCall' => [
+                                'name' => (string) $tcFunction['name'],
+                                'args' => !empty($args) && is_array($args) ? $args : (object) [],
+                            ],
                         ];
-                        // Restore thoughtSignature for Gemini thinking models (required in multi-turn)
-                        if (isset($tc['thought_signature']) && is_string($tc['thought_signature'])) {
-                            $functionCall['thoughtSignature'] = $tc['thought_signature'];
-                        }
-                        $parts[] = ['functionCall' => $functionCall];
                     }
                 }
 

@@ -35,6 +35,7 @@ class ChunkProcessor
         $modelToolCalls = [];
         $usage = TokenUsage::empty();
         $safetyRatings = [];
+        $geminiRawParts = [];
 
         foreach ($chunks as $chunkMixed) {
             if (!is_array($chunkMixed)) {
@@ -60,6 +61,13 @@ class ChunkProcessor
 
             if (!empty($chunk['safety_ratings']) && is_array($chunk['safety_ratings'])) {
                 $safetyRatings = $chunk['safety_ratings'];
+            }
+
+            // Accumulate raw Gemini parts (thinking + functionCall) for multi-turn history
+            if (!empty($chunk['_gemini_raw_parts']) && is_array($chunk['_gemini_raw_parts'])) {
+                foreach ($chunk['_gemini_raw_parts'] as $rawPart) {
+                    $geminiRawParts[] = $rawPart;
+                }
             }
 
             // Handle blocked responses — si bloqué, on n'exécute pas les function_calls du même chunk
@@ -99,15 +107,11 @@ class ChunkProcessor
                             'arguments' => $argsJson,
                         ],
                     ];
-                    // Preserve thoughtSignature for Gemini thinking models
-                    if (isset($fc['thought_signature']) && is_string($fc['thought_signature'])) {
-                        $toolCall['thought_signature'] = $fc['thought_signature'];
-                    }
                     $modelToolCalls[] = $toolCall;
                 }
             }
         }
 
-        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings);
+        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $geminiRawParts);
     }
 }
