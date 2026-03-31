@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\StatusAwareToolInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent;
@@ -21,6 +22,7 @@ class ToolExecutor
     public function __construct(
         private readonly EventDispatcherInterface $dispatcher,
         private readonly SynapseProfiler $profiler,
+        private readonly ?ToolRegistry $toolRegistry = null,
     ) {
     }
 
@@ -52,7 +54,11 @@ class ToolExecutor
 
             $toolResult = $toolResults[$toolName] ?? null;
 
-            $this->dispatcher->dispatch(new SynapseStatusChangedEvent("Exécution de l'outil: {$toolName}...", 'tool:'.$toolName, $turn));
+            $tool = $this->toolRegistry?->get($toolName);
+            $statusMessage = ($tool instanceof StatusAwareToolInterface)
+                ? $tool->getExecutingMessage()
+                : "Exécution de l'outil: {$toolName}...";
+            $this->dispatcher->dispatch(new SynapseStatusChangedEvent($statusMessage, 'tool:'.$toolName, $turn));
 
             // Toujours ajouter le message role:tool même si le résultat est null,
             // pour éviter que le LLM boucle en re-demandant le même outil (Bug 1 fix).

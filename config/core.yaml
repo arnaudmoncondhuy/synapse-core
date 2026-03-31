@@ -194,6 +194,7 @@ services:
         arguments:
             $dispatcher: '@event_dispatcher'
             $profiler: '@ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler'
+            $toolRegistry: '@ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry'
 
     ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor:
         arguments:
