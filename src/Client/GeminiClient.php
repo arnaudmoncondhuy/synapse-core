@@ -385,6 +385,10 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                         'name' => $fcName,
                         'args' => is_array($part['functionCall']['args'] ?? null) ? $part['functionCall']['args'] : [],
                     ];
+                    // Preserve thoughtSignature for Gemini thinking models (required in multi-turn)
+                    if (isset($part['functionCall']['thoughtSignature']) && is_string($part['functionCall']['thoughtSignature'])) {
+                        $fc['thought_signature'] = $part['functionCall']['thoughtSignature'];
+                    }
                     $normalized['function_calls'][] = $fc;
                 }
             }
@@ -660,12 +664,15 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                     $argsStr = is_string($tcFunction['arguments'] ?? null) ? (string) $tcFunction['arguments'] : '{}';
                     $args = json_decode((string) $argsStr, true) ?? [];
                     if (!empty($tcFunction['name'])) {
-                        $parts[] = [
-                            'functionCall' => [
-                                'name' => (string) $tcFunction['name'],
-                                'args' => !empty($args) && is_array($args) ? $args : (object) [],
-                            ],
+                        $functionCall = [
+                            'name' => (string) $tcFunction['name'],
+                            'args' => !empty($args) && is_array($args) ? $args : (object) [],
                         ];
+                        // Restore thoughtSignature for Gemini thinking models (required in multi-turn)
+                        if (isset($tc['thought_signature']) && is_string($tc['thought_signature'])) {
+                            $functionCall['thoughtSignature'] = $tc['thought_signature'];
+                        }
+                        $parts[] = ['functionCall' => $functionCall];
                     }
                 }
 

@@ -91,7 +91,7 @@ class ChunkProcessor
                         $rawArgs = $fc['function']['arguments'] ?? [];
                     }
                     $argsJson = is_string($rawArgs) ? $rawArgs : json_encode($rawArgs, JSON_UNESCAPED_UNICODE);
-                    $modelToolCalls[] = [
+                    $toolCall = [
                         'id' => is_string($fc['id'] ?? null) ? (string) $fc['id'] : 'call_'.bin2hex(random_bytes(6)),
                         'type' => 'function',
                         'function' => [
@@ -99,6 +99,11 @@ class ChunkProcessor
                             'arguments' => $argsJson,
                         ],
                     ];
+                    // Preserve thoughtSignature for Gemini thinking models
+                    if (isset($fc['thought_signature']) && is_string($fc['thought_signature'])) {
+                        $toolCall['thought_signature'] = $fc['thought_signature'];
+                    }
+                    $modelToolCalls[] = $toolCall;
                 }
             }
         }
