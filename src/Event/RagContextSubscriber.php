@@ -11,6 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseRagSourceRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -28,6 +29,7 @@ class RagContextSubscriber implements EventSubscriberInterface
         private readonly ?SynapseProfiler $profiler = null,
         private readonly ?TranslatorInterface $translator = null,
         private readonly ?LoggerInterface $logger = null,
+        private readonly ?EventDispatcherInterface $dispatcher = null,
     ) {
     }
 
@@ -72,6 +74,12 @@ class RagContextSubscriber implements EventSubscriberInterface
             if ($this->profiler) {
                 $this->profiler->start('RAG', 'RAG Context Search', 'Recherche sémantique dans les sources RAG assignées à l\'agent.');
             }
+
+            // Dispatch status event to keep the client connection alive during semantic search
+            $statusMessage = $this->translator
+                ? $this->translator->trans('synapse.core.rag.searching', [], 'synapse_core')
+                : 'Recherche dans la base de connaissance...';
+            $this->dispatcher?->dispatch(new SynapseStatusChangedEvent($statusMessage, 'rag:search'));
 
             $results = $this->ragManager->search($message, $sourceSlugs, $maxResults, $minScore);
 
