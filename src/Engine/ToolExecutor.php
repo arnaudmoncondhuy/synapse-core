@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
-use ArnaudMoncondhuy\SynapseCore\Contract\StatusAwareToolInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent;
@@ -55,8 +54,8 @@ class ToolExecutor
             $toolResult = $toolResults[$toolName] ?? null;
 
             $tool = $this->toolRegistry?->get($toolName);
-            $statusMessage = ($tool instanceof StatusAwareToolInterface)
-                ? $tool->getExecutingMessage()
+            $statusMessage = (isset($tool->executingMessage) && is_string($tool->executingMessage))
+                ? $tool->executingMessage
                 : "Exécution de l'outil: {$toolName}...";
             $this->dispatcher->dispatch(new SynapseStatusChangedEvent($statusMessage, 'tool:'.$toolName, $turn));
 

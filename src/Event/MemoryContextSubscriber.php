@@ -11,6 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -28,6 +29,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         private ?SynapseProfiler $profiler = null,
         private ?TranslatorInterface $translator = null,
         private ?LoggerInterface $logger = null,
+        private ?EventDispatcherInterface $dispatcher = null,
     ) {
     }
 
@@ -65,6 +67,11 @@ class MemoryContextSubscriber implements EventSubscriberInterface
                     $profileDesc = $this->translator ? $this->translator->trans('synapse.core.memory.profile.description', [], 'synapse_core') : "Calcul d'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL.";
                     $this->profiler->start('Memory', $profileTitle, $profileDesc);
                 }
+
+                $statusMessage = $this->translator
+                    ? $this->translator->trans('synapse.core.memory.searching', [], 'synapse_core')
+                    : 'Recherche dans votre mémoire...';
+                $this->dispatcher?->dispatch(new SynapseStatusChangedEvent($statusMessage, 'memory:search'));
 
                 $memories = $this->memoryManager->recall($message, $userId, $conversationId, $this->maxMemories);
 
