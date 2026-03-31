@@ -109,6 +109,9 @@ class ChatService
             $this->configProvider->setOverride($config);
         }
 
+        $debugMode = false;
+        $activeClient = null;
+
         try {
             // ── SPENDING LIMIT CHECK ──
             $this->assertSpendingLimit($askOptions, $config);
@@ -137,6 +140,24 @@ class ChatService
                 $activeClient,
                 $debugMode,
             );
+        } catch (\Throwable $e) {
+            // Save debug log even on failure so errors can be investigated
+            if ($debugMode && null !== $activeClient) {
+                $debugId = uniqid('dbg_err_', true);
+                $timings = $this->profiler->getTimings();
+                $this->profiler->reset();
+                $this->dispatcher->dispatch(new SynapseExchangeCompletedEvent(
+                    $debugId,
+                    $config->model ?: 'unknown',
+                    $activeClient->getProviderName(),
+                    new TokenUsage(),
+                    [],
+                    $debugMode,
+                    ['error' => $e->getMessage(), 'error_class' => $e::class, 'error_file' => basename($e->getFile()).':'.$e->getLine()],
+                    $timings,
+                ));
+            }
+            throw $e;
         } finally {
             // Garantit la réinitialisation de l'override même en cas d'exception
             // Critique en mode FrankenPHP worker : les services sont partagés entre requêtes
