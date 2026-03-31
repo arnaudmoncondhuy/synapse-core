@@ -445,24 +445,35 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
             $this->model = $config->model;
         }
 
-        // Provider credentials (SynapseProvider en DB)
-        // Si le preset actif utilise un autre provider (ex: OpenAI), les credentials Gemini
-        // ne sont pas dans $config->providerCredentials — on les charge directement.
-        $creds = $config->providerCredentials;
-        if (empty($creds) && null !== $this->providerRepository) {
+        // Provider credentials — Always load from Gemini provider in DB
+        // (Preset config may contain another provider's credentials)
+        $creds = [];
+        if (null !== $this->providerRepository) {
             $geminiProvider = $this->providerRepository->findByName('gemini');
-            if (null !== $geminiProvider && $geminiProvider->isEnabled()) {
-                $rawCreds = $geminiProvider->getCredentials();
-                if (null !== $this->encryptionService) {
-                    foreach (['service_account_json', 'private_key'] as $key) {
-                        $val = $rawCreds[$key] ?? null;
-                        if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
-                            $rawCreds[$key] = $this->encryptionService->decrypt($val);
-                        }
+            if (null === $geminiProvider) {
+                throw new \RuntimeException('Gemini provider not found in database. Please configure a provider named "gemini".');
+            }
+            if (!$geminiProvider->isEnabled()) {
+                throw new \RuntimeException('Gemini provider is not enabled. Please enable it in the admin panel.');
+            }
+            $rawCreds = $geminiProvider->getCredentials();
+            if (empty($rawCreds)) {
+                throw new \RuntimeException('Gemini provider has no credentials configured. Please add credentials in the admin panel.');
+            }
+            // Decrypt if encrypted
+            if (null !== $this->encryptionService) {
+                foreach (['service_account_json', 'private_key'] as $key) {
+                    $val = $rawCreds[$key] ?? null;
+                    if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
+                        $rawCreds[$key] = $this->encryptionService->decrypt($val);
                     }
                 }
-                $creds = $rawCreds;
             }
+            $creds = $rawCreds;
+        }
+
+        if (empty($creds['service_account_json'] ?? null)) {
+            throw new \RuntimeException('Gemini provider credentials missing service_account_json. This is required for Google Vertex AI authentication.');
         }
 
         if (!empty($creds)) {
