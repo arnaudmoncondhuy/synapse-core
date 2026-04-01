@@ -6,9 +6,12 @@ namespace ArnaudMoncondhuy\SynapseCore\Formatter;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\MessageFormatterInterface;
+use ArnaudMoncondhuy\SynapseCore\Service\AttachmentStorageService;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Formateur de messages pour le format OpenAI canonical.
@@ -17,8 +20,13 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
  */
 class MessageFormatter implements MessageFormatterInterface
 {
+    /** @var SynapseMessageAttachment[] Images générées non consommées (dernier assistant [image] sans user suivant) */
+    private array $trailingGeneratedImages = [];
+
     public function __construct(
         private ?EncryptionServiceInterface $encryptionService = null,
+        private ?AttachmentStorageService $attachmentStorage = null,
+        private ?EntityManagerInterface $em = null,
     ) {
     }
 
@@ -32,13 +40,13 @@ class MessageFormatter implements MessageFormatterInterface
     public function entitiesToApiFormat(iterable $entities): array
     {
         $messages = [];
+        /** @var SynapseMessageAttachment[] $pendingGeneratedImages */
+        $pendingGeneratedImages = [];
 
         foreach ($entities as $entity) {
             // Handle serialized entities (Doctrine converts to arrays in closure context)
             if (is_array($entity)) {
-                // If it looks like already-formatted message data, try to reconstruct
                 if (isset($entity['role']) && (isset($entity['content']) || isset($entity['parts']))) {
-                    // Decrypt content if needed
                     $decrypted = $entity;
                     if (null !== $this->encryptionService) {
                         if (!empty($decrypted['content']) && is_string($decrypted['content']) && $this->encryptionService->isEncrypted($decrypted['content'])) {
@@ -59,9 +67,39 @@ class MessageFormatter implements MessageFormatterInterface
 
             $role = $entity->getRole();
             $content = $entity->getDecryptedContent();
-
-            // Map internal roles to OpenAI roles
             $mappedRole = $this->mapRoleToOpenAi($role);
+
+            // Assistant image-only message: collect generated image attachment UUIDs for next user message
+            if ('[image]' === $content && null !== $this->em) {
+                $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $entity->getId()]);
+                foreach ($attachmentEntities as $att) {
+                    $pendingGeneratedImages[] = $att;
+                }
+                $messages[] = ['role' => $mappedRole, 'content' => '[Image générée]'];
+                continue;
+            }
+
+            // User message: prepend any pending generated images + own attached images
+            if ('user' === $mappedRole && null !== $this->em) {
+                $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $entity->getId()]);
+                $allAttachments = array_merge($pendingGeneratedImages, $attachmentEntities);
+                $pendingGeneratedImages = [];
+
+                if (!empty($allAttachments)) {
+                    $imageParts = $this->loadImageParts($allAttachments);
+                    if (!empty($imageParts)) {
+                        $parts = [];
+                        if (!empty($content)) {
+                            $parts[] = ['type' => 'text', 'text' => $content];
+                        }
+                        $messages[] = ['role' => $mappedRole, 'content' => array_merge($parts, $imageParts)];
+                        continue;
+                    }
+                }
+            } else {
+                // Non-user message: discard any pending images (conversation branched)
+                $pendingGeneratedImages = [];
+            }
 
             $messages[] = [
                 'role' => $mappedRole,
@@ -69,7 +107,24 @@ class MessageFormatter implements MessageFormatterInterface
             ];
         }
 
+        // Images pending non consommées = dernier message assistant était [image] sans user suivant dans l'historique
+        $this->trailingGeneratedImages = $pendingGeneratedImages;
+
         return $messages;
+    }
+
+    /**
+     * Retourne les images générées du dernier message [image] non injectées dans un user suivant.
+     * À appeler après entitiesToApiFormat() pour les injecter dans le message courant.
+     *
+     * @return list<array{type: string, image_url: array{url: string}}>
+     */
+    public function getAndClearTrailingImages(): array
+    {
+        $images = $this->loadImageParts($this->trailingGeneratedImages);
+        $this->trailingGeneratedImages = [];
+
+        return $images;
     }
 
     /**
@@ -124,6 +179,32 @@ class MessageFormatter implements MessageFormatterInterface
         }
 
         return $entities;
+    }
+
+    /**
+     * Load image data from attachment entities and return as OpenAI multipart image_url parts.
+     *
+     * @param SynapseMessageAttachment[] $attachments
+     *
+     * @return list<array{type: string, image_url: array{url: string}}>
+     */
+    private function loadImageParts(array $attachments): array
+    {
+        $parts = [];
+        foreach ($attachments as $att) {
+            if (null === $this->attachmentStorage) {
+                continue;
+            }
+            $path = $this->attachmentStorage->getAbsolutePath($att);
+            if (file_exists($path)) {
+                $parts[] = [
+                    'type' => 'image_url',
+                    'image_url' => ['url' => 'data:'.$att->getMimeType().';base64,'.base64_encode((string) file_get_contents($path))],
+                ];
+            }
+        }
+
+        return $parts;
     }
 
     /**

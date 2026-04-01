@@ -65,12 +65,25 @@ services:
         tags:
             - { name: synapse.llm_client }
 
+    # ── Infra : OVH Image Generation (Stable Diffusion XL, etc.) ────────────────
+    ArnaudMoncondhuy\SynapseCore\Client\OvhImageGenerationClient:
+        arguments:
+            $httpClient: '@http_client'
+            $providerRepository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository'
+        tags:
+            - { name: synapse.image_generation_client }
+
+    # ── Service de génération d'image standalone ──────────────────────────────
+    ArnaudMoncondhuy\SynapseCore\Service\ImageGenerationService:
+        arguments:
+            $clients: !tagged_iterator synapse.image_generation_client
+
     # ── Registre des clients LLM ──────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry:
         arguments:
             $clients: !tagged_iterator synapse.llm_client
             $configProvider: '@ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface'
-            $defaultProvider: 'gemini'
+            $defaultProvider: 'google_vertex_ai'
 
     # ── Registre des capacités par modèle ────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry: ~
@@ -128,9 +141,13 @@ services:
 
     ArnaudMoncondhuy\SynapseCore\Security\RoleProvider: ~
 
+    ArnaudMoncondhuy\SynapseCore\Security\RgpdEvaluator: ~
+
     ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter:
         arguments:
             $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
+            $attachmentStorage: '@?ArnaudMoncondhuy\SynapseCore\Service\AttachmentStorageService'
+            $em: '@?Doctrine\ORM\EntityManagerInterface'
 
     # ── Interface aliases (use default implementations) ───────────────────────
     ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface:
@@ -154,6 +171,7 @@ services:
         arguments:
             $repository: '@ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseVectorMemoryRepository'
             $logger: '@?logger'
+            $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
         tags: [{ name: synapse.vector_store, alias: doctrine }]
 
     ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface:
@@ -223,6 +241,7 @@ services:
     ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager:
         arguments:
             $em: '@doctrine.orm.entity_manager'
+            $encryptionService: '@?ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface'
 
     # ── Agents ────────────────────────────────────────────────────────────────
     ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator\PresetValidatorAgent:

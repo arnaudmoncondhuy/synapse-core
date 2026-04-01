@@ -14,6 +14,7 @@ class ModelCapabilities
 {
     /**
      * @param int[] $dimensions
+     * @param list<string> $vertexRegions
      */
     public function __construct(
         /** Identifiant exact du modèle (tel qu'envoyé à l'API) */
@@ -21,9 +22,6 @@ class ModelCapabilities
 
         /** Provider auquel appartient ce modèle */
         public readonly string $provider,
-
-        /** Type du modèle (chat, embedding, etc) */
-        public readonly string $type = 'chat',
 
         /** Dimensions proposées pour les embeddings */
         public readonly array $dimensions = [],
@@ -55,6 +53,9 @@ class ModelCapabilities
         /** Prix par défaut par million de tokens (Output) */
         public readonly ?float $pricingOutput = null,
 
+        /** Prix par défaut par million de tokens (Output image) — modèles image_generation uniquement */
+        public readonly ?float $pricingOutputImage = null,
+
         // ── Phase 1 : Contexte asymétrique ───────────────────────────────────
 
         /** Max tokens en entrée — si null, fallback vers contextWindow */
@@ -74,6 +75,15 @@ class ModelCapabilities
         /** Supporte le JSON Mode / Structured Outputs */
         public readonly bool $supportsResponseSchema = false,
 
+        /** Supporte la génération de texte (chat/completion) */
+        public readonly bool $supportsTextGeneration = true,
+
+        /** Supporte la génération d'embeddings vectoriels */
+        public readonly bool $supportsEmbedding = false,
+
+        /** Supporte la génération d'images en sortie (ex: Gemini 2.5 Flash image generation) */
+        public readonly bool $supportsImageGeneration = false,
+
         // ── Phase 1 : Lifecycle ──────────────────────────────────────────────
 
         /** Date de dépréciation du modèle au format YYYY-MM-DD, ou null */
@@ -81,8 +91,25 @@ class ModelCapabilities
 
         // ── Provider-specific ────────────────────────────────────────────────
 
-        /** Région Vertex AI par défaut pour ce modèle (ex: 'global', 'europe-west1') */
-        public readonly ?string $vertexRegion = null,
+        /** Régions Vertex AI disponibles pour ce modèle (vide = toutes les régions sont valides) */
+        public readonly array $vertexRegions = [],
+
+        // ── RGPD ─────────────────────────────────────────────────────────────
+
+        /**
+         * Risque RGPD inhérent au modèle, indépendant de la configuration runtime.
+         *
+         * null       = pas de risque intrinsèque — l'évaluation est déléguée au client
+         *              LLM (région, provider, credentials) via RgpdAwareInterface
+         * 'danger'   = ce modèle est TOUJOURS à risque, quelle que soit la config
+         *              (ex : free tier qui entraîne sur les données utilisateur)
+         * 'tolerated'= acceptable sous conditions strictes (DPA, sans entraînement)
+         * 'risk'     = hébergement hors UE avec protection adéquate reconnue
+         *
+         * Utilisé par les agents pour un check statique rapide avant d'accepter
+         * une tâche impliquant des données personnelles sensibles.
+         */
+        public readonly ?string $rgpdRisk = null,
     ) {
     }
 
@@ -112,6 +139,31 @@ class ModelCapabilities
     }
 
     /**
+     * Indique si le modèle est utilisable pour des données personnelles sensibles.
+     *
+     * Retourne false si le modèle présente un risque RGPD inhérent (ex : free tier
+     * avec entraînement sur les données). Un retour true ne garantit pas la conformité
+     * totale — il faut aussi vérifier la config runtime via RgpdAwareInterface.
+     *
+     * Usage agent : if (!$caps->isRgpdSafe()) { throw new SensitiveDataForbiddenException(); }
+     */
+    public function isRgpdSafe(): bool
+    {
+        return 'danger' !== $this->rgpdRisk;
+    }
+
+    /**
+     * Retourne le statut RGPD plancher du modèle.
+     *
+     * null signifie que l'évaluation est entièrement déléguée au runtime (provider/région).
+     * Une valeur non-null constitue un plafond que le client LLM ne peut pas dépasser.
+     */
+    public function getRgpdMinStatus(): ?string
+    {
+        return $this->rgpdRisk;
+    }
+
+    /**
      * Vérifie si le modèle supporte une capacité donnée.
      *
      * @param string $capability Capacité à vérifier (clé YAML sans le préfixe 'supports_', ex: 'thinking', 'vision')
@@ -130,6 +182,9 @@ class ModelCapabilities
             'supports_vision', 'vision' => $this->supportsVision,
             'supports_parallel_tool_calls', 'parallel_tool_calls' => $this->supportsParallelToolCalls,
             'supports_response_schema', 'response_schema' => $this->supportsResponseSchema,
+            'supports_text_generation', 'text_generation' => $this->supportsTextGeneration,
+            'supports_embedding', 'embedding' => $this->supportsEmbedding,
+            'supports_image_generation', 'image_generation' => $this->supportsImageGeneration,
             default => false,
         };
     }

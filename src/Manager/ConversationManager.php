@@ -454,6 +454,16 @@ class ConversationManager
     }
 
     /**
+     * Retourne les attachments d'un message (images en entrée ou générées par le LLM).
+     *
+     * @return SynapseMessageAttachment[]
+     */
+    public function getAttachmentsByMessageId(string $messageId): array
+    {
+        return $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $messageId]);
+    }
+
+    /**
      * Définit la conversation courante (contexte thread-local).
      *
      * @param SynapseConversation|null $conversation SynapseConversation courante

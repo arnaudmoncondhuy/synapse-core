@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
+use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptBuildEvent;
@@ -33,6 +34,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private SynapseModelPresetRepository $modelPresetRepository,
         private ToneRegistry $toneRegistry,
         private SynapseProfiler $profiler,
+        private ModelCapabilityRegistry $capabilityRegistry,
     ) {
     }
 
@@ -130,18 +132,31 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // ── 4. Load history ──
+        $modelId = $config->model ?? '';
+        $supportsVision = '' === $modelId || $this->capabilityRegistry->supports($modelId, 'vision');
+
         $contents = [];
         if (isset($options['history']) && is_array($options['history'])) {
             /** @var array<int, array<string, mixed>> $history */
             $history = array_values(array_filter($options['history'], fn ($v) => is_array($v)));
-            $contents = $this->sanitizeHistoryForNewTurn($history);
+            $contents = $this->sanitizeHistoryForNewTurn($history, $supportsVision);
         }
-        // Vision: construire un content multipart si des images sont attachées
-        $images = $event->getImages();
-        if (!empty($images)) {
+
+        // Vision: construire un content multipart si des images sont attachées ET que le modèle supporte la vision
+        $images = $supportsVision ? $event->getImages() : [];
+
+        // Récupérer les images générées précédemment (trailing) à injecter dans le message courant
+        $trailingGeneratedImages = ($supportsVision && is_array($options['_trailing_generated_images'] ?? null))
+            ? $options['_trailing_generated_images']
+            : [];
+
+        if (!empty($images) || !empty($trailingGeneratedImages)) {
             $parts = [];
             if ('' !== $message) {
                 $parts[] = ['type' => 'text', 'text' => $message];
+            }
+            foreach ($trailingGeneratedImages as $imgPart) {
+                $parts[] = $imgPart;
             }
             foreach ($images as $image) {
                 $parts[] = [
@@ -188,7 +203,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
      *
      * @return array<int, array{role: string, content: string|null, tool_call_id?: string, tool_calls?: array<mixed>}>
      */
-    private function sanitizeHistoryForNewTurn(array $history): array
+    private function sanitizeHistoryForNewTurn(array $history, bool $supportsVision = true): array
     {
         $sanitized = [];
 
@@ -207,6 +222,12 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                 $contentRaw = $message['content'] ?? '';
                 // Accept string (text) or array (multipart parts for vision)
                 $content = is_string($contentRaw) ? $contentRaw : (is_array($contentRaw) ? $contentRaw : null);
+
+                // If model doesn't support vision, strip image parts from multipart content
+                if (!$supportsVision && is_array($content)) {
+                    $textParts = array_values(array_filter($content, fn ($p) => is_array($p) && ($p['type'] ?? '') === 'text'));
+                    $content = 1 === count($textParts) ? ($textParts[0]['text'] ?? '') : (empty($textParts) ? '' : implode(' ', array_column($textParts, 'text')));
+                }
 
                 // Skip user messages with neither string nor array content
                 if ('user' === $role && null === $content) {

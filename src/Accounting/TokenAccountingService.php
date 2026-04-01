@@ -243,7 +243,7 @@ class TokenAccountingService
                     // Déduire la devise basée sur le provider
                     $currency = match ($capabilities->provider) {
                         'ovh' => 'EUR',
-                        'gemini' => 'USD',
+                        'google_vertex_ai' => 'USD',
                         default => 'USD',
                     };
 

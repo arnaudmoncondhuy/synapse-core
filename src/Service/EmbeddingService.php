@@ -113,7 +113,7 @@ class EmbeddingService
 
         foreach ($modelsForProvider as $modelId) {
             $caps = $this->capabilityRegistry->getCapabilities($modelId);
-            if ('embedding' === $caps->type) {
+            if ($caps->supportsEmbedding) {
                 return $modelId;
             }
         }

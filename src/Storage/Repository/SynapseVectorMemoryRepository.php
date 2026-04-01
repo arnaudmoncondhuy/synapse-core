@@ -42,4 +42,24 @@ class SynapseVectorMemoryRepository extends ServiceEntityRepository
             $this->getEntityManager()->flush();
         }
     }
+
+    public function countAll(): int
+    {
+        return (int) $this->createQueryBuilder('v')
+            ->select('COUNT(v.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Vide les vecteurs mémoire (conserve les entrées mais efface l'embedding).
+     * Utilisé lors d'un changement de modèle d'embedding.
+     */
+    public function clearAllEmbeddings(): int
+    {
+        return (int) $this->getEntityManager()
+            ->createQuery('UPDATE '.SynapseVectorMemory::class.' v SET v.embedding = :empty')
+            ->setParameter('empty', '[]')
+            ->execute();
+    }
 }

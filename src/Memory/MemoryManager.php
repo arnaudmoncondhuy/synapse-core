@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Memory;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface;
 use ArnaudMoncondhuy\SynapseCore\Service\EmbeddingService;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
@@ -24,6 +25,7 @@ class MemoryManager
         private readonly VectorStoreInterface $vectorStore,
         private readonly SynapseVectorMemoryRepository $repository,
         private readonly EntityManagerInterface $em,
+        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
     }
 
@@ -79,6 +81,9 @@ class MemoryManager
             $filters['conversation_id'] = $conversationId;
         }
 
+        // Recalculer à la volée les vecteurs invalidés (embedding vide suite à un changement de modèle)
+        $this->reindexInvalidatedForUser($userId);
+
         $memories = $this->vectorStore->searchSimilar($vector, $limit, $filters);
 
         return array_map(function ($m) {
@@ -128,6 +133,53 @@ class MemoryManager
     }
 
     /**
+     * Recalcule les vecteurs invalidés (embedding vide) pour un utilisateur donné.
+     * Appelé au recall() pour garantir des résultats pertinents sans batch global.
+     */
+    private function reindexInvalidatedForUser(?string $userId): void
+    {
+        $criteria = ['embedding' => []];
+        if ($userId) {
+            $criteria['userId'] = $userId;
+        }
+
+        $invalidated = $this->repository->findBy($criteria, null, 20);
+
+        if (empty($invalidated)) {
+            return;
+        }
+
+        foreach ($invalidated as $memory) {
+            $content = $memory->getContent();
+            if (null === $content || '' === $content) {
+                continue;
+            }
+
+            // Déchiffrer si nécessaire avant d'envoyer à l'API d'embedding
+            if (null !== $this->encryptionService && $this->encryptionService->isEncrypted($content)) {
+                $content = $this->encryptionService->decrypt($content);
+            }
+
+            if ('' === $content) {
+                continue;
+            }
+
+            try {
+                $result = $this->embeddingService->generateEmbeddings($content);
+                if (!empty($result['embeddings'][0])) {
+                    $memory->setEmbedding($result['embeddings'][0]);
+                    $payload = $memory->getPayload();
+                    $memory->setPayload($payload);
+                }
+            } catch (\Throwable) {
+                // Ne pas bloquer le recall si un recalcul échoue
+            }
+        }
+
+        $this->em->flush();
+    }
+
+    /**
      * Met à jour un souvenir existant (correction sémantique).
      */
     public function update(int $memoryId, string $newText, ?string $userId = null): void
@@ -149,10 +201,15 @@ class MemoryManager
             $memory->setEmbedding($result['embeddings'][0]);
         }
 
-        $memory->setContent($newText);
+        $contentToStore = $newText;
+        if (null !== $this->encryptionService) {
+            $contentToStore = $this->encryptionService->encrypt($newText);
+        }
+
+        $memory->setContent($contentToStore);
 
         $payload = $memory->getPayload();
-        $payload['content'] = $newText;
+        $payload['content'] = $contentToStore;
         $memory->setPayload($payload);
 
         $this->em->flush();

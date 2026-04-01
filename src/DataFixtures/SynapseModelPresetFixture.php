@@ -15,7 +15,7 @@ class SynapseModelPresetFixture extends Fixture
         $presets = [
             [
                 'name' => 'Gemini Flash (rapide)',
-                'provider' => 'gemini',
+                'provider' => 'google_vertex_ai',
                 'model' => 'gemini-3-flash',
                 'temperature' => 1.0,
                 'topP' => 0.95,
@@ -23,7 +23,7 @@ class SynapseModelPresetFixture extends Fixture
             ],
             [
                 'name' => 'Gemini Pro (puissant)',
-                'provider' => 'gemini',
+                'provider' => 'google_vertex_ai',
                 'model' => 'gemini-3.1-pro',
                 'temperature' => 0.9,
                 'topP' => 0.95,

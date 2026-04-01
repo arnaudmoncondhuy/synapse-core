@@ -212,6 +212,9 @@ class DebugLogSubscriber implements EventSubscriberInterface
             if (!empty($rawData['raw_api_response'])) {
                 $this->debugAccumulator['raw_api_response'] = $rawData['raw_api_response'];
             }
+            if (!empty($rawData['generated_images']) && is_array($rawData['generated_images'])) {
+                $this->debugAccumulator['generated_images'] = $rawData['generated_images'];
+            }
         }
 
         // Use captured tool executions

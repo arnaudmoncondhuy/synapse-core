@@ -10,6 +10,7 @@ use ArnaudMoncondhuy\SynapseCore\Event\SynapseExchangeCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseGenerationCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseGenerationStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
+use ArnaudMoncondhuy\SynapseCore\Service\ImageGenerationService;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
@@ -34,6 +35,8 @@ class ChatService
         private readonly SynapseProfiler $profiler,
         private readonly MultiTurnExecutor $multiTurnExecutor,
         private readonly PromptPipeline $promptPipeline,
+        private readonly ModelCapabilityRegistry $capabilityRegistry,
+        private readonly ?ImageGenerationService $imageGenerationService = null,
         private readonly ?\ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager $conversationManager = null,
         private readonly ?\ArnaudMoncondhuy\SynapseCore\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
     ) {
@@ -68,7 +71,8 @@ class ChatService
      *     safety: array<int, array<string, mixed>>,
      *     model: string,
      *     preset_id: ?int,
-     *     agent_id: ?int
+     *     agent_id: ?int,
+     *     generated_images: list<array{mime_type: string, data: string}>
      * } Résultat normalisé de l'échange
      */
     public function ask(
@@ -85,6 +89,7 @@ class ChatService
                 'model' => 'unknown',
                 'preset_id' => null,
                 'agent_id' => null,
+                'generated_images' => [],
             ];
         }
 
@@ -96,17 +101,34 @@ class ChatService
         // ── DISPATCH GENERATION STARTED EVENT ──
         $this->dispatcher->dispatch(new SynapseGenerationStartedEvent($message, $askOptions));
 
+        // ── PRESET OVERRIDE (avant le pipeline pour que la config soit cohérente partout) ──
+        $presetOverride = $askOptions['preset'] ?? null;
+        if ($presetOverride instanceof SynapseModelPreset) {
+            $config = $this->configProvider->getConfigForPreset($presetOverride);
+            $this->configProvider->setOverride($config);
+        }
+
         // ── PROMPT PIPELINE (BUILD → ENRICH → OPTIMIZE → FINALIZE → CAPTURE) ──
         $pipelineResult = $this->promptPipeline->build($message, $askOptions, $images);
         /** @var array{contents: array<int, array<string, mixed>>, toolDefinitions?: array<int, array<string, mixed>>} $prompt */
         $prompt = $pipelineResult['prompt'];
         $config = $pipelineResult['config'] ?? $this->configProvider->getConfig();
 
-        // Support preset override
-        $presetOverride = $askOptions['preset'] ?? null;
-        if ($presetOverride instanceof SynapseModelPreset) {
-            $config = $this->configProvider->getConfigForPreset($presetOverride);
-            $this->configProvider->setOverride($config);
+        // ── PROPAGATE PIPELINE CONFIG AS OVERRIDE ──
+        // Le pipeline peut changer la config (ex: agent avec un preset spécifique).
+        // Il faut propager cette config au configProvider pour que les clients LLM
+        // (GeminiClient, OvhAiClient) l'utilisent via applyDynamicConfig().
+        $this->configProvider->setOverride($config);
+
+        // ── IMAGE-ONLY MODEL ROUTING ──
+        // Si le modèle ne supporte que la génération d'image (pas de text), on route vers ImageGenerationService
+        $modelId = $config->model ?: '';
+        if ('' !== $modelId
+            && !$this->capabilityRegistry->supports($modelId, 'text_generation')
+            && $this->capabilityRegistry->supports($modelId, 'image_generation')
+            && null !== $this->imageGenerationService
+        ) {
+            return $this->handleImageOnlyModel($message, $config, $this->resolveDebugMode($askOptions, $config));
         }
 
         $debugMode = false;
@@ -139,6 +161,7 @@ class ChatService
                 $config,
                 $activeClient,
                 $debugMode,
+                $loopResult->generatedImages,
             );
         } catch (\Throwable $e) {
             // Save debug log even on failure so errors can be investigated
@@ -161,9 +184,7 @@ class ChatService
         } finally {
             // Garantit la réinitialisation de l'override même en cas d'exception
             // Critique en mode FrankenPHP worker : les services sont partagés entre requêtes
-            if (null !== $presetOverride) {
-                $this->configProvider->setOverride(null);
-            }
+            $this->configProvider->setOverride(null);
         }
     }
 
@@ -213,6 +234,11 @@ class ChatService
      */
     private function resolveStreamingEnabled(array $askOptions, SynapseRuntimeConfig $config): bool
     {
+        // Force non-streaming si le modèle ne le supporte pas
+        if ('' !== $config->model && !$this->capabilityRegistry->supports($config->model, 'streaming')) {
+            return false;
+        }
+
         if (isset($askOptions['streaming'])) {
             return (bool) $askOptions['streaming'];
         }
@@ -225,6 +251,7 @@ class ChatService
      *
      * @param array<int, array<string, mixed>> $safetyRatings
      * @param array<string, mixed> $rawData
+     * @param list<array{mime_type: string, data: string}> $generatedImages
      *
      * @return array{
      *     answer: string,
@@ -233,7 +260,8 @@ class ChatService
      *     safety: array<int, array<string, mixed>>,
      *     model: string,
      *     preset_id: ?int,
-     *     agent_id: ?int
+     *     agent_id: ?int,
+     *     generated_images: list<array{mime_type: string, data: string}>
      * }
      */
     private function finalizeAndDispatch(
@@ -244,6 +272,7 @@ class ChatService
         SynapseRuntimeConfig $config,
         LlmClientInterface $activeClient,
         bool $debugMode,
+        array $generatedImages = [],
     ): array {
         $debugId = null;
 
@@ -276,6 +305,71 @@ class ChatService
             'model' => $config->model ?: $config->provider ?: 'unknown',
             'preset_id' => $config->presetId,
             'agent_id' => $config->agentId,
+            'generated_images' => $generatedImages,
+        ];
+    }
+
+    /**
+     * Route un modèle image-only vers ImageGenerationService.
+     *
+     * @return array{answer: string, debug_id: ?string, usage: array<string, int>, safety: array<int, array<string, mixed>>, model: string, preset_id: ?int, agent_id: ?int, generated_images: list<array{mime_type: string, data: string}>}
+     */
+    private function handleImageOnlyModel(string $message, SynapseRuntimeConfig $config, bool $debugMode): array
+    {
+        $this->dispatcher->dispatch(new SynapseStatusChangedEvent('Génération d\'image en cours...', 'thinking'));
+
+        $caps = $this->capabilityRegistry->getCapabilities($config->model);
+        if (null === $this->imageGenerationService) {
+            throw new \LogicException('ImageGenerationService is required for image-only models.');
+        }
+
+        $images = $this->imageGenerationService->generate($message, $caps->provider, [
+            'model' => $config->model,
+        ]);
+
+        $generatedImages = array_map(fn ($img) => [
+            'mime_type' => $img->mimeType,
+            'data' => $img->data,
+        ], $images);
+
+        $debugId = null;
+        if ($debugMode) {
+            $debugId = uniqid('dbg_img_', true);
+            $timings = $this->profiler->getTimings();
+            $this->profiler->reset();
+
+            $this->dispatcher->dispatch(new SynapseExchangeCompletedEvent(
+                $debugId,
+                $config->model ?: 'unknown',
+                $caps->provider,
+                new TokenUsage(),
+                [],
+                $debugMode,
+                [
+                    'type' => 'image_generation',
+                    'prompt' => $message,
+                    'images_count' => \count($generatedImages),
+                    'generated_images' => $generatedImages,
+                ],
+                $timings
+            ));
+        }
+
+        $this->dispatcher->dispatch(new SynapseGenerationCompletedEvent(
+            '',
+            new TokenUsage(),
+            $debugId,
+        ));
+
+        return [
+            'answer' => '',
+            'debug_id' => $debugId,
+            'usage' => [],
+            'safety' => [],
+            'model' => $config->model,
+            'preset_id' => $config->presetId,
+            'agent_id' => $config->agentId,
+            'generated_images' => $generatedImages,
         ];
     }
 

@@ -14,6 +14,8 @@ synapse.core.api.memory.feedback.confirmed: "✅ J'ai validé la mémorisation d
 synapse.core.api.memory.feedback.rejected: "❌ Je refuse la mémorisation de l'information : {fact}"
 synapse.core.api.memory.fact_fallback: "une information"
 
+synapse.core.memory.searching: "Recherche dans votre mémoire..."
+synapse.core.memory.searching_done: "Analyse de la demande..."
 synapse.core.memory.error.user_not_identified: "Impossible d'injecter la mémoire : utilisateur non identifié (anonyme)."
 synapse.core.memory.profile.title: "PgVector Memory Search"
 synapse.core.memory.profile.description: "Calcul d'embedding du message utilisateur et recherche cosinus des entrées similaires dans la base de données PostgreSQL."

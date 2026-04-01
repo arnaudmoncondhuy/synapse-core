@@ -81,9 +81,10 @@ models:
     pricing_output: 0.10
 
   bge-m3:
-    type: embedding
     provider: ovh
     dimensions: [1024] # Dimension standard pour bge-m3
+    supports_text_generation: false
+    supports_embedding: true
     supports_thinking: false
     supports_safety_settings: false
     supports_top_k: false
@@ -113,6 +114,22 @@ models:
     supports_response_schema: false
     pricing_input: 0.09
     pricing_output: 0.28
+
+  stable-diffusion-xl-base-v10:
+    provider: ovh
+    supports_text_generation: false
+    supports_image_generation: true
+    supports_vision: false
+    supports_streaming: false
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_system_prompt: false
+    max_input_tokens: 0
+    max_output_tokens: 0
+    pricing_input: 0.00
+    pricing_output: 0.00
 
   Qwen2.5-VL-72B-Instruct:
     provider: ovh

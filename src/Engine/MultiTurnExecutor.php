@@ -41,6 +41,7 @@ class MultiTurnExecutor
         $cumulativeUsage = TokenUsage::empty();
         $finalSafetyRatings = [];
         $allTurnsRawData = [];
+        $allGeneratedImages = [];
 
         for ($turn = 0; $turn < $maxTurns; ++$turn) {
             if ($turn > 0) {
@@ -77,6 +78,9 @@ class MultiTurnExecutor
                 if (0 === $turn && !empty($debugOut['raw_request_body'])) {
                     $allTurnsRawData['raw_request_body'] = $debugOut['raw_request_body'];
                 }
+                if (0 === $turn && !empty($debugOut['actual_request_params'])) {
+                    $allTurnsRawData['actual_request_params'] = $debugOut['actual_request_params'];
+                }
                 if (!empty($debugOut['raw_api_chunks']) && is_array($debugOut['raw_api_chunks'])) {
                     $allTurnsRawData['raw_api_chunks'] = array_merge(
                         $allTurnsRawData['raw_api_chunks'] ?? [],
@@ -92,6 +96,11 @@ class MultiTurnExecutor
             $cumulativeUsage = $cumulativeUsage->add($chunkResult->usage);
             if (!empty($chunkResult->safetyRatings)) {
                 $finalSafetyRatings = $chunkResult->safetyRatings;
+            }
+            if (!empty($chunkResult->generatedImages)) {
+                foreach ($chunkResult->generatedImages as $img) {
+                    $allGeneratedImages[] = $img;
+                }
             }
 
             $fullTextAccumulator .= $modelText;
@@ -120,6 +129,6 @@ class MultiTurnExecutor
             break;
         }
 
-        return new MultiTurnResult($fullTextAccumulator, $cumulativeUsage, $finalSafetyRatings, $allTurnsRawData);
+        return new MultiTurnResult($fullTextAccumulator, $cumulativeUsage, $finalSafetyRatings, $allTurnsRawData, $allGeneratedImages);
     }
 }

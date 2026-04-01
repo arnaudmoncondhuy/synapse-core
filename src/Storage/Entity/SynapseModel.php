@@ -65,6 +65,12 @@ class SynapseModel
     private ?float $pricingOutput = null;
 
     /**
+     * Coût de sortie image en /1M tokens (modèles image_generation). Unité : voir currency.
+     */
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $pricingOutputImage = null;
+
+    /**
      * Devise des tarifs (ex. USD, EUR). Par défaut USD pour rétrocompatibilité.
      */
     #[ORM\Column(type: Types::STRING, length: 3, options: ['default' => 'USD'])]
@@ -151,6 +157,18 @@ class SynapseModel
     public function setPricingOutput(?float $pricingOutput): self
     {
         $this->pricingOutput = $pricingOutput;
+
+        return $this;
+    }
+
+    public function getPricingOutputImage(): ?float
+    {
+        return $this->pricingOutputImage;
+    }
+
+    public function setPricingOutputImage(?float $pricingOutputImage): self
+    {
+        $this->pricingOutputImage = $pricingOutputImage;
 
         return $this;
     }

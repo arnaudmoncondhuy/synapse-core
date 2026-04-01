@@ -78,6 +78,11 @@ class MemoryContextSubscriber implements EventSubscriberInterface
                 if ($this->profiler) {
                     $this->profiler->stop('Memory', 'PgVector Memory Search', 0);
                 }
+
+                $doneMessage = $this->translator
+                    ? $this->translator->trans('synapse.core.memory.searching_done', [], 'synapse_core')
+                    : 'Analyse de la demande...';
+                $this->dispatcher?->dispatch(new SynapseStatusChangedEvent($doneMessage, 'thinking'));
             } catch (\Throwable $e) {
                 if ($this->profiler) {
                     $this->profiler->stop('Memory', 'PgVector Memory Search', 0);

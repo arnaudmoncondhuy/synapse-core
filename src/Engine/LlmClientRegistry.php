@@ -26,7 +26,7 @@ class LlmClientRegistry
     public function __construct(
         iterable $clients,
         private readonly ConfigProviderInterface $configProvider,
-        private readonly string $defaultProvider = 'gemini',
+        private readonly string $defaultProvider = 'google_vertex_ai',
     ) {
         foreach ($clients as $client) {
             $this->clientMap[$client->getProviderName()] = $client;

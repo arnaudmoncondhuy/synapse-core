@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Event;
 
 use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
+use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber;
@@ -193,8 +194,11 @@ class ContextBuilderSubscriberTest extends TestCase
     {
         $images = [['mime_type' => 'image/png', 'data' => base64_encode('fake-png')]];
 
+        $capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('supports')->willReturn(true);
+
         $event = new PromptBuildEvent('Décris cette image', [], [], null, $images);
-        $this->buildSubscriber()->onPrePrompt($event);
+        $this->buildSubscriber(capabilityRegistry: $capabilityRegistry)->onPrePrompt($event);
 
         $contents = $event->getPrompt()['contents'];
         $userMsg = end($contents);
@@ -249,6 +253,7 @@ class ContextBuilderSubscriberTest extends TestCase
         ?PromptBuilder $promptBuilder = null,
         ?ConfigProviderInterface $configProvider = null,
         ?ToolRegistry $toolRegistry = null,
+        ?ModelCapabilityRegistry $capabilityRegistry = null,
     ): ContextBuilderSubscriber {
         return new ContextBuilderSubscriber(
             promptBuilder: $promptBuilder ?? $this->promptBuilder,
@@ -258,6 +263,7 @@ class ContextBuilderSubscriberTest extends TestCase
             modelPresetRepository: $this->presetRepo,
             toneRegistry: $this->toneRegistry,
             profiler: $this->profiler,
+            capabilityRegistry: $capabilityRegistry ?? $this->createMock(ModelCapabilityRegistry::class),
         );
     }
 }

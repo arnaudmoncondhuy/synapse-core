@@ -67,7 +67,6 @@ class ModelCapabilityRegistry
      */
     private const DEFAULTS = [
         'provider' => 'unknown',
-        'type' => 'chat',
         // Phase 1.5 — convention supports_*
         'supports_thinking' => false,
         'supports_safety_settings' => false,
@@ -81,10 +80,14 @@ class ModelCapabilityRegistry
         // Tarification
         'pricing_input' => null,
         'pricing_output' => null,
+        'pricing_output_image' => null,
         // Phase 1 — Modalités
         'supports_vision' => false,
         'supports_parallel_tool_calls' => false,
         'supports_response_schema' => false,
+        'supports_text_generation' => true,
+        'supports_embedding' => false,
+        'supports_image_generation' => false,
         // Lifecycle
         'deprecated_at' => null,
     ];
@@ -101,7 +104,6 @@ class ModelCapabilityRegistry
         return new ModelCapabilities(
             model: $model,
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
-            type: is_string($data['type'] ?? null) ? (string) $data['type'] : 'chat',
             dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn ($v) => is_numeric($v) ? (int) $v : 0, (array) $data['dimensions']) : [],
             // Phase 1.5 — convention supports_*
             supportsThinking: (bool) ($data['supports_thinking'] ?? false),
@@ -112,6 +114,7 @@ class ModelCapabilityRegistry
             supportsSystemPrompt: (bool) ($data['supports_system_prompt'] ?? true),
             pricingInput: is_numeric($data['pricing_input'] ?? null) ? (float) $data['pricing_input'] : null,
             pricingOutput: is_numeric($data['pricing_output'] ?? null) ? (float) $data['pricing_output'] : null,
+            pricingOutputImage: is_numeric($data['pricing_output_image'] ?? null) ? (float) $data['pricing_output_image'] : null,
             // Phase 1 — Contexte asymétrique
             maxInputTokens: is_numeric($data['max_input_tokens'] ?? null) ? (int) $data['max_input_tokens'] : null,
             maxOutputTokens: is_numeric($data['max_output_tokens'] ?? null) ? (int) $data['max_output_tokens'] : null,
@@ -119,10 +122,15 @@ class ModelCapabilityRegistry
             supportsVision: (bool) ($data['supports_vision'] ?? false),
             supportsParallelToolCalls: (bool) ($data['supports_parallel_tool_calls'] ?? false),
             supportsResponseSchema: (bool) ($data['supports_response_schema'] ?? false),
+            supportsTextGeneration: (bool) ($data['supports_text_generation'] ?? true),
+            supportsEmbedding: (bool) ($data['supports_embedding'] ?? false),
+            supportsImageGeneration: (bool) ($data['supports_image_generation'] ?? false),
             // Lifecycle
             deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
             // Provider-specific
-            vertexRegion: isset($data['vertex_region']) && is_string($data['vertex_region']) ? $data['vertex_region'] : null,
+            vertexRegions: isset($data['vertex_regions']) && is_array($data['vertex_regions']) ? array_values(array_filter($data['vertex_regions'], 'is_string')) : [],
+            // RGPD
+            rgpdRisk: isset($data['rgpd_risk']) && is_string($data['rgpd_risk']) ? $data['rgpd_risk'] : null,
         );
     }
 

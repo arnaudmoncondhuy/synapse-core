@@ -14,6 +14,8 @@ final readonly class NormalizedChunk
         public ?string $thinking = null,
         /** @var list<array{name: string, args: array<string, mixed>, id?: string}> */
         public array $functionCalls = [],
+        /** @var list<array{mime_type: string, data: string}> */
+        public array $images = [],
         public TokenUsage $usage = new TokenUsage(),
         /** @var array<int, array<string, mixed>> */
         public array $safetyRatings = [],
@@ -31,6 +33,7 @@ final readonly class NormalizedChunk
             text: $data['text'] ?? null,
             thinking: $data['thinking'] ?? null,
             functionCalls: $data['function_calls'] ?? [],
+            images: $data['images'] ?? [],
             usage: TokenUsage::fromArray($data['usage'] ?? []),
             safetyRatings: $data['safety_ratings'] ?? [],
             blocked: (bool) ($data['blocked'] ?? false),
@@ -57,6 +60,7 @@ final readonly class NormalizedChunk
             'text' => $this->text,
             'thinking' => $this->thinking,
             'function_calls' => $this->functionCalls,
+            'images' => $this->images,
             'usage' => $this->usage->toArray(),
             'safety_ratings' => $this->safetyRatings,
             'blocked' => $this->blocked,

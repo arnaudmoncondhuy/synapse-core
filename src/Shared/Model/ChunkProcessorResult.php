@@ -13,6 +13,7 @@ final readonly class ChunkProcessorResult
      * @param list<array<string, mixed>> $modelToolCalls Tool calls en format OpenAI
      * @param array<int, array<string, mixed>> $safetyRatings
      * @param list<array<string, mixed>> $geminiRawParts Raw Gemini parts (thinking+functionCall) for multi-turn history
+     * @param list<array{mime_type: string, data: string}> $generatedImages Images générées par le LLM dans ce tour
      */
     public function __construct(
         public string $modelText,
@@ -20,6 +21,7 @@ final readonly class ChunkProcessorResult
         public TokenUsage $usage,
         public array $safetyRatings,
         public array $geminiRawParts = [],
+        public array $generatedImages = [],
     ) {
     }
 }

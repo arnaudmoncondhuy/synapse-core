@@ -76,7 +76,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $raw['preset_name'] = $preset->getName();
 
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
-        $raw = array_merge($raw, $globalConfig->toArray());
+        $raw = array_merge($globalConfig->toArray(), $raw);
 
         $providerName = is_string($raw['provider'] ?? null) ? (string) $raw['provider'] : '';
         $provider = $this->providerRepo->findByName($providerName);
@@ -140,7 +140,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         $raw['preset_name'] = $preset->getName();
 
         $globalConfig = $this->globalConfigRepo->getGlobalConfig();
-        $raw = array_merge($raw, $globalConfig->toArray());
+        $raw = array_merge($globalConfig->toArray(), $raw);
 
         $providerName = is_string($raw['provider'] ?? null) ? (string) $raw['provider'] : '';
         $provider = $this->providerRepo->findByName($providerName);
@@ -155,7 +155,7 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     private function getDefaultConfig(): SynapseRuntimeConfig
     {
         $raw = [
-            'provider' => 'gemini',
+            'provider' => 'google_vertex_ai',
             'model' => 'gemini-2.5-flash',
             'provider_credentials' => [],
             'preset_id' => null,

@@ -36,6 +36,7 @@ class ChunkProcessor
         $usage = TokenUsage::empty();
         $safetyRatings = [];
         $geminiRawParts = [];
+        $generatedImages = [];
 
         foreach ($chunks as $chunkMixed) {
             if (!is_array($chunkMixed)) {
@@ -67,6 +68,15 @@ class ChunkProcessor
             if (!empty($chunk['_gemini_raw_parts']) && is_array($chunk['_gemini_raw_parts'])) {
                 foreach ($chunk['_gemini_raw_parts'] as $rawPart) {
                     $geminiRawParts[] = $rawPart;
+                }
+            }
+
+            // Accumulate generated images (ex: Gemini 2.5 Flash image generation)
+            if (!empty($chunk['images']) && is_array($chunk['images'])) {
+                foreach ($chunk['images'] as $img) {
+                    if (is_array($img) && isset($img['mime_type'], $img['data'])) {
+                        $generatedImages[] = $img;
+                    }
                 }
             }
 
@@ -112,6 +122,6 @@ class ChunkProcessor
             }
         }
 
-        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $geminiRawParts);
+        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $geminiRawParts, $generatedImages);
     }
 }

@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 use ArnaudMoncondhuy\SynapseCore\Engine\LlmClientRegistry;
+use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptPipeline;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
@@ -45,6 +46,7 @@ class ChatServiceTest extends TestCase
             $this->profiler,
             $this->multiTurnExecutor,
             $this->promptPipeline,
+            $this->createMock(ModelCapabilityRegistry::class),
         );
 
         $this->llmRegistry->method('getClient')->willReturn($this->mockClient);

@@ -50,6 +50,7 @@ abstract class AbstractLlmClient implements LlmClientInterface
             'text' => null,
             'thinking' => null,
             'function_calls' => [],
+            'images' => [],
             'usage' => [],
             'safety_ratings' => [],
             'blocked' => false,

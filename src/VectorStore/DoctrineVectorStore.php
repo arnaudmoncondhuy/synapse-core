@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\VectorStore;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseVectorMemory;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseVectorMemoryRepository;
@@ -25,6 +26,7 @@ class DoctrineVectorStore implements VectorStoreInterface
         private readonly EntityManagerInterface $em,
         private readonly SynapseVectorMemoryRepository $repository,
         private readonly ?LoggerInterface $logger = null,
+        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
         $connection = $this->em->getConnection();
         $platform = $connection->getDatabasePlatform()::class;
@@ -49,7 +51,11 @@ class DoctrineVectorStore implements VectorStoreInterface
 
         // Remplir les colonnes dénormalisées pour le filtrage et l'affichage
         if (isset($payload['content']) && is_string($payload['content'])) {
-            $memory->setContent($payload['content']);
+            $content = $payload['content'];
+            if (null !== $this->encryptionService) {
+                $content = $this->encryptionService->encrypt($content);
+            }
+            $memory->setContent($content);
         }
         if (isset($payload['user_id']) && is_string($payload['user_id'])) {
             $memory->setUserId($payload['user_id']);

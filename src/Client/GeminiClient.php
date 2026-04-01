@@ -7,7 +7,9 @@ namespace ArnaudMoncondhuy\SynapseCore\Client;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\RgpdAwareInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\RgpdInfo;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -18,7 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Credentials (project_id, region, service_account_json) chargés dynamiquement
  * depuis SynapseProvider en DB — aucune valeur YAML requise après l'installation.
  */
-class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
+class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface, RgpdAwareInterface
 {
     private const VERTEX_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent';
     private const VERTEX_STREAM_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent';
@@ -54,7 +56,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
 
     public function getProviderName(): string
     {
-        return 'gemini';
+        return 'google_vertex_ai';
     }
 
     /**
@@ -84,7 +86,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
         $debugOut['actual_request_params'] = [
             'model' => $effectiveModel,
-            'provider' => 'gemini',
+            'provider' => 'google_vertex_ai',
             'temperature' => $this->generationTemperature,
             'top_p' => $this->generationTopP,
             'top_k' => $caps->supportsTopK ? $this->generationTopK : null,
@@ -220,7 +222,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
         $debugOut['actual_request_params'] = [
             'model' => $effectiveModel,
-            'provider' => 'gemini',
+            'provider' => 'google_vertex_ai',
             'temperature' => $this->generationTemperature,
             'top_p' => $this->generationTopP,
             'top_k' => $caps->supportsTopK ? $this->generationTopK : null,
@@ -337,6 +339,15 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
             $candidate = [];
         }
 
+        // Detect blocked by finishReason (IMAGE_SAFETY, SAFETY, etc.)
+        $finishReason = is_string($candidate['finishReason'] ?? null) ? (string) $candidate['finishReason'] : '';
+        if (in_array($finishReason, ['IMAGE_SAFETY', 'SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT'], true)) {
+            $normalized['blocked'] = true;
+            $normalized['blocked_reason'] = is_string($candidate['finishMessage'] ?? null)
+                ? (string) $candidate['finishMessage']
+                : 'Contenu bloqué par le fournisseur ('.$finishReason.')';
+        }
+
         if (isset($candidate['safetyRatings']) && is_array($candidate['safetyRatings'])) {
             $normalized['safety_ratings'] = $candidate['safetyRatings'];
             foreach ($candidate['safetyRatings'] as $rating) {
@@ -373,6 +384,13 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                     }
                     // Preserve the raw thinking part (contains thoughtSignature required for multi-turn)
                     $rawPartsForHistory[] = $part;
+                } elseif (isset($part['inlineData']) && is_array($part['inlineData'])) {
+                    // Image générée par le modèle (ex: Gemini 2.5 Flash image generation)
+                    $mimeType = is_string($part['inlineData']['mimeType'] ?? null) ? (string) $part['inlineData']['mimeType'] : 'image/png';
+                    $imageData = is_string($part['inlineData']['data'] ?? null) ? (string) $part['inlineData']['data'] : '';
+                    if ('' !== $imageData) {
+                        $normalized['images'][] = ['mime_type' => $mimeType, 'data' => $imageData];
+                    }
                 } else {
                     $textPart = $part['text'] ?? null;
                     if (isset($textPart)) {
@@ -459,9 +477,9 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         // (Preset config may contain another provider's credentials)
         $creds = [];
         if (null !== $this->providerRepository) {
-            $geminiProvider = $this->providerRepository->findByName('gemini');
+            $geminiProvider = $this->providerRepository->findByName('google_vertex_ai');
             if (null === $geminiProvider) {
-                throw new \RuntimeException('Gemini provider not found in database. Please configure a provider named "gemini".');
+                throw new \RuntimeException('Google Vertex AI provider not found in database. Please configure a provider named "google_vertex_ai".');
             }
             if (!$geminiProvider->isEnabled()) {
                 throw new \RuntimeException('Gemini provider is not enabled. Please enable it in the admin panel.');
@@ -493,14 +511,14 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
             if (!empty($creds['region']) && is_string($creds['region'])) {
                 $this->vertexRegion = $creds['region'];
             }
-            // Défaut YAML du modèle (ex: vertex_region: global pour les previews)
-            $yamlRegion = $this->capabilityRegistry->getCapabilities($this->model)->vertexRegion;
-            if (null !== $yamlRegion) {
-                $this->vertexRegion = $yamlRegion;
-            }
             // Override explicite au niveau du preset (priorité maximale)
-            if (null !== $config->vertexRegion) {
+            if (null !== $config->vertexRegion && '' !== $config->vertexRegion) {
                 $this->vertexRegion = $config->vertexRegion;
+            }
+            // Validation : si le modèle restreint les régions disponibles, vérifier la cohérence
+            $availableRegions = $this->capabilityRegistry->getCapabilities($this->model)->vertexRegions;
+            if (!empty($availableRegions) && !in_array($this->vertexRegion, $availableRegions, true)) {
+                $this->vertexRegion = $availableRegions[0];
             }
             if (!empty($creds['service_account_json']) && is_string($creds['service_account_json'])) {
                 $this->geminiAuthService->setCredentialsJson($creds['service_account_json']);
@@ -797,8 +815,6 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
             if (!empty($safetySettings)) {
                 $payload['safetySettings'] = $safetySettings;
             }
-        } else {
-            $payload['safetySettings'] = $this->buildSafetySettingsBlockNone();
         }
 
         if (!empty($tools) && $caps->supportsFunctionCalling) {
@@ -868,6 +884,10 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         $thinkingConfig = $thinkingConfigOverride ?? $this->buildThinkingConfig($effectiveModel);
         if ($thinkingConfig) {
             $config['thinkingConfig'] = $thinkingConfig;
+        }
+
+        if ($caps->supportsImageGeneration) {
+            $config['responseModalities'] = ['TEXT', 'IMAGE'];
         }
 
         return $config;
@@ -1010,5 +1030,92 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
     public function getDefaultLabel(): string
     {
         return 'Google Vertex AI';
+    }
+
+    /**
+     * Évalue la conformité RGPD pour la configuration Vertex AI donnée.
+     *
+     * Google est une société américaine soumise au CLOUD Act — même avec des données
+     * hébergées en UE, une conformité parfaite est impossible. Cependant, Vertex AI
+     * (enterprise) offre des garanties suffisantes pour être toléré par la CNIL :
+     * - Données NON utilisées pour l'entraînement
+     * - DPA (Data Processing Agreement) disponible
+     * - Hébergement en UE possible via les régions europe-*
+     *
+     * Cascade de résolution de la région effective (identique à applyDynamicConfig) :
+     *   1. vertex_region dans presetOptions (override explicite)
+     *   2. region dans providerCredentials (défaut provider)
+     *   3. Première région disponible dans le YAML si le modèle est restreint
+     */
+    public function getRgpdInfo(array $providerCredentials, array $presetOptions, string $model): RgpdInfo
+    {
+        // 0. Risque inhérent au modèle — écrase toute évaluation runtime
+        $caps = $this->capabilityRegistry->getCapabilities($model);
+        if (!$caps->isRgpdSafe()) {
+            return new RgpdInfo(
+                status: 'danger',
+                label: 'RGPD',
+                explanation: sprintf(
+                    'Le modèle %s présente un risque RGPD inhérent (ex : données utilisées pour l\'entraînement). '
+                    .'Ce modèle ne doit pas être utilisé pour traiter des données personnelles.',
+                    $model
+                ),
+            );
+        }
+
+        // 1. Override preset
+        $region = (string) ($presetOptions['vertex_region'] ?? '');
+
+        // 2. Défaut provider
+        if ('' === $region) {
+            $region = (string) ($providerCredentials['region'] ?? '');
+        }
+
+        // 3. Contrainte YAML
+        if ('' === $region) {
+            $availableRegions = $this->capabilityRegistry->getCapabilities($model)->vertexRegions;
+            if (!empty($availableRegions)) {
+                $region = $availableRegions[0];
+            }
+        }
+
+        if ('' === $region) {
+            return new RgpdInfo(
+                status: 'unknown',
+                label: 'RGPD',
+                explanation: 'Région Vertex AI non configurée — conformité impossible à déterminer. Configurez une région europe-* sur le preset ou le provider.',
+            );
+        }
+
+        if (str_starts_with($region, 'europe-')) {
+            return new RgpdInfo(
+                status: 'tolerated',
+                label: 'RGPD',
+                explanation: sprintf(
+                    'Données hébergées en UE (%s), pas d\'entraînement sur vos données, DPA Google disponible. '
+                    .'Toléré par la CNIL — Google reste soumis au CLOUD Act (société américaine).',
+                    $region
+                ),
+            );
+        }
+
+        if ('northamerica-northeast1' === $region) {
+            return new RgpdInfo(
+                status: 'risk',
+                label: 'RGPD',
+                explanation: 'Région Canada (Montréal) — protection adéquate reconnue par la Commission européenne, '
+                    .'mais données hors UE. Acceptable avec précautions contractuelles.',
+            );
+        }
+
+        return new RgpdInfo(
+            status: 'danger',
+            label: 'RGPD',
+            explanation: sprintf(
+                'Région %s hors UE — transfert de données personnelles sans garanties suffisantes au regard du RGPD. '
+                .'Migrez vers une région europe-* pour réduire le risque.',
+                $region
+            ),
+        );
     }
 }

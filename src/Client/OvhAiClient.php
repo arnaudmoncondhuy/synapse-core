@@ -6,7 +6,9 @@ namespace ArnaudMoncondhuy\SynapseCore\Client;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\RgpdAwareInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\RgpdInfo;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -26,7 +28,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Streaming  : SSE (data: {...}\n, terminé par data: [DONE])
  * Tool calls : format OpenAI (tool_calls / role tool)
  */
-class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface
+class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface, RgpdAwareInterface
 {
     private string $model = 'Gpt-oss-20b';
     private string $apiKey = '';
@@ -732,5 +734,22 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface
     public function getDefaultLabel(): string
     {
         return 'OVH AI Endpoints';
+    }
+
+    /**
+     * OVH AI est conforme RGPD par nature :
+     * - Société française (OVHcloud SAS, Roubaix)
+     * - Infrastructure hébergée en France / UE
+     * - Pas de transfert hors UE
+     * - Pas d'utilisation des données pour l'entraînement
+     * - Soumis au droit français et européen
+     */
+    public function getRgpdInfo(array $providerCredentials, array $presetOptions, string $model): RgpdInfo
+    {
+        return new RgpdInfo(
+            status: 'compliant',
+            label: 'RGPD',
+            explanation: 'OVH AI Endpoints — société française, infrastructure UE, données non utilisées pour l\'entraînement. Pleinement conforme RGPD.',
+        );
     }
 }

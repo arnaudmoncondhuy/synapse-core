@@ -1,16 +1,21 @@
-# Source: https://ai.google.dev/gemini-api/docs/pricing?hl=fr
-# Source: https://ai.google.dev/gemini-api/docs/models
+# Sources:
+#   Modèles : https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models?hl=fr
+#   Tarifs   : https://cloud.google.com/vertex-ai/generative-ai/pricing?hl=fr
+#   Mis à jour : 2026-04-01
 models:
+
+  # ── Gemini 3 — Preview ────────────────────────────────────────────────────
+
   gemini-3.1-pro-preview:
-    provider: gemini
-    vertex_region: global
+    provider: google_vertex_ai
+    vertex_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
     supports_function_calling: true
     supports_streaming: true
     supports_system_prompt: true
-    max_input_tokens: 1000000
+    max_input_tokens: 1048576
     max_output_tokens: 65536
     supports_vision: true
     supports_parallel_tool_calls: true
@@ -18,33 +23,16 @@ models:
     pricing_input: 2.00
     pricing_output: 12.00
 
-  gemini-3.1-flash-lite-preview:
-    provider: gemini
-    vertex_region: global
-    supports_thinking: true
-    supports_safety_settings: true
-    supports_top_k: true
-    supports_function_calling: true
-    supports_streaming: true
-    supports_system_prompt: true
-    max_input_tokens: 1000000
-    max_output_tokens: 65536
-    supports_vision: true
-    supports_parallel_tool_calls: true
-    supports_response_schema: true
-    pricing_input: 0.25
-    pricing_output: 1.50
-
   gemini-3-flash-preview:
-    provider: gemini
-    vertex_region: global
+    provider: google_vertex_ai
+    vertex_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
     supports_function_calling: true
     supports_streaming: true
     supports_system_prompt: true
-    max_input_tokens: 1000000
+    max_input_tokens: 1048576
     max_output_tokens: 65536
     supports_vision: true
     supports_parallel_tool_calls: true
@@ -52,32 +40,129 @@ models:
     pricing_input: 0.50
     pricing_output: 3.00
 
-  gemini-2.5-pro:
-    provider: gemini
+  gemini-3.1-flash-lite-preview:
+    provider: google_vertex_ai
+    vertex_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
     supports_function_calling: true
     supports_streaming: true
     supports_system_prompt: true
-    max_input_tokens: 1000000
-    max_output_tokens: 65536
+    max_input_tokens: 1048576
+    max_output_tokens: 65535
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: true
+    pricing_input: 0.25
+    pricing_output: 1.50
+
+  # Génération d'images — supporte le thinking contrairement au 2.5-flash-image
+  gemini-3.1-flash-image-preview:
+    provider: google_vertex_ai
+    vertex_regions: [global]
+    supports_image_generation: true
+    supports_thinking: true
+    supports_vision: true
+    supports_safety_settings: false
+    supports_system_prompt: true
+    supports_streaming: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_parallel_tool_calls: false
+    supports_response_schema: false
+    max_input_tokens: 131072
+    max_output_tokens: 32768
+    pricing_input: 0.50
+    pricing_output: 3.00
+    pricing_output_image: 60.00
+
+  gemini-3-pro-image-preview:
+    provider: google_vertex_ai
+    vertex_regions: [global]
+    supports_image_generation: true
+    supports_thinking: true
+    supports_vision: true
+    supports_safety_settings: false
+    supports_system_prompt: true
+    supports_streaming: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_parallel_tool_calls: false
+    supports_response_schema: false
+    max_input_tokens: 65536
+    max_output_tokens: 32768
+    pricing_input: 2.00
+    pricing_output: 12.00
+    pricing_output_image: 120.00
+
+  # ── Gemini 2.5 — Stable ──────────────────────────────────────────────────
+
+  gemini-2.5-pro:
+    provider: google_vertex_ai
+    vertex_regions:
+      - us-central1
+      - us-east1
+      - us-east4
+      - us-east5
+      - us-south1
+      - us-west1
+      - us-west4
+      - northamerica-northeast1
+      - europe-central2
+      - europe-north1
+      - europe-southwest1
+      - europe-west1
+      - europe-west4
+      - europe-west8
+      - europe-west9
+      - asia-northeast1
+    supports_thinking: true
+    supports_safety_settings: true
+    supports_top_k: true
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 1048576
+    max_output_tokens: 65535
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
     pricing_input: 1.25
-    pricing_output: 5.00
+    pricing_output: 10.00
 
   gemini-2.5-flash:
-    provider: gemini
+    provider: google_vertex_ai
+    vertex_regions:
+      - us-central1
+      - us-east1
+      - us-east4
+      - us-east5
+      - us-south1
+      - us-west1
+      - us-west4
+      - northamerica-northeast1
+      - southamerica-east1
+      - europe-central2
+      - europe-north1
+      - europe-southwest1
+      - europe-west1
+      - europe-west4
+      - europe-west8
+      - europe-west9
+      - asia-northeast1
+      - asia-northeast3
+      - asia-south1
+      - asia-southeast1
+      - australia-southeast1
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
     supports_function_calling: true
     supports_streaming: true
     supports_system_prompt: true
-    max_input_tokens: 1000000
-    max_output_tokens: 65536
+    max_input_tokens: 1048576
+    max_output_tokens: 65535
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
@@ -85,25 +170,96 @@ models:
     pricing_output: 2.50
 
   gemini-2.5-flash-lite:
-    provider: gemini
+    provider: google_vertex_ai
+    vertex_regions:
+      - global
+      - us-central1
+      - us-east1
+      - us-east4
+      - us-east5
+      - us-south1
+      - us-west1
+      - us-west4
+      - europe-central2
+      - europe-north1
+      - europe-southwest1
+      - europe-west1
+      - europe-west4
+      - europe-west8
+      - europe-west9
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
     supports_function_calling: true
     supports_streaming: true
     supports_system_prompt: true
-    max_input_tokens: 1000000
-    max_output_tokens: 65536
+    max_input_tokens: 1048576
+    max_output_tokens: 65535
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
     pricing_input: 0.10
     pricing_output: 0.40
 
+  gemini-2.5-flash-image:
+    provider: google_vertex_ai
+    vertex_regions:
+      - us-central1
+      - us-east1
+      - us-east4
+      - us-east5
+      - us-south1
+      - us-west1
+      - us-west4
+      - europe-central2
+      - europe-north1
+      - europe-southwest1
+      - europe-west1
+      - europe-west4
+      - europe-west8
+    supports_image_generation: true
+    supports_vision: true
+    supports_safety_settings: true
+    supports_system_prompt: true
+    supports_streaming: false
+    supports_thinking: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_parallel_tool_calls: false
+    supports_response_schema: false
+    max_input_tokens: 32768
+    max_output_tokens: 32768
+    pricing_input: 0.30
+    pricing_output: 2.50
+    pricing_output_image: 30.00
+
+  # ── Embeddings ────────────────────────────────────────────────────────────
+
+  gemini-embedding-2-preview:
+    provider: google_vertex_ai
+    vertex_regions: [us-central1]
+    dimensions: [3072]
+    supports_text_generation: false
+    supports_embedding: true
+    supports_thinking: false
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: false
+    supports_streaming: false
+    supports_system_prompt: false
+    max_input_tokens: 8192
+    max_output_tokens: 0
+    supports_vision: true   # multimodal : texte, images, audio, vidéo, PDF
+    supports_parallel_tool_calls: false
+    supports_response_schema: false
+    pricing_input: 0.00     # tarif non publié (preview)
+    pricing_output: 0.00
+
   gemini-embedding-001:
-    type: embedding
-    provider: gemini
+    provider: google_vertex_ai
     dimensions: [3072, 1536, 768] # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
+    supports_text_generation: false
+    supports_embedding: true
     supports_thinking: false
     supports_safety_settings: false
     supports_top_k: false
@@ -115,5 +271,5 @@ models:
     supports_vision: false
     supports_parallel_tool_calls: false
     supports_response_schema: false
-    pricing_input: 0.15 # Source: https://cloud.google.com/vertex-ai/pricing ($0.15 / 1M tokens)
+    pricing_input: 0.15
     pricing_output: 0.00
