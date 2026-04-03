@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Storage\Logger;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\SynapseDebugLoggerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
 /**
  * Monolog-based implementation of SynapseDebugLoggerInterface.
@@ -13,6 +14,7 @@ use Psr\Log\LoggerInterface;
  * Persists debug logs to file-based Monolog channels.
  * Suitable for production environments where database storage of large payloads is not desired.
  */
+#[AsAlias(id: SynapseDebugLoggerInterface::class)]
 class MonologDebugLogger implements SynapseDebugLoggerInterface
 {
     public function __construct(

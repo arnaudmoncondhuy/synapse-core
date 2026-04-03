@@ -14,7 +14,7 @@ class ModelCapabilities
 {
     /**
      * @param int[] $dimensions
-     * @param list<string> $vertexRegions
+     * @param list<string> $providerRegions
      */
     public function __construct(
         /** Identifiant exact du modèle (tel qu'envoyé à l'API) */
@@ -29,7 +29,7 @@ class ModelCapabilities
         /** Supporte le mode thinking étendu (budget de tokens de réflexion) */
         public readonly bool $supportsThinking = false,
 
-        /** Supporte les filtres de sécurité (safetySettings Gemini) */
+        /** Supporte les filtres de sécurité configurables */
         public readonly bool $supportsSafetySettings = false,
 
         /** Supporte le paramètre topK */
@@ -46,6 +46,9 @@ class ModelCapabilities
 
         /** Taille de la fenêtre de contexte maximale en tokens (legacy — utiliser max_input_tokens) */
         public readonly ?int $contextWindow = null,
+
+        /** Devise des tarifs (code ISO 4217, ex: 'USD', 'EUR') */
+        public readonly string $currency = 'USD',
 
         /** Prix par défaut par million de tokens (Input) */
         public readonly ?float $pricingInput = null,
@@ -81,7 +84,7 @@ class ModelCapabilities
         /** Supporte la génération d'embeddings vectoriels */
         public readonly bool $supportsEmbedding = false,
 
-        /** Supporte la génération d'images en sortie (ex: Gemini 2.5 Flash image generation) */
+        /** Supporte la génération d'images en sortie (inline image generation) */
         public readonly bool $supportsImageGeneration = false,
 
         // ── Phase 1 : Lifecycle ──────────────────────────────────────────────
@@ -91,8 +94,8 @@ class ModelCapabilities
 
         // ── Provider-specific ────────────────────────────────────────────────
 
-        /** Régions Vertex AI disponibles pour ce modèle (vide = toutes les régions sont valides) */
-        public readonly array $vertexRegions = [],
+        /** Régions disponibles pour ce modèle (vide = toutes les régions sont valides) */
+        public readonly array $providerRegions = [],
 
         // ── RGPD ─────────────────────────────────────────────────────────────
 

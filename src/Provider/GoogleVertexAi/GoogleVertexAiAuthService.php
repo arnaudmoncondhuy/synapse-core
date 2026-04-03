@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Client;
+namespace ArnaudMoncondhuy\SynapseCore\Provider\GoogleVertexAi;
 
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -14,7 +14,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *  - Fichier JSON Service Account (chemin YAML — fallback)
  *  - Contenu JSON injecté depuis la DB via setCredentialsJson()
  */
-class GeminiAuthService
+class GoogleVertexAiAuthService
 {
     private const TOKEN_URL = 'https://oauth2.googleapis.com/token';
     private const SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
@@ -112,7 +112,7 @@ class GeminiAuthService
             throw new \RuntimeException('Invalid Service Account JSON file: '.$this->serviceAccountJsonPath);
         }
 
-        throw new \RuntimeException('Google credentials not configured. Add a Gemini provider in the Synapse admin (Providers → Gemini).');
+        throw new \RuntimeException('Google credentials not configured. Add a Google Vertex AI provider in the Synapse admin (Providers → Google Vertex AI).');
     }
 
     /**

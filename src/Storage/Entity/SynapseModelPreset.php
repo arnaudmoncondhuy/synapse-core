@@ -26,7 +26,7 @@ class SynapseModelPreset
     private ?int $id = null;
 
     /**
-     * Clé unique (slug) pour appel dans le code (ex: 'gemini_fast').
+     * Clé unique (slug) pour appel dans le code (ex: 'fast_creative').
      */
     #[ORM\Column(type: Types::STRING, length: 50, unique: true, nullable: false)]
     private string $key = '';

@@ -12,12 +12,14 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
 /**
  * Formateur de messages pour le format OpenAI canonical.
  *
  * Convertit entre le format des entités Doctrine et le format OpenAI canonical.
  */
+#[AsAlias(id: MessageFormatterInterface::class)]
 class MessageFormatter implements MessageFormatterInterface
 {
     /** @var SynapseMessageAttachment[] Images générées non consommées (dernier assistant [image] sans user suivant) */

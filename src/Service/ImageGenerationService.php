@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Service;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ImageGenerationClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\GeneratedImage;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Service de génération d'image standalone.
@@ -14,7 +15,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Model\GeneratedImage;
  * Utilisable par l'app hôte indépendamment du chat.
  *
  * Usage :
- *   $images = $imageGenerationService->generate('Un chien sur la lune', 'ovh_image');
+ *   $images = $imageGenerationService->generate('Un chien sur la lune', 'my_provider');
  *   foreach ($images as $image) {
  *       file_put_contents('output.png', base64_decode($image->data));
  *   }
@@ -27,8 +28,10 @@ class ImageGenerationService
     /**
      * @param iterable<ImageGenerationClientInterface> $clients
      */
-    public function __construct(iterable $clients)
-    {
+    public function __construct(
+        #[AutowireIterator('synapse.image_generation_client')]
+        iterable $clients,
+    ) {
         foreach ($clients as $client) {
             $this->clientMap[$client->getProviderName()] = $client;
         }
@@ -38,7 +41,7 @@ class ImageGenerationService
      * Génère des images depuis un prompt texte.
      *
      * @param string $prompt Description textuelle de l'image
-     * @param string|null $provider Slug du provider (ex: 'ovh_image'). Si null, utilise le premier disponible.
+     * @param string|null $provider Slug du provider. Si null, utilise le premier disponible.
      * @param array{
      *     model?: string,
      *     width?: int,

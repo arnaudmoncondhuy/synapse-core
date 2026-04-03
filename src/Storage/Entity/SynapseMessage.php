@@ -85,7 +85,7 @@ abstract class SynapseMessage
     protected ?int $completionTokens = null;
 
     /**
-     * Nombre de tokens dans le thinking (Gemini 2.5+).
+     * Nombre de tokens dans le thinking (modèles avec thinking étendu).
      */
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     protected ?int $thinkingTokens = null;
@@ -103,7 +103,7 @@ abstract class SynapseMessage
     protected ?int $feedback = null;
 
     /**
-     * Safety ratings (évaluations de sécurité Gemini).
+     * Safety ratings (évaluations de sécurité du provider).
      *
      * Format :
      * [

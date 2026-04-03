@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Service;
 
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessageAttachment;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Uid\Uuid;
 
@@ -15,6 +16,7 @@ class AttachmentStorageService
 
     public function __construct(
         private EntityManagerInterface $em,
+        #[Autowire('%kernel.project_dir%')]
         string $projectDir,
     ) {
         $this->storageDir = $projectDir.'/var/synapse/attachments';

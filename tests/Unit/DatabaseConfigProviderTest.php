@@ -119,8 +119,9 @@ class DatabaseConfigProviderTest extends TestCase
         // Validator qui échoue → fallback sur config par défaut
         $config = $this->buildProvider($this->buildFailingValidator())->getConfig();
 
-        $this->assertNotEmpty($config->provider);
-        $this->assertNotEmpty($config->model);
+        // Fallback returns empty provider/model — resolved dynamically by LlmClientRegistry
+        $this->assertSame('', $config->provider);
+        $this->assertSame('', $config->model);
         $this->assertSame([], $config->providerCredentials);
     }
 

@@ -15,13 +15,13 @@ use Symfony\Component\Routing\Attribute\Route;
  * Endpoint API pour la génération d'image standalone (hors chat).
  *
  * Permet à l'application hôte de générer des images via n'importe quel
- * provider de génération d'image configuré (OVH SD-XL, etc.).
+ * provider de génération d'image configuré.
  *
  * POST /synapse/api/image/generate
  * Body JSON:
  *   {
  *     "prompt": "Un chien sur la lune",
- *     "provider": "ovh_image",       // optionnel
+ *     "provider": "my_provider",     // optionnel
  *     "options": {                    // optionnel
  *       "width": 1024,
  *       "height": 1024,

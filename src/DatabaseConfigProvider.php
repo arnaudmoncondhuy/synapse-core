@@ -13,6 +13,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -27,6 +28,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  *
  * Met en cache le résultat pour éviter les requêtes répétées.
  */
+#[AsAlias(id: ConfigProviderInterface::class)]
 class DatabaseConfigProvider implements ConfigProviderInterface
 {
     private const CACHE_KEY = 'synapse.config.active';
@@ -155,8 +157,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
     private function getDefaultConfig(): SynapseRuntimeConfig
     {
         $raw = [
-            'provider' => 'google_vertex_ai',
-            'model' => 'gemini-2.5-flash',
+            'provider' => '',
+            'model' => '',
             'provider_credentials' => [],
             'preset_id' => null,
         ];

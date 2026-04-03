@@ -117,7 +117,7 @@ class ChatService
         // ── PROPAGATE PIPELINE CONFIG AS OVERRIDE ──
         // Le pipeline peut changer la config (ex: agent avec un preset spécifique).
         // Il faut propager cette config au configProvider pour que les clients LLM
-        // (GeminiClient, OvhAiClient) l'utilisent via applyDynamicConfig().
+        // les clients LLM l'utilisent via applyDynamicConfig().
         $this->configProvider->setOverride($config);
 
         // ── IMAGE-ONLY MODEL ROUTING ──

@@ -35,7 +35,7 @@ final class SynapseRuntimeConfig
         public readonly ?string $agentEmoji = null,
         public readonly ?float $pricingInput = null,
         public readonly ?float $pricingOutput = null,
-        public readonly ?string $vertexRegion = null,
+        public readonly ?string $providerRegion = null,
     ) {
     }
 
@@ -66,7 +66,7 @@ final class SynapseRuntimeConfig
             agentEmoji: $data['agent_emoji'] ?? null,
             pricingInput: isset($data['pricing_input']) ? (float) $data['pricing_input'] : null,
             pricingOutput: isset($data['pricing_output']) ? (float) $data['pricing_output'] : null,
-            vertexRegion: $data['vertex_region'] ?? null,
+            providerRegion: $data['provider_region'] ?? null,
         );
     }
 
@@ -114,7 +114,7 @@ final class SynapseRuntimeConfig
             'agent_emoji' => $this->agentEmoji,
             'pricing_input' => $this->pricingInput,
             'pricing_output' => $this->pricingOutput,
-            'vertex_region' => $this->vertexRegion,
+            'provider_region' => $this->providerRegion,
         ];
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Memory\Tool;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
 /**
  * Outil permettant au LLM de proposer de retenir une information sur l'utilisateur.
@@ -12,6 +13,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
  * Cet outil ne sauvegarde rien directement. Il renvoie un signal spécial que le
  * frontend doit intercepter pour demander confirmation à l'utilisateur.
  */
+#[Autoconfigure(tags: ['synapse.tool'])]
 class ProposeMemoryTool implements AiToolInterface
 {
     public function getName(): string

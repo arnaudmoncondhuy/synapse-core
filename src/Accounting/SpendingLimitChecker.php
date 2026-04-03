@@ -11,6 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseLlmCallRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseSpendingLimitRepository;
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -30,6 +31,7 @@ class SpendingLimitChecker
         private readonly SynapseLlmCallRepository $tokenUsageRepo,
         private readonly SynapseSpendingLimitRepository $spendingLimitRepo,
         private readonly SynapseConfigRepository $configRepo,
+        #[Autowire('%synapse.token_tracking.sliding_day_hours%')]
         private readonly int $slidingDayHours = 4,
         ?\DateTimeZone $timezone = null,
         private readonly ?CacheItemPoolInterface $cache = null,

@@ -17,7 +17,8 @@
 defaults_reference:
 
   # ── Identité ──────────────────────────────────────────────────────────────
-  provider: "unknown"          # Requis. Slug du provider (ex: 'gemini', 'ovh', 'anthropic')
+  provider: "unknown"          # Requis. Slug du provider (ex: 'my_provider')
+  currency: "USD"              # Devise des tarifs (code ISO 4217). Défaut: USD
 
   # ── Contexte ──────────────────────────────────────────────────────────────
   context_window: ~            # Legacy (déprécié). Fenêtre totale en tokens — fallback via getEffectiveMaxInputTokens()
@@ -32,7 +33,7 @@ defaults_reference:
 
   # ── Capacités (défaut FALSE — activation opt-in) ──────────────────────────
   supports_thinking: false              # Supporte le raisonnement étendu (thinking budget tokens)
-  supports_safety_settings: false       # Supporte les filtres de sécurité granulaires (spécifique Gemini)
+  supports_safety_settings: false       # Supporte les filtres de sécurité granulaires configurables
   supports_top_k: false                 # Supporte le paramètre topK dans generation_config
   supports_vision: false                # Analyse d'images en entrée (multimodal)
   supports_parallel_tool_calls: false   # Appels parallèles de plusieurs tools en une réponse
@@ -41,10 +42,10 @@ defaults_reference:
   supports_image_generation: false      # Génération d'images en sortie
 
   # Non encore implémentés dans ModelCapabilities
-  # supports_audio_input: false        # Audio en entrée (Gemini 2.0+, GPT-4o Audio)
+  # supports_audio_input: false        # Audio en entrée
   # supports_audio_output: false       # Génération audio en sortie (TTS natif)
-  # supports_prompt_caching: false     # Prompt caching (réduction coûts 75-90%, Anthropic/Gemini/OpenAI)
-  # supports_web_search: false         # Recherche web intégrée (Gemini Grounding, Perplexity)
+  # supports_prompt_caching: false     # Prompt caching (réduction coûts 75-90%)
+  # supports_web_search: false         # Recherche web intégrée
 
   # ── Tarification (par million de tokens, null = coût inconnu) ─────────────
   pricing_input: ~             # Coût input standard
@@ -60,7 +61,7 @@ defaults_reference:
   deprecated_at: ~             # Date YYYY-MM-DD ou null. Ex: "2026-06-15"
 
   # ── Provider-specific ─────────────────────────────────────────────────────
-  vertex_regions: []           # Régions Vertex AI disponibles pour ce modèle (vide = toutes)
+  provider_regions: []           # Régions disponibles pour ce modèle (vide = toutes)
   rgpd_risk: ~                 # Risque RGPD inhérent au modèle (null = évalué au runtime par le client LLM)
                                # Valeurs : null | 'danger' | 'tolerated' | 'risk'
                                # 'danger' = toujours interdit pour données sensibles (ex: free tier, entraînement)

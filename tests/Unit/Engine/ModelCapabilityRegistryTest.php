@@ -39,7 +39,7 @@ class ModelCapabilityRegistryTest extends TestCase
         $this->assertNull($caps->deprecatedAt);
         $this->assertNull($caps->pricingInput);
         $this->assertNull($caps->pricingOutput);
-        $this->assertNull($caps->vertexRegion);
+        $this->assertNull($caps->providerRegion);
     }
 
     public function testIsKnownModel(): void
@@ -106,11 +106,11 @@ class ModelCapabilityRegistryTest extends TestCase
                 continue;
             }
             $caps = $registry->getCapabilities($modelId);
-            $this->assertSame(['global'], $caps->vertexRegions, "Le modèle $modelId doit avoir vertex_regions: [global]");
+            $this->assertSame(['global'], $caps->providerRegions, "Le modèle $modelId doit avoir provider_regions: [global]");
         }
     }
 
-    public function testVertexRegionsOnStableModels(): void
+    public function testProviderRegionsOnStableModels(): void
     {
         $registry = new ModelCapabilityRegistry();
 
@@ -119,8 +119,8 @@ class ModelCapabilityRegistryTest extends TestCase
                 continue;
             }
             $caps = $registry->getCapabilities($modelId);
-            $this->assertNotEmpty($caps->vertexRegions, "Le modèle $modelId doit avoir des vertex_regions listées");
-            $this->assertContains('us-central1', $caps->vertexRegions, "Le modèle $modelId doit être disponible en us-central1");
+            $this->assertNotEmpty($caps->providerRegions, "Le modèle $modelId doit avoir des provider_regions listées");
+            $this->assertContains('us-central1', $caps->providerRegions, "Le modèle $modelId doit être disponible en us-central1");
         }
     }
 

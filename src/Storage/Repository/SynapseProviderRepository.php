@@ -19,7 +19,7 @@ class SynapseProviderRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve un provider par son slug (ex : 'gemini', 'ovh').
+     * Trouve un provider par son slug.
      */
     public function findByName(string $name): ?SynapseProvider
     {

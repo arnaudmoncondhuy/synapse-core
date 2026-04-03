@@ -10,9 +10,8 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * Registre des profils de capacités par modèle LLM.
  *
- * Charge les capacités depuis des fichiers YAML situés dans Resources/config/models/.
- * Permet à chaque client (GeminiClient, OvhAiClient…) de savoir quels
- * paramètres envoyer à l'API.
+ * Charge les capacités depuis des fichiers YAML situés dans Provider/{ProviderName}/models.yaml.
+ * Permet à chaque client LLM de savoir quels paramètres envoyer à l'API.
  */
 class ModelCapabilityRegistry
 {
@@ -25,24 +24,23 @@ class ModelCapabilityRegistry
     }
 
     /**
-     * Charge tous les fichiers YAML du dossier de configuration des modèles.
+     * Charge tous les fichiers YAML de configuration des modèles (un par provider).
      */
     private function loadModels(): void
     {
-        // Chemin vers les configurations YAML des modèles après refactorisation
-        // __DIR__ = src/Engine, donc dirname(__DIR__, 2) = packages/core
-        $configDir = dirname(__DIR__, 2).'/src/Resources/config/models';
+        // __DIR__ = src/Engine → dirname(__DIR__) = src/ → Provider/*/models.yaml
+        $providerDir = dirname(__DIR__).'/Provider';
 
-        if (!is_dir($configDir)) {
+        if (!is_dir($providerDir)) {
             // Tentative de résolution alternative si appelé depuis une application hôte
-            $configDir = dirname(__DIR__, 5).'/vendor/arnaudmoncondhuy/synapse-core/src/Resources/config/models';
+            $providerDir = dirname(__DIR__, 4).'/vendor/arnaudmoncondhuy/synapse-core/src/Provider';
         }
 
-        if (!is_dir($configDir)) {
+        if (!is_dir($providerDir)) {
             return;
         }
 
-        $files = glob($configDir.'/*.yaml');
+        $files = glob($providerDir.'/*/models.yaml');
         if (!$files) {
             return;
         }
@@ -105,6 +103,7 @@ class ModelCapabilityRegistry
             model: $model,
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
             dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn ($v) => is_numeric($v) ? (int) $v : 0, (array) $data['dimensions']) : [],
+            currency: is_string($data['currency'] ?? null) ? (string) $data['currency'] : 'USD',
             // Phase 1.5 — convention supports_*
             supportsThinking: (bool) ($data['supports_thinking'] ?? false),
             supportsSafetySettings: (bool) ($data['supports_safety_settings'] ?? false),
@@ -128,7 +127,7 @@ class ModelCapabilityRegistry
             // Lifecycle
             deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
             // Provider-specific
-            vertexRegions: isset($data['vertex_regions']) && is_array($data['vertex_regions']) ? array_values(array_filter($data['vertex_regions'], 'is_string')) : [],
+            providerRegions: isset($data['provider_regions']) && is_array($data['provider_regions']) ? array_values(array_filter($data['provider_regions'], 'is_string')) : [],
             // RGPD
             rgpdRisk: isset($data['rgpd_risk']) && is_string($data['rgpd_risk']) ? $data['rgpd_risk'] : null,
         );
@@ -164,6 +163,14 @@ class ModelCapabilityRegistry
         }
 
         return $result;
+    }
+
+    /**
+     * Retourne le premier modèle disponible pour un provider donné (pour les fallbacks).
+     */
+    public function getFirstModelForProvider(string $provider): string
+    {
+        return $this->getModelsForProvider($provider)[0] ?? '';
     }
 
     public function isKnownModel(string $model): bool

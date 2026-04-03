@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Routing;
 
 use Symfony\Component\Config\Loader\Loader;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\RouteCollection;
 
@@ -31,6 +32,7 @@ use Symfony\Component\Routing\RouteCollection;
  *       type: synapse
  *       prefix: /myapp
  */
+#[Autoconfigure(tags: ['routing.loader'])]
 class SynapseRoutesLoader extends Loader
 {
     private bool $isLoaded = false;

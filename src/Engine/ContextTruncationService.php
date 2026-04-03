@@ -103,7 +103,7 @@ class ContextTruncationService
      * Estime le nombre de tokens d'un message OpenAI (texte ou multimodal).
      *
      * - Texte        : heuristique 1 token ≈ 4 caractères
-     * - Image        : max(85, min(1700, octets_fichier / 100)) — calibré sur les tuiles Gemini/OpenAI
+     * - Image        : max(85, min(1700, octets_fichier / 100)) — calibré sur les tuiles des principaux LLM
      * - Audio        : max(100, octets_fichier / 12_000) — ~6 tokens/sec à 128kbps
      * - Vidéo        : max(500, octets_fichier / 1_000) — surestimation intentionnelle
      * - PDF/document : octets_fichier / 400 — texte dense compressé

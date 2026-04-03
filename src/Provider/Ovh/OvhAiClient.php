@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Client;
+namespace ArnaudMoncondhuy\SynapseCore\Provider\Ovh;
 
+use ArnaudMoncondhuy\SynapseCore\Client\AbstractLlmClient;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\RgpdAwareInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\RgpdInfo;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -28,6 +30,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Streaming  : SSE (data: {...}\n, terminé par data: [DONE])
  * Tool calls : format OpenAI (tool_calls / role tool)
  */
+#[Autoconfigure(tags: ['synapse.llm_client'])]
 class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface, RgpdAwareInterface
 {
     private string $model = 'Gpt-oss-20b';
@@ -734,6 +737,64 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
     public function getDefaultLabel(): string
     {
         return 'OVH AI Endpoints';
+    }
+
+    public function getIcon(): string
+    {
+        return 'cloud';
+    }
+
+    public function getDefaultCurrency(): string
+    {
+        return 'EUR';
+    }
+
+    public function getProviderOptionsSchema(): array
+    {
+        return ['fields' => [
+            [
+                'name' => 'thinking.enabled',
+                'type' => 'checkbox',
+                'label' => 'Activer le thinking',
+                'help' => 'Raisonnement approfondi',
+                'capability' => 'supportsThinking',
+            ],
+            [
+                'name' => 'thinking.reasoning_effort',
+                'type' => 'select',
+                'label' => "Niveau d'effort",
+                'help' => 'Intensité du raisonnement',
+                'options' => [
+                    ['value' => 'low', 'label' => 'Faible'],
+                    ['value' => 'medium', 'label' => 'Moyen'],
+                    ['value' => 'high', 'label' => 'Élevé'],
+                ],
+                'defaultValue' => 'high',
+                'dependsOn' => 'thinking.enabled',
+            ],
+        ]];
+    }
+
+    public function validateProviderOptions(array $options, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps): array
+    {
+        $validReasoningEfforts = ['low', 'medium', 'high'];
+
+        if (!$caps->supportsThinking) {
+            unset($options['thinking']);
+        }
+
+        if ($caps->supportsThinking && isset($options['thinking']) && is_array($options['thinking']) && !empty($options['thinking']['reasoning_effort'])) {
+            $effort = $options['thinking']['reasoning_effort'];
+            if (!is_string($effort) || !in_array($effort, $validReasoningEfforts, true)) {
+                unset($options['thinking']['reasoning_effort']);
+            }
+        }
+        if (isset($options['thinking']) && is_array($options['thinking'])) {
+            unset($options['thinking']['budget']);
+        }
+        unset($options['safety_settings']);
+
+        return $options;
     }
 
     /**

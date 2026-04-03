@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Client;
+namespace ArnaudMoncondhuy\SynapseCore\Provider\Ovh;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ImageGenerationClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmAuthenticationException;
@@ -11,6 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\GeneratedImage;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -24,6 +25,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Auth     : Bearer {api_key}
  * Format   : OpenAI Images API (response_format: b64_json)
  */
+#[Autoconfigure(tags: ['synapse.image_generation_client'])]
 class OvhImageGenerationClient implements ImageGenerationClientInterface
 {
     private const DEFAULT_ENDPOINT = 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1';

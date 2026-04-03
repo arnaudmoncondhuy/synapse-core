@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Registre centralisé pour tous les outils (Tools) IA exposés.
@@ -17,8 +18,10 @@ class ToolRegistry
     /**
      * @param iterable<AiToolInterface> $tools
      */
-    public function __construct(iterable $tools)
-    {
+    public function __construct(
+        #[AutowireIterator('synapse.tool')]
+        iterable $tools,
+    ) {
         foreach ($tools as $tool) {
             $this->tools[$tool->getName()] = $tool;
         }

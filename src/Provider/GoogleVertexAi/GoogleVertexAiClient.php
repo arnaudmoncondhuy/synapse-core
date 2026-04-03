@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Client;
+namespace ArnaudMoncondhuy\SynapseCore\Provider\GoogleVertexAi;
 
+use ArnaudMoncondhuy\SynapseCore\Client\AbstractLlmClient;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EmbeddingClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
@@ -12,6 +13,7 @@ use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\RgpdInfo;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -20,7 +22,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Credentials (project_id, region, service_account_json) chargés dynamiquement
  * depuis SynapseProvider en DB — aucune valeur YAML requise après l'installation.
  */
-class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface, RgpdAwareInterface
+#[Autoconfigure(tags: ['synapse.llm_client'])]
+class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientInterface, RgpdAwareInterface
 {
     private const VERTEX_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent';
     private const VERTEX_STREAM_URL = 'https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent';
@@ -45,7 +48,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
 
     public function __construct(
         HttpClientInterface $httpClient,
-        private readonly GeminiAuthService $geminiAuthService,
+        private readonly GoogleVertexAiAuthService $googleVertexAiAuthService,
         ConfigProviderInterface $configProvider,
         ModelCapabilityRegistry $capabilityRegistry,
         private readonly ?SynapseProviderRepository $providerRepository = null,
@@ -415,7 +418,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
 
         // Store raw Gemini parts for multi-turn history (thinking models need thoughtSignature verbatim)
         if (!empty($rawPartsForHistory)) {
-            $normalized['_gemini_raw_parts'] = $rawPartsForHistory;
+            $normalized['_provider_raw_parts'] = $rawPartsForHistory;
         }
 
         if (!empty($textParts)) {
@@ -512,16 +515,16 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
                 $this->vertexRegion = $creds['region'];
             }
             // Override explicite au niveau du preset (priorité maximale)
-            if (null !== $config->vertexRegion && '' !== $config->vertexRegion) {
-                $this->vertexRegion = $config->vertexRegion;
+            if (null !== $config->providerRegion && '' !== $config->providerRegion) {
+                $this->vertexRegion = $config->providerRegion;
             }
             // Validation : si le modèle restreint les régions disponibles, vérifier la cohérence
-            $availableRegions = $this->capabilityRegistry->getCapabilities($this->model)->vertexRegions;
+            $availableRegions = $this->capabilityRegistry->getCapabilities($this->model)->providerRegions;
             if (!empty($availableRegions) && !in_array($this->vertexRegion, $availableRegions, true)) {
                 $this->vertexRegion = $availableRegions[0];
             }
             if (!empty($creds['service_account_json']) && is_string($creds['service_account_json'])) {
-                $this->geminiAuthService->setCredentialsJson($creds['service_account_json']);
+                $this->googleVertexAiAuthService->setCredentialsJson($creds['service_account_json']);
             }
         }
 
@@ -675,10 +678,10 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
             } elseif ('assistant' === $role) {
                 // If raw Gemini parts are available (thinking models), use them verbatim
                 // to preserve thoughtSignature which Vertex AI requires in multi-turn exchanges
-                if (!empty($msg['_gemini_raw_parts']) && is_array($msg['_gemini_raw_parts'])) {
+                if (!empty($msg['_provider_raw_parts']) && is_array($msg['_provider_raw_parts'])) {
                     $geminiMessages[] = [
                         'role' => 'model',
-                        'parts' => $msg['_gemini_raw_parts'],
+                        'parts' => $msg['_provider_raw_parts'],
                     ];
                     continue;
                 }
@@ -844,7 +847,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
     private function buildVertexHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer '.$this->geminiAuthService->getAccessToken(),
+            'Authorization' => 'Bearer '.$this->googleVertexAiAuthService->getAccessToken(),
             'Content-Type' => 'application/json',
         ];
     }
@@ -1032,6 +1035,188 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         return 'Google Vertex AI';
     }
 
+    public function getIcon(): string
+    {
+        return 'zap';
+    }
+
+    public function getDefaultCurrency(): string
+    {
+        return 'USD';
+    }
+
+    public function getProviderOptionsSchema(): array
+    {
+        return ['fields' => [
+            [
+                'name' => 'provider_region',
+                'type' => 'select',
+                'label' => 'Région Vertex AI',
+                'help' => 'Région utilisée pour ce preset (override la région du provider)',
+                'options' => [
+                    ['value' => '', 'label' => '— Hériter du provider —'],
+                    ['value' => 'global', 'label' => 'Global (endpoint universel preview)'],
+                    ['value' => 'us-central1', 'label' => 'US Central 1 (Iowa)'],
+                    ['value' => 'us-east1', 'label' => 'US East 1 (Caroline du Sud)'],
+                    ['value' => 'us-east4', 'label' => 'US East 4 (Virginie du Nord)'],
+                    ['value' => 'us-east5', 'label' => 'US East 5 (Columbus)'],
+                    ['value' => 'us-south1', 'label' => 'US South 1 (Dallas)'],
+                    ['value' => 'us-west1', 'label' => 'US West 1 (Oregon)'],
+                    ['value' => 'us-west4', 'label' => 'US West 4 (Las Vegas)'],
+                    ['value' => 'northamerica-northeast1', 'label' => 'Canada Northeast 1 (Montréal)'],
+                    ['value' => 'southamerica-east1', 'label' => 'South America East 1 (São Paulo)'],
+                    ['value' => 'europe-west1', 'label' => 'Europe West 1 (Belgique)'],
+                    ['value' => 'europe-west4', 'label' => 'Europe West 4 (Pays-Bas)'],
+                    ['value' => 'europe-west8', 'label' => 'Europe West 8 (Milan)'],
+                    ['value' => 'europe-west9', 'label' => 'Europe West 9 (Paris)'],
+                    ['value' => 'europe-central2', 'label' => 'Europe Central 2 (Varsovie)'],
+                    ['value' => 'europe-north1', 'label' => 'Europe North 1 (Finlande)'],
+                    ['value' => 'europe-southwest1', 'label' => 'Europe Southwest 1 (Madrid)'],
+                    ['value' => 'asia-northeast1', 'label' => 'Asia Northeast 1 (Tokyo)'],
+                    ['value' => 'asia-northeast3', 'label' => 'Asia Northeast 3 (Séoul)'],
+                    ['value' => 'asia-south1', 'label' => 'Asia South 1 (Mumbai)'],
+                    ['value' => 'asia-southeast1', 'label' => 'Asia Southeast 1 (Singapour)'],
+                    ['value' => 'australia-southeast1', 'label' => 'Australia Southeast 1 (Sydney)'],
+                ],
+                'defaultValue' => '',
+            ],
+            [
+                'name' => 'thinking.enabled',
+                'type' => 'checkbox',
+                'label' => 'Activer le thinking',
+                'help' => 'Réflexion interne approfondie',
+                'capability' => 'supportsThinking',
+            ],
+            [
+                'name' => 'thinking.budget',
+                'type' => 'number',
+                'label' => 'Budget de réflexion (tokens)',
+                'help' => '128–24576 tokens alloués à la réflexion',
+                'min' => 128,
+                'max' => 24576,
+                'defaultValue' => 1024,
+                'dependsOn' => 'thinking.enabled',
+            ],
+            [
+                'name' => 'safety_settings.enabled',
+                'type' => 'checkbox',
+                'label' => 'Activer les filtres de sécurité',
+                'help' => 'Active les filtres de contenu inapproprié',
+                'capability' => 'supportsSafetySettings',
+            ],
+            [
+                'name' => 'safety_settings.default_threshold',
+                'type' => 'select',
+                'label' => 'Seuil de sécurité par défaut',
+                'help' => 'Niveau de filtrage par défaut',
+                'options' => [
+                    ['value' => 'OFF', 'label' => 'Désactivé'],
+                    ['value' => 'BLOCK_NONE', 'label' => 'Aucun filtre (scores retournés)'],
+                    ['value' => 'BLOCK_ONLY_HIGH', 'label' => 'Bloquer haute probabilité'],
+                    ['value' => 'BLOCK_MEDIUM_AND_ABOVE', 'label' => 'Bloquer moyenne et haute'],
+                    ['value' => 'BLOCK_LOW_AND_ABOVE', 'label' => 'Bloquer toute probabilité'],
+                ],
+                'defaultValue' => 'BLOCK_MEDIUM_AND_ABOVE',
+                'dependsOn' => 'safety_settings.enabled',
+            ],
+            [
+                'name' => 'safety_settings.thresholds.hate_speech',
+                'type' => 'select',
+                'label' => 'Discours haineux',
+                'help' => 'Seuil spécifique',
+                'options' => [
+                    ['value' => '', 'label' => 'Non défini'],
+                    ['value' => 'OFF', 'label' => 'Désactivé'],
+                    ['value' => 'BLOCK_NONE', 'label' => 'Aucun filtre'],
+                    ['value' => 'BLOCK_ONLY_HIGH', 'label' => 'Haute'],
+                    ['value' => 'BLOCK_MEDIUM_AND_ABOVE', 'label' => 'Moyenne+'],
+                    ['value' => 'BLOCK_LOW_AND_ABOVE', 'label' => 'Toute'],
+                ],
+                'dependsOn' => 'safety_settings.enabled',
+            ],
+            [
+                'name' => 'safety_settings.thresholds.dangerous_content',
+                'type' => 'select',
+                'label' => 'Contenu dangereux',
+                'help' => 'Seuil spécifique',
+                'options' => [
+                    ['value' => '', 'label' => 'Non défini'],
+                    ['value' => 'OFF', 'label' => 'Désactivé'],
+                    ['value' => 'BLOCK_NONE', 'label' => 'Aucun filtre'],
+                    ['value' => 'BLOCK_ONLY_HIGH', 'label' => 'Haute'],
+                    ['value' => 'BLOCK_MEDIUM_AND_ABOVE', 'label' => 'Moyenne+'],
+                    ['value' => 'BLOCK_LOW_AND_ABOVE', 'label' => 'Toute'],
+                ],
+                'dependsOn' => 'safety_settings.enabled',
+            ],
+            [
+                'name' => 'safety_settings.thresholds.harassment',
+                'type' => 'select',
+                'label' => 'Harcèlement',
+                'help' => 'Seuil spécifique',
+                'options' => [
+                    ['value' => '', 'label' => 'Non défini'],
+                    ['value' => 'OFF', 'label' => 'Désactivé'],
+                    ['value' => 'BLOCK_NONE', 'label' => 'Aucun filtre'],
+                    ['value' => 'BLOCK_ONLY_HIGH', 'label' => 'Haute'],
+                    ['value' => 'BLOCK_MEDIUM_AND_ABOVE', 'label' => 'Moyenne+'],
+                    ['value' => 'BLOCK_LOW_AND_ABOVE', 'label' => 'Toute'],
+                ],
+                'dependsOn' => 'safety_settings.enabled',
+            ],
+            [
+                'name' => 'safety_settings.thresholds.sexually_explicit',
+                'type' => 'select',
+                'label' => 'Contenu explicite',
+                'help' => 'Seuil spécifique',
+                'options' => [
+                    ['value' => '', 'label' => 'Non défini'],
+                    ['value' => 'OFF', 'label' => 'Désactivé'],
+                    ['value' => 'BLOCK_NONE', 'label' => 'Aucun filtre'],
+                    ['value' => 'BLOCK_ONLY_HIGH', 'label' => 'Haute'],
+                    ['value' => 'BLOCK_MEDIUM_AND_ABOVE', 'label' => 'Moyenne+'],
+                    ['value' => 'BLOCK_LOW_AND_ABOVE', 'label' => 'Toute'],
+                ],
+                'dependsOn' => 'safety_settings.enabled',
+            ],
+        ]];
+    }
+
+    public function validateProviderOptions(array $options, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps): array
+    {
+        $validBlockLevels = ['BLOCK_NONE', 'BLOCK_ONLY_HIGH', 'BLOCK_MEDIUM_AND_ABOVE', 'BLOCK_LOW_AND_ABOVE'];
+
+        if (!$caps->supportsThinking) {
+            unset($options['thinking']);
+        }
+        if (!$caps->supportsSafetySettings) {
+            unset($options['safety_settings']);
+        }
+
+        if ($caps->supportsThinking && isset($options['thinking']) && is_array($options['thinking']) && !empty($options['thinking']['budget'])) {
+            $budget = is_numeric($options['thinking']['budget']) ? (int) $options['thinking']['budget'] : 0;
+            if ($budget < 128 || $budget > 32000) {
+                $options['thinking']['budget'] = 1024;
+            }
+        }
+        if ($caps->supportsSafetySettings && isset($options['safety_settings']) && is_array($options['safety_settings']) && !empty($options['safety_settings']['default_threshold'])) {
+            $defaultThreshold = $options['safety_settings']['default_threshold'];
+            if (!is_string($defaultThreshold) || !in_array($defaultThreshold, $validBlockLevels, true)) {
+                unset($options['safety_settings']['default_threshold']);
+            }
+        }
+        foreach (['hate_speech', 'dangerous_content', 'harassment', 'sexually_explicit'] as $filter) {
+            if (isset($options['safety_settings']) && is_array($options['safety_settings']) && isset($options['safety_settings']['thresholds']) && is_array($options['safety_settings']['thresholds']) && isset($options['safety_settings']['thresholds'][$filter])) {
+                $value = $options['safety_settings']['thresholds'][$filter];
+                if (is_string($value) && '' !== $value && !in_array($value, $validBlockLevels, true)) {
+                    unset($options['safety_settings']['thresholds'][$filter]);
+                }
+            }
+        }
+
+        return $options;
+    }
+
     /**
      * Évalue la conformité RGPD pour la configuration Vertex AI donnée.
      *
@@ -1043,7 +1228,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
      * - Hébergement en UE possible via les régions europe-*
      *
      * Cascade de résolution de la région effective (identique à applyDynamicConfig) :
-     *   1. vertex_region dans presetOptions (override explicite)
+     *   1. provider_region dans presetOptions (override explicite)
      *   2. region dans providerCredentials (défaut provider)
      *   3. Première région disponible dans le YAML si le modèle est restreint
      */
@@ -1064,7 +1249,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
         }
 
         // 1. Override preset
-        $region = (string) ($presetOptions['vertex_region'] ?? '');
+        $region = (string) ($presetOptions['provider_region'] ?? '');
 
         // 2. Défaut provider
         if ('' === $region) {
@@ -1073,7 +1258,7 @@ class GeminiClient extends AbstractLlmClient implements EmbeddingClientInterface
 
         // 3. Contrainte YAML
         if ('' === $region) {
-            $availableRegions = $this->capabilityRegistry->getCapabilities($model)->vertexRegions;
+            $availableRegions = $this->capabilityRegistry->getCapabilities($model)->providerRegions;
             if (!empty($availableRegions)) {
                 $region = $availableRegions[0];
             }

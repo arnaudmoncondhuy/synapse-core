@@ -27,21 +27,19 @@ class SynapseModel
 
     /**
      * Slug du provider auquel appartient ce modèle.
-     * Ex : 'gemini', 'ovh'.
+     * Ex : 'my_provider'.
      */
     #[ORM\Column(type: Types::STRING, length: 50)]
     private string $providerName = '';
 
     /**
      * Identifiant exact du modèle tel qu'envoyé à l'API.
-     * Ex : 'gemini-2.5-flash', 'Gpt-oss-20b'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $modelId = '';
 
     /**
      * Nom affiché dans l'admin.
-     * Ex : 'Gemini 2.5 Flash (Thinking)', 'GPT OSS 20B'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $label = '';

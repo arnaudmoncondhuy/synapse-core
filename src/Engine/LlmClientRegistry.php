@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Registre des clients LLM disponibles.
@@ -24,9 +25,10 @@ class LlmClientRegistry
      * @param string $defaultProvider Provider YAML par défaut (bootstrap)
      */
     public function __construct(
+        #[AutowireIterator('synapse.llm_client')]
         iterable $clients,
         private readonly ConfigProviderInterface $configProvider,
-        private readonly string $defaultProvider = 'google_vertex_ai',
+        private readonly string $defaultProvider = '',
     ) {
         foreach ($clients as $client) {
             $this->clientMap[$client->getProviderName()] = $client;
@@ -42,6 +44,10 @@ class LlmClientRegistry
     {
         $config = $this->configProvider->getConfig();
         $providerName = $config->provider ?: $this->defaultProvider;
+
+        if ('' === $providerName) {
+            $providerName = (string) (array_key_first($this->clientMap) ?? throw new \RuntimeException('No LLM provider registered.'));
+        }
 
         return $this->getClientByProvider($providerName);
     }
@@ -66,5 +72,24 @@ class LlmClientRegistry
     public function getAvailableProviders(): array
     {
         return array_keys($this->clientMap);
+    }
+
+    /**
+     * Retourne les métadonnées de tous les providers pour l'admin.
+     *
+     * @return array<string, array{label: string, icon: string, currency: string}>
+     */
+    public function getProvidersMeta(): array
+    {
+        $meta = [];
+        foreach ($this->clientMap as $name => $client) {
+            $meta[$name] = [
+                'label' => $client->getDefaultLabel(),
+                'icon' => $client->getIcon(),
+                'currency' => $client->getDefaultCurrency(),
+            ];
+        }
+
+        return $meta;
     }
 }

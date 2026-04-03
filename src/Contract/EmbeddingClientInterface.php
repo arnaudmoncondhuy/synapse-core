@@ -8,13 +8,13 @@ namespace ArnaudMoncondhuy\SynapseCore\Contract;
  * Interface pour les clients de génération d'embeddings vectoriels.
  *
  * Cette interface permet de normaliser la communication avec différents
- * modèles d'embedding (Vertex AI, OpenAI, HuggingFace) pour transformer
+ * modèles d'embedding pour transformer
  * du texte en vecteurs numériques.
  */
 interface EmbeddingClientInterface
 {
     /**
-     * Identifiant interne du fournisseur (ex: 'gemini', 'openai').
+     * Identifiant interne du fournisseur.
      */
     public function getProviderName(): string;
 

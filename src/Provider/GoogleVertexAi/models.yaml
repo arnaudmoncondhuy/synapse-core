@@ -8,7 +8,8 @@ models:
 
   gemini-3.1-pro-preview:
     provider: google_vertex_ai
-    vertex_regions: [global]
+    currency: USD
+    provider_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
@@ -25,7 +26,8 @@ models:
 
   gemini-3-flash-preview:
     provider: google_vertex_ai
-    vertex_regions: [global]
+    currency: USD
+    provider_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
@@ -42,7 +44,8 @@ models:
 
   gemini-3.1-flash-lite-preview:
     provider: google_vertex_ai
-    vertex_regions: [global]
+    currency: USD
+    provider_regions: [global]
     supports_thinking: true
     supports_safety_settings: true
     supports_top_k: true
@@ -60,7 +63,8 @@ models:
   # Génération d'images — supporte le thinking contrairement au 2.5-flash-image
   gemini-3.1-flash-image-preview:
     provider: google_vertex_ai
-    vertex_regions: [global]
+    currency: USD
+    provider_regions: [global]
     supports_image_generation: true
     supports_thinking: true
     supports_vision: true
@@ -79,7 +83,8 @@ models:
 
   gemini-3-pro-image-preview:
     provider: google_vertex_ai
-    vertex_regions: [global]
+    currency: USD
+    provider_regions: [global]
     supports_image_generation: true
     supports_thinking: true
     supports_vision: true
@@ -100,7 +105,8 @@ models:
 
   gemini-2.5-pro:
     provider: google_vertex_ai
-    vertex_regions:
+    currency: USD
+    provider_regions:
       - us-central1
       - us-east1
       - us-east4
@@ -133,7 +139,8 @@ models:
 
   gemini-2.5-flash:
     provider: google_vertex_ai
-    vertex_regions:
+    currency: USD
+    provider_regions:
       - us-central1
       - us-east1
       - us-east4
@@ -171,7 +178,8 @@ models:
 
   gemini-2.5-flash-lite:
     provider: google_vertex_ai
-    vertex_regions:
+    currency: USD
+    provider_regions:
       - global
       - us-central1
       - us-east1
@@ -203,7 +211,8 @@ models:
 
   gemini-2.5-flash-image:
     provider: google_vertex_ai
-    vertex_regions:
+    currency: USD
+    provider_regions:
       - us-central1
       - us-east1
       - us-east4
@@ -237,7 +246,8 @@ models:
 
   gemini-embedding-2-preview:
     provider: google_vertex_ai
-    vertex_regions: [us-central1]
+    currency: USD
+    provider_regions: [us-central1]
     dimensions: [3072]
     supports_text_generation: false
     supports_embedding: true
@@ -257,6 +267,7 @@ models:
 
   gemini-embedding-001:
     provider: google_vertex_ai
+    currency: USD
     dimensions: [3072, 1536, 768] # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
     supports_text_generation: false
     supports_embedding: true

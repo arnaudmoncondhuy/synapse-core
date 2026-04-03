@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Rag;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\RagSourceProviderFactoryInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\RagSourceProviderInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Registre centralisé des sources RAG.
@@ -27,7 +28,9 @@ class RagSourceRegistry
      * @param iterable<RagSourceProviderFactoryInterface> $factories
      */
     public function __construct(
+        #[AutowireIterator('synapse.rag_source')]
         iterable $staticProviders,
+        #[AutowireIterator('synapse.rag_source_factory')]
         private readonly iterable $factories,
     ) {
         foreach ($staticProviders as $provider) {

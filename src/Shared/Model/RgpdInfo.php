@@ -8,12 +8,11 @@ namespace ArnaudMoncondhuy\SynapseCore\Shared\Model;
  * Résultat de l'évaluation RGPD d'un provider LLM pour une configuration donnée.
  *
  * Niveaux de conformité (du plus au moins favorable) :
- *   - compliant  : hébergeur et société européens, données en UE (ex: OVH)
+ *   - compliant  : hébergeur et société européens, données en UE
  *   - tolerated  : société non-UE mais données hébergées en UE, DPA signé, pas d'entraînement
- *                  (ex: Vertex AI sur europe-*) — toléré par la CNIL sous conditions
- *   - risk       : pays tiers avec protection adéquate reconnue (ex: Canada)
+ *                  — toléré par la CNIL sous conditions
+ *   - risk       : pays tiers avec protection adéquate reconnue
  *   - danger     : données hors UE sans garanties suffisantes, ou utilisées pour l'entraînement
- *                  (ex: Vertex AI sur us-central1, Google AI Studio gratuit)
  *   - unknown    : configuration incomplète, statut impossible à déterminer
  */
 final class RgpdInfo
@@ -22,7 +21,7 @@ final class RgpdInfo
         /** 'compliant' | 'tolerated' | 'risk' | 'danger' | 'unknown' */
         public readonly string $status,
 
-        /** Résumé court affiché dans le badge (ex: "Vertex AI EU") */
+        /** Résumé court affiché dans le badge (ex: "Provider EU") */
         public readonly string $label,
 
         /** Explication affichée en tooltip ou dans le détail */

@@ -29,14 +29,14 @@ class SynapseProvider
     /**
      * Identifiant technique du provider (slug).
      * Doit correspondre à `getProviderName()` du client LLM.
-     * Ex : 'gemini', 'ovh'.
+     * Ex : 'my_provider'.
      */
     #[ORM\Column(type: Types::STRING, length: 50, unique: true)]
     private string $name = '';
 
     /**
      * Label affiché dans l'admin.
-     * Ex : 'Google Vertex AI', 'OVH AI Endpoints'.
+     * Ex : 'My Provider'.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $label = '';

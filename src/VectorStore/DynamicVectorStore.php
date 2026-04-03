@@ -6,11 +6,13 @@ namespace ArnaudMoncondhuy\SynapseCore\VectorStore;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
+use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
 /**
  * Décorateur de VectorStoreInterface qui résout l'implémentation réelle
  * dynamiquement en fonction de la configuration en base de données.
  */
+#[AsAlias(id: VectorStoreInterface::class)]
 class DynamicVectorStore implements VectorStoreInterface
 {
     public function __construct(

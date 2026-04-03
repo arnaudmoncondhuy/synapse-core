@@ -18,7 +18,7 @@ interface RgpdAwareInterface
      * Évalue la conformité RGPD pour la configuration donnée.
      *
      * @param array<string, mixed> $providerCredentials Credentials du provider (ex: ['region' => 'europe-west9'])
-     * @param array<string, mixed> $presetOptions Options du preset (ex: ['vertex_region' => 'us-central1'])
+     * @param array<string, mixed> $presetOptions Options du preset (ex: ['provider_region' => 'us-central1'])
      * @param string $model Identifiant du modèle utilisé
      */
     public function getRgpdInfo(array $providerCredentials, array $presetOptions, string $model): RgpdInfo;

@@ -15,7 +15,7 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Model\GeneratedImage;
 interface ImageGenerationClientInterface
 {
     /**
-     * Identifiant unique du provider (ex: 'ovh').
+     * Identifiant unique du provider.
      */
     public function getProviderName(): string;
 

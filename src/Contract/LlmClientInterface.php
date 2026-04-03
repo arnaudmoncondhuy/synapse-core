@@ -7,7 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Contract;
 /**
  * Contrat pour tout client LLM intégré dans Synapse.
  *
- * Cette interface permet de brancher n'importe quel provider (Gemini, OVH AI, OpenAI, Mistral…)
+ * Cette interface permet de brancher n'importe quel provider LLM
  * sans modifier le `ChatService`. Chaque client est responsable de la communication avec l'API
  * distante et de la normalisation du format.
  *
@@ -33,7 +33,7 @@ interface LlmClientInterface
     /**
      * Identifiant interne du fournisseur.
      *
-     * Doit être en minuscule et sans espace (ex : 'gemini', 'ovh', 'anthropic').
+     * Doit être en minuscule et sans espace (ex : 'my_provider').
      * Cet identifiant est utilisé dans la configuration YAML et en base de données.
      */
     public function getProviderName(): string;
@@ -43,7 +43,7 @@ interface LlmClientInterface
      *
      * @param array<int, array<string, mixed>> $contents Historique complet (format OpenAI canonical)
      * @param array<int, array<string, mixed>> $tools Déclarations des outils disponibles au format JSON Schema
-     * @param string|null $model Identifiant du modèle à utiliser (ex: 'gemini-1.5-pro')
+     * @param string|null $model Identifiant du modèle à utiliser
      * @param array<string, mixed> $debugOut Sortie de debug (passage par référence)
      *
      * @return \Generator<int, array<string, mixed>> yield des chunks normalisés contenant 'text', 'usage', etc
@@ -95,7 +95,36 @@ interface LlmClientInterface
     public function validateCredentials(array $credentials): void;
 
     /**
-     * Nom d'affichage lisible du fournisseur (ex: 'Google Vertex AI').
+     * Nom d'affichage lisible du fournisseur (ex: 'My Provider').
      */
     public function getDefaultLabel(): string;
+
+    /**
+     * Icône Lucide du provider pour l'interface admin (ex: 'zap', 'cloud', 'server').
+     */
+    public function getIcon(): string;
+
+    /**
+     * Devise par défaut des tarifs de ce provider (code ISO 4217, ex: 'USD', 'EUR').
+     */
+    public function getDefaultCurrency(): string;
+
+    /**
+     * Schéma des options spécifiques au provider pour le formulaire de preset admin.
+     *
+     * Retourne un tableau de définitions de champs exploitées par le JS du formulaire.
+     *
+     * @return array{fields: list<array<string, mixed>>}
+     */
+    public function getProviderOptionsSchema(): array;
+
+    /**
+     * Valide et nettoie les options spécifiques au provider d'un preset.
+     *
+     * @param array<string, mixed> $options Options saisies par l'utilisateur
+     * @param \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps Capacités du modèle sélectionné
+     *
+     * @return array<string, mixed> Options nettoyées
+     */
+    public function validateProviderOptions(array $options, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps): array;
 }

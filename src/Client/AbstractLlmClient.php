@@ -12,18 +12,19 @@ use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmQuotaException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmRateLimitException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\LlmServiceUnavailableException;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
 use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Classe de base pour les clients LLM HTTP.
  *
- * Factorise le code commun entre GeminiClient, OvhAiClient et tout futur client :
+ * Factorise le code commun entre les clients LLM :
  * - `emptyChunk()` : structure de chunk normalisé vide
  * - `handleException()` : mapping HTTP status → hiérarchie Synapse exceptions
  *
  * Les sous-classes fournissent :
- * - `getProviderName()` : nom du provider (ex: 'gemini', 'ovh')
+ * - `getProviderName()` : identifiant interne du provider
  * - `getProviderLabel()` : préfixe humain-lisible pour les messages d'erreur
  * - `parseErrorBody()` : extraction du message d'erreur depuis la réponse HTTP du provider
  */
@@ -95,7 +96,7 @@ abstract class AbstractLlmClient implements LlmClientInterface
 
     /**
      * Libellé humain du provider pour les messages d'erreur.
-     * Ex: 'Gemini', 'OVH AI'.
+     * Ex: 'My Provider API'.
      */
     abstract protected function getProviderLabel(): string;
 
@@ -108,5 +109,25 @@ abstract class AbstractLlmClient implements LlmClientInterface
     protected function parseErrorBody(string $errorBody, string $originalMessage): string
     {
         return $originalMessage.' || Raw Error: '.$errorBody;
+    }
+
+    public function getIcon(): string
+    {
+        return 'server';
+    }
+
+    public function getDefaultCurrency(): string
+    {
+        return 'USD';
+    }
+
+    public function getProviderOptionsSchema(): array
+    {
+        return ['fields' => []];
+    }
+
+    public function validateProviderOptions(array $options, ModelCapabilities $caps): array
+    {
+        return $options;
     }
 }

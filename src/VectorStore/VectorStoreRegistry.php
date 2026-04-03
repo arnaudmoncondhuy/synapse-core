@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\VectorStore;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Registre des implémentations de Vector Store disponibles.
@@ -17,8 +18,10 @@ class VectorStoreRegistry
     /**
      * @param iterable<string, VectorStoreInterface> $vectorStores
      */
-    public function __construct(iterable $vectorStores)
-    {
+    public function __construct(
+        #[AutowireIterator(tag: 'synapse.vector_store', indexAttribute: 'key')]
+        iterable $vectorStores,
+    ) {
         foreach ($vectorStores as $alias => $vectorStore) {
             $this->vectorStores[$alias] = $vectorStore;
         }

@@ -67,7 +67,7 @@ class SynapseLlmCall
     /**
      * Modèle IA utilisé.
      *
-     * Exemples : 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'
+     * Identifiant du modèle tel qu'envoyé à l'API du provider.
      */
     #[ORM\Column(type: Types::STRING, length: 100)]
     private string $model;
@@ -85,7 +85,7 @@ class SynapseLlmCall
     private int $completionTokens = 0;
 
     /**
-     * Nombre de tokens dans le thinking (Gemini 2.5+).
+     * Nombre de tokens dans le thinking (modèles avec thinking étendu).
      */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $thinkingTokens = 0;
