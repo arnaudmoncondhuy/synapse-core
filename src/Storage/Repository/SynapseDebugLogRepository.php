@@ -27,20 +27,31 @@ class SynapseDebugLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les logs de debug récents.
+     * Récupère les métadonnées des logs récents pour la liste (sans le payload complet).
      *
-     * @return SynapseDebugLog[]
+     * @return array<int, array{debugId: string, createdAt: \DateTimeImmutable, module: string|null, model: string|null, usage: array<string, mixed>|null}>
      */
     public function findRecent(int $limit = 50): array
     {
-        /** @var array<int, SynapseDebugLog> $result */
-        $result = $this->createQueryBuilder('d')
+        /** @var array<int, array{debugId: string, createdAt: \DateTimeImmutable, data: array<string, mixed>}> $rows */
+        $rows = $this->createQueryBuilder('d')
+            ->select('d.debugId', 'd.createdAt', 'd.data')
             ->orderBy('d.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
-            ->getResult();
+            ->getArrayResult();
 
-        return $result;
+        return array_map(static function (array $row): array {
+            $data = $row['data'];
+
+            return [
+                'debugId' => $row['debugId'],
+                'createdAt' => $row['createdAt'],
+                'module' => $data['module'] ?? null,
+                'model' => $data['model'] ?? null,
+                'usage' => $data['usage'] ?? $data['token_usage'] ?? null,
+            ];
+        }, $rows);
     }
 
     /**
