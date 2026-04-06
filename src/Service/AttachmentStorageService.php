@@ -12,6 +12,17 @@ use Symfony\Component\Uid\Uuid;
 
 class AttachmentStorageService
 {
+    private const ALLOWED_MIME_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+        'image/heic' => 'heic',
+        'image/heif' => 'heif',
+        'application/pdf' => 'pdf',
+        'text/plain' => 'txt',
+    ];
+
     private string $storageDir;
 
     public function __construct(
@@ -23,26 +34,49 @@ class AttachmentStorageService
     }
 
     /**
-     * Store a base64-encoded image as a file and return the attachment entity.
+     * Store a base64-encoded attachment as a file and return the attachment entity.
      *
-     * @param array{mime_type: string, data: string} $image
+     * @param array{mime_type: string, data: string, name?: string} $attachment
+     *
+     * @throws \InvalidArgumentException if MIME type is not allowed or content doesn't match
      */
-    public function store(array $image, string $messageId, string $conversationId): SynapseMessageAttachment
+    public function store(array $attachment, string $messageId, string $conversationId): SynapseMessageAttachment
     {
+        $declaredMime = $attachment['mime_type'];
+        if (!isset(self::ALLOWED_MIME_TYPES[$declaredMime])) {
+            throw new \InvalidArgumentException(sprintf('MIME type "%s" is not allowed.', $declaredMime));
+        }
+
+        $decoded = base64_decode($attachment['data'], true);
+        if (false === $decoded || '' === $decoded) {
+            throw new \InvalidArgumentException('Invalid base64 data.');
+        }
+
+        // Validate actual content matches declared MIME type
+        $finfo = new \finfo(\FILEINFO_MIME_TYPE);
+        $detectedMime = $finfo->buffer($decoded);
+        if (false !== $detectedMime && $detectedMime !== $declaredMime) {
+            // Allow application/octet-stream as finfo fallback for heic/heif
+            if ('application/octet-stream' !== $detectedMime) {
+                throw new \InvalidArgumentException(sprintf('Content MIME type "%s" does not match declared "%s".', $detectedMime, $declaredMime));
+            }
+        }
+
         $uuid = $this->generateUuid();
-        $ext = $this->mimeToExt($image['mime_type']);
+        $ext = self::ALLOWED_MIME_TYPES[$declaredMime];
         $dir = $this->storageDir.'/'.$conversationId;
         $relativePath = $conversationId.'/'.$uuid.'.'.$ext;
         $absolutePath = $this->storageDir.'/'.$relativePath;
 
         $fs = new Filesystem();
         $fs->mkdir($dir);
-        $fs->dumpFile($absolutePath, base64_decode($image['data']));
+        $fs->dumpFile($absolutePath, $decoded);
 
-        $attachment = new SynapseMessageAttachment($uuid, $messageId, $image['mime_type'], $relativePath);
-        $this->em->persist($attachment);
+        $originalName = isset($attachment['name']) && is_string($attachment['name']) && '' !== $attachment['name'] ? $attachment['name'] : null;
+        $entity = new SynapseMessageAttachment($uuid, $messageId, $attachment['mime_type'], $relativePath, $originalName);
+        $this->em->persist($entity);
 
-        return $attachment;
+        return $entity;
     }
 
     public function delete(SynapseMessageAttachment $attachment): void
@@ -79,16 +113,5 @@ class AttachmentStorageService
     private function generateUuid(): string
     {
         return Uuid::v4()->toRfc4122();
-    }
-
-    private function mimeToExt(string $mime): string
-    {
-        return match ($mime) {
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/gif' => 'gif',
-            'image/webp' => 'webp',
-            default => 'bin',
-        };
     }
 }

@@ -31,34 +31,34 @@ class PromptPipeline
      * Construit le prompt final en passant par les 5 phases.
      *
      * @param array<string, mixed> $options
-     * @param list<array{mime_type: string, data: string}> $images
+     * @param list<array{mime_type: string, data: string}> $attachments
      *
      * @return array{prompt: array<string, mixed>, config: ?SynapseRuntimeConfig}
      */
-    public function build(string $message, array $options, array $images = []): array
+    public function build(string $message, array $options, array $attachments = []): array
     {
         // Phase 1 : BUILD — ContextBuilderSubscriber construit le prompt de base
-        $buildEvent = $this->dispatcher->dispatch(new PromptBuildEvent($message, $options, [], null, $images));
+        $buildEvent = $this->dispatcher->dispatch(new PromptBuildEvent($message, $options, [], null, $attachments));
         $prompt = $buildEvent->getPrompt();
         $config = $buildEvent->getConfig();
 
         // Phase 2 : ENRICH — MemoryContextSubscriber (prio 50) + RagContextSubscriber (prio 40)
-        $enrichEvent = $this->dispatcher->dispatch(new PromptEnrichEvent($message, $options, $prompt, $config, $images));
+        $enrichEvent = $this->dispatcher->dispatch(new PromptEnrichEvent($message, $options, $prompt, $config, $attachments));
         $prompt = $enrichEvent->getPrompt();
         $config = $enrichEvent->getConfig() ?? $config;
 
         // Phase 3 : OPTIMIZE — ContextTruncationSubscriber
-        $optimizeEvent = $this->dispatcher->dispatch(new PromptOptimizeEvent($message, $options, $prompt, $config, $images));
+        $optimizeEvent = $this->dispatcher->dispatch(new PromptOptimizeEvent($message, $options, $prompt, $config, $attachments));
         $prompt = $optimizeEvent->getPrompt();
         $config = $optimizeEvent->getConfig() ?? $config;
 
         // Phase 4 : FINALIZE — MasterPromptSubscriber
-        $finalizeEvent = $this->dispatcher->dispatch(new PromptFinalizeEvent($message, $options, $prompt, $config, $images));
+        $finalizeEvent = $this->dispatcher->dispatch(new PromptFinalizeEvent($message, $options, $prompt, $config, $attachments));
         $prompt = $finalizeEvent->getPrompt();
         $config = $finalizeEvent->getConfig() ?? $config;
 
         // Phase 5 : CAPTURE — DebugLogSubscriber (lecture seule, ne modifie pas le prompt)
-        $this->dispatcher->dispatch(new PromptCaptureEvent($message, $options, $prompt, $config, $images));
+        $this->dispatcher->dispatch(new PromptCaptureEvent($message, $options, $prompt, $config, $attachments));
 
         return ['prompt' => $prompt, 'config' => $config];
     }

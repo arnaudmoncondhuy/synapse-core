@@ -33,7 +33,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end Date de fin
      *
-     * @return array{request_count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int, costs: array<string, float>}
+     * @return array{request_count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, image_completion_tokens: int, total_tokens: int, costs: array<string, float>}
      */
     public function getGlobalStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -43,6 +43,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
                     COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
                     COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
                     COALESCE(SUM(thinking_tokens), 0) AS thinking_tokens,
+                    COALESCE(SUM(image_completion_tokens), 0) AS image_completion_tokens,
                     COALESCE(SUM(total_tokens), 0) AS total_tokens
              FROM synapse_llm_call
              WHERE created_at >= :start AND created_at <= :end',
@@ -69,12 +70,13 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $costs[$row['currency']] = (float) $row['cost'];
         }
 
-        /* @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $globalResult */
+        /* @var array{request_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, image_completion_tokens?: string|int, total_tokens?: string|int} $globalResult */
         return [
             'request_count' => is_numeric($globalResult['request_count'] ?? null) ? (int) $globalResult['request_count'] : 0,
             'prompt_tokens' => is_numeric($globalResult['prompt_tokens'] ?? null) ? (int) $globalResult['prompt_tokens'] : 0,
             'completion_tokens' => is_numeric($globalResult['completion_tokens'] ?? null) ? (int) $globalResult['completion_tokens'] : 0,
             'thinking_tokens' => is_numeric($globalResult['thinking_tokens'] ?? null) ? (int) $globalResult['thinking_tokens'] : 0,
+            'image_completion_tokens' => is_numeric($globalResult['image_completion_tokens'] ?? null) ? (int) $globalResult['image_completion_tokens'] : 0,
             'total_tokens' => is_numeric($globalResult['total_tokens'] ?? null) ? (int) $globalResult['total_tokens'] : 0,
             'costs' => $costs,  // array: 'EUR' => X, 'USD' => Y
         ];
@@ -135,7 +137,7 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end Date de fin
      *
-     * @return array{count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, total_tokens: int}
+     * @return array{count: int, conversation_count: int, prompt_tokens: int, completion_tokens: int, thinking_tokens: int, image_completion_tokens: int, total_tokens: int}
      */
     public function getConversationStats(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
@@ -143,13 +145,15 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
 
         $resultSet = $conn->executeQuery(
             'SELECT COUNT(*) as count,
+                    COUNT(DISTINCT conversation_id) as conversation_count,
                     COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
                     COALESCE(SUM(completion_tokens), 0) as completion_tokens,
                     COALESCE(SUM(thinking_tokens), 0) as thinking_tokens,
+                    COALESCE(SUM(image_completion_tokens), 0) as image_completion_tokens,
                     COALESCE(SUM(total_tokens), 0) as total_tokens
              FROM synapse_llm_call
-             WHERE conversation_id IS NOT NULL AND created_at >= :start AND created_at <= :end',
-            ['start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
+             WHERE action = :action AND conversation_id IS NOT NULL AND created_at >= :start AND created_at <= :end',
+            ['action' => 'chat_turn', 'start' => $start->format('Y-m-d H:i:s'), 'end' => $end->format('Y-m-d H:i:s')]
         );
         /** @var array<string, mixed>|false $result */
         $result = $resultSet->fetchAssociative();
@@ -157,12 +161,14 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
             $result = [];
         }
 
-        /* @var array{count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, total_tokens?: string|int} $result */
+        /* @var array{count?: string|int, conversation_count?: string|int, prompt_tokens?: string|int, completion_tokens?: string|int, thinking_tokens?: string|int, image_completion_tokens?: string|int, total_tokens?: string|int} $result */
         return [
             'count' => is_numeric($result['count'] ?? null) ? (int) $result['count'] : 0,
+            'conversation_count' => is_numeric($result['conversation_count'] ?? null) ? (int) $result['conversation_count'] : 0,
             'prompt_tokens' => is_numeric($result['prompt_tokens'] ?? null) ? (int) $result['prompt_tokens'] : 0,
             'completion_tokens' => is_numeric($result['completion_tokens'] ?? null) ? (int) $result['completion_tokens'] : 0,
             'thinking_tokens' => is_numeric($result['thinking_tokens'] ?? null) ? (int) $result['thinking_tokens'] : 0,
+            'image_completion_tokens' => is_numeric($result['image_completion_tokens'] ?? null) ? (int) $result['image_completion_tokens'] : 0,
             'total_tokens' => is_numeric($result['total_tokens'] ?? null) ? (int) $result['total_tokens'] : 0,
         ];
     }
@@ -214,22 +220,24 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
      * @param \DateTimeInterface $start Date de début
      * @param \DateTimeInterface $end Date de fin
      *
-     * @return array<string, array{count: int, total_tokens: int}> Usage par module
+     * @return array<string, array{module: string, action: string, count: int, total_tokens: int, image_completion_tokens: int}> Usage par module/action
      */
     public function getUsageByModule(\DateTimeInterface $start, \DateTimeInterface $end): array
     {
-        /** @var array<int, array{module: string, count: int|string, total_tokens: int|string}> $results */
+        /** @var array<int, array{module: string, action: string, count: int|string, total_tokens: int|string, image_completion_tokens: int|string}> $results */
         $results = $this->createQueryBuilder('t')
             ->select(
                 't.module',
+                't.action',
                 'COUNT(t.id) as count',
-                'COALESCE(SUM(t.totalTokens), 0) as total_tokens'
+                'COALESCE(SUM(t.totalTokens), 0) as total_tokens',
+                'COALESCE(SUM(t.imageCompletionTokens), 0) as image_completion_tokens'
             )
             ->where('t.createdAt >= :start')
             ->andWhere('t.createdAt <= :end')
             ->setParameter('start', $start)
             ->setParameter('end', $end)
-            ->groupBy('t.module')
+            ->groupBy('t.module, t.action')
             ->orderBy('total_tokens', 'DESC')
             ->getQuery()
             ->getResult();
@@ -237,9 +245,14 @@ class SynapseLlmCallRepository extends ServiceEntityRepository
         $usage = [];
         foreach ($results as $result) {
             $module = (string) ($result['module'] ?? 'unknown');
-            $usage[$module] = [
+            $action = (string) ($result['action'] ?? '');
+            $key = '' !== $action ? $module.':'.$action : $module;
+            $usage[$key] = [
+                'module' => $module,
+                'action' => $action,
                 'count' => (int) ($result['count'] ?? 0),
                 'total_tokens' => (int) ($result['total_tokens'] ?? 0),
+                'image_completion_tokens' => (int) ($result['image_completion_tokens'] ?? 0),
             ];
         }
 

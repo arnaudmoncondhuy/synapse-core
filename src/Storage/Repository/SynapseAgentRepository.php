@@ -28,6 +28,8 @@ class SynapseAgentRepository extends ServiceEntityRepository
         /** @var array<int, SynapseAgent> $result */
         $result = $this->createQueryBuilder('m')
             ->andWhere('m.isActive = true')
+            ->andWhere('m.visibleInChat = true')
+            ->andWhere('m.isSandbox = false')
             ->orderBy('m.sortOrder', 'ASC')
             ->addOrderBy('m.name', 'ASC')
             ->getQuery()
@@ -38,7 +40,7 @@ class SynapseAgentRepository extends ServiceEntityRepository
 
     /**
      * Trouve toutes les agents triées (builtin d'abord, puis par ordre d'affichage).
-     * Utilisé pour l'affichage admin.
+     * Utilisé pour l'affichage admin. Exclut les agents sandbox.
      *
      * @return array<int, SynapseAgent>
      */
@@ -46,6 +48,7 @@ class SynapseAgentRepository extends ServiceEntityRepository
     {
         /** @var array<int, SynapseAgent> $result */
         $result = $this->createQueryBuilder('m')
+            ->andWhere('m.isSandbox = false')
             ->orderBy('m.isBuiltin', 'DESC')
             ->addOrderBy('m.sortOrder', 'ASC')
             ->addOrderBy('m.name', 'ASC')
@@ -56,10 +59,20 @@ class SynapseAgentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Trouve un agent par sa clé unique.
+     * Trouve un agent par sa clé unique (inclut les sandbox — nécessaire pour la résolution).
      */
     public function findByKey(string $key): ?SynapseAgent
     {
         return $this->findOneBy(['key' => $key]);
+    }
+
+    /**
+     * Retourne tous les agents sandbox (pour le cleanup MCP).
+     *
+     * @return array<int, SynapseAgent>
+     */
+    public function findSandbox(): array
+    {
+        return $this->findBy(['isSandbox' => true]);
     }
 }

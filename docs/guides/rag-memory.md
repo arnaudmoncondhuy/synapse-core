@@ -38,10 +38,10 @@ Avant d'être mémorisés, les documents doivent être découpés. Vous pouvez r
 Pour ajouter des documents à la mémoire de l'IA, utilisez le `MemoryManager` (recommandé) ou directement le `VectorStoreInterface` :
 
 ```php
-use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
+use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
 
-public function indexDocument(string $text, MemoryManager $memory, string $userId)
+public function indexDocument(string $text, MemoryManager $memory, string $userId): void
 {
     $memory->remember(
         text: $text,

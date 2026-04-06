@@ -68,6 +68,7 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
         array $contents,
         array $tools = [],
         ?string $model = null,
+        array $options = [],
         array &$debugOut = [],
     ): \Generator {
         $this->applyDynamicConfig();
@@ -75,8 +76,11 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
         $effectiveModel = $model ?? $this->model;
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
 
+        /** @var array<string, mixed>|null $responseFormat */
+        $responseFormat = \is_array($options['response_format'] ?? null) ? $options['response_format'] : null;
+
         $messages = $contents;  // Already OpenAI format, passthrough
-        $payload = $this->buildPayload($effectiveModel, $messages, $tools, $caps, true);
+        $payload = $this->buildPayload($effectiveModel, $messages, $tools, $caps, true, $responseFormat);
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $debugOut['actual_request_params'] = [
@@ -205,8 +209,11 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
         $effectiveModel = $model ?? $this->model;
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
 
+        /** @var array<string, mixed>|null $responseFormat */
+        $responseFormat = \is_array($options['response_format'] ?? null) ? $options['response_format'] : null;
+
         $messages = $contents;  // Already OpenAI format, passthrough
-        $payload = $this->buildPayload($effectiveModel, $messages, $tools, $caps, false);
+        $payload = $this->buildPayload($effectiveModel, $messages, $tools, $caps, false, $responseFormat);
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $debugOut['actual_request_params'] = [
@@ -521,10 +528,13 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
      *
      * @param array<int, array<string, mixed>> $messages
      * @param array<int, array<string, mixed>> $tools
+     * @param array<string, mixed>|null $responseFormat Forme canonique
+     *                                                  (voir {@see \ArnaudMoncondhuy\SynapseCore\Engine\ResponseFormatNormalizer}).
+     *                                                  Passée telle quelle à l'API OVH (compatible OpenAI).
      *
      * @return array<string, mixed>
      */
-    private function buildPayload(string $model, array $messages, array $tools, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps, bool $stream): array
+    private function buildPayload(string $model, array $messages, array $tools, \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities $caps, bool $stream, ?array $responseFormat = null): array
     {
         $payload = [
             'model' => $model,
@@ -555,6 +565,12 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
         if ($this->thinkingEnabled && $caps->supportsThinking) {
             // Les valeurs possibles sont: "high", "medium", "low", "minimal"
             $payload['reasoning_effort'] = $this->reasoningEffort;
+        }
+
+        // Structured outputs (OpenAI-compatible pass-through).
+        // Le normaliseur côté ChatService garantit la forme canonique.
+        if (null !== $responseFormat) {
+            $payload['response_format'] = $responseFormat;
         }
 
         return $payload;

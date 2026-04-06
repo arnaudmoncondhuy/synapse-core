@@ -1,63 +1,91 @@
 # ConversationManager
 
-Le `ConversationManager` est le gardien de l'historique et de la sécurité des données. Il permet de manipuler les discussions, de les chiffrer et de s'assurer que seuls les utilisateurs autorisés y ont accès.
+Le `ConversationManager` est le gestionnaire centralisé des conversations et de leur persistance. Il gère le cycle de vie des discussions avec chiffrement transparent, la vérification des permissions et le contexte de conversation active.
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **CRUD Facile** : Créez, récupérez ou supprimez des conversations en une méthode.
-*   **Sécurité intégrée** : Le chiffrement et la vérification des permissions sont appliqués automatiquement.
-*   **Context Thread-Local** : Garde en mémoire la conversation "active" pour faciliter vos traitements.
+```
+ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager
+```
 
----
+## Responsabilités
 
-## 📋 Méthodes principales
+- Cycle de vie des conversations (CRUD) avec chiffrement transparent des données sensibles
+- Gestion des messages et de l'historique
+- Vérification des permissions d'accès (via `PermissionCheckerInterface`)
+- Gestion du contexte thread-local (conversation active)
+
+## Méthodes principales
 
 | Méthode | Rôle |
-| :--- | :--- |
-| `createConversation(...)` | Initialise un nouveau fil de discussion persistant. |
-| `saveMessage(...)` | Enregistre un message utilisateur ou assistant. |
-| `getMessages(...)` | Récupère l'historique (déchiffré automatiquement). |
-| `getConversation(...)` | Récupère une conversation avec vérification des droits. |
+|---------|------|
+| `createConversation(ConversationOwnerInterface $owner, ?string $title): SynapseConversation` | Crée et persiste une nouvelle conversation. |
+| `deleteConversation(SynapseConversation $conversation): void` | Supprime définitivement une conversation. |
+| `getCurrentConversation(): ?SynapseConversation` | Retourne la conversation active dans le contexte courant. |
+| `setCurrentConversation(?SynapseConversation $conversation): void` | Définit la conversation active. |
+| `getHistoryArray(SynapseConversation $conversation): array` | Retourne l'historique formaté au format OpenAI canonical. |
 
 ---
 
-## 🚀 Exemple : Gestion manuelle d'une conversation
+## Chiffrement transparent
 
-=== "ConversationService.php"
+Si un `EncryptionServiceInterface` est configuré, le `ConversationManager` chiffre automatiquement les données sensibles (titre, contenu des messages) avant la persistance et les déchiffre à la lecture.
 
-    ```php
-    namespace App\Service;
+```php
+// Le chiffrement est totalement transparent pour votre code
+$conversation = $manager->createConversation($user, "Discussion confidentielle");
+// → Le titre est chiffré en base de données
 
-    use ArnaudMoncondhuy\SynapseCore\Core\Manager\ConversationManager;
-    use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
+$history = $manager->getHistoryArray($conversation);
+// → Le contenu des messages est déchiffré à la volée
+```
 
-    class ConversationService
+---
+
+## Exemple : Gestion manuelle d'une conversation
+
+```php
+namespace App\Service;
+
+use ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager;
+use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
+
+class ConversationService
+{
+    public function __construct(
+        private ConversationManager $manager,
+        private ChatService $chatService,
+    ) {}
+
+    public function startNewConversation(object $user, string $firstMessage): array
     {
-        public function __construct(private ConversationManager $manager) {}
+        // Créer une nouvelle conversation
+        $conversation = $this->manager->createConversation($user, null);
 
-        public function initChat($user)
-        {
-            // Créer
-            $conv = $this->manager->createConversation($user, "Ma discussion");
-            
-            // Ajouter un message système
-            $this->manager->saveMessage($conv, MessageRole::SYSTEM, "Tu es un assistant utile.");
-            
-            return $conv;
+        // Envoyer le premier message en liant la conversation
+        $result = $this->chatService->ask($firstMessage, [
+            'conversation_id' => $conversation->getUlid(),
+            'user_id'         => $user->getIdentifier(),
+        ]);
+
+        return $result;
+    }
+
+    public function deleteConversation(string $conversationId): void
+    {
+        $conversation = $this->manager->getCurrentConversation();
+        if ($conversation && $conversation->getUlid() === $conversationId) {
+            $this->manager->deleteConversation($conversation);
+            $this->manager->setCurrentConversation(null);
         }
     }
-    ```
+}
+```
 
 ---
 
-## 💡 Conseils d'utilisation
+## Voir aussi
 
-> [!IMPORTANT]
-> **Chiffrement** : Si vous avez configuré un `EncryptionServiceInterface`, le `ConversationManager` chiffrera le contenu des messages avant de les envoyer en base de données sans aucune action de votre part.
-
-*   **Permissions** : Utilisez toujours `getConversation()` plutôt que de passer par le repository Doctrine directement, afin de bénéficier de la validation de sécurité automatique.
-
----
-
-
-
+- [Conversations & Persistance](../guides/rle-management.md) — guide complet d'utilisation
+- [PermissionCheckerInterface](./contracts/permission-checker-interface.md) — contrôle des accès
+- [EncryptionServiceInterface](./contracts/encryption-service-interface.md) — chiffrement des données

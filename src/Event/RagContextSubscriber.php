@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptEnrichEvent;
 use ArnaudMoncondhuy\SynapseCore\Rag\RagManager;
+use ArnaudMoncondhuy\SynapseCore\Shared\Util\PromptUtil;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseRagSourceRepository;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
@@ -159,27 +160,7 @@ class RagContextSubscriber implements EventSubscriberInterface
         $contentsRaw = $prompt['contents'] ?? [];
         $messages = is_array($contentsRaw) ? $contentsRaw : [];
 
-        $systemFound = false;
-        foreach ($messages as $i => $entry) {
-            if (is_array($entry) && isset($entry['role']) && 'system' === $entry['role']) {
-                $oldContent = is_string($entry['content'] ?? null) ? (string) $entry['content'] : '';
-                $messages[$i] = [
-                    'role' => 'system',
-                    'content' => $oldContent.$ragBlock,
-                ];
-                $systemFound = true;
-                break;
-            }
-        }
-
-        if (!$systemFound) {
-            array_unshift($messages, [
-                'role' => 'system',
-                'content' => ltrim($ragBlock),
-            ]);
-        }
-
-        $prompt['contents'] = $messages;
+        $prompt['contents'] = PromptUtil::appendToSystemMessage($messages, $ragBlock);
         $event->setPrompt($prompt);
     }
 }

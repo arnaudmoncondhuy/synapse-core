@@ -86,6 +86,80 @@ class TokenAccountingServiceCalculationsTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // calculateCostFromVO() — tarification modalité image
+    // -------------------------------------------------------------------------
+
+    public function testCalculateCostAppliesDedicatedImageRateWhenAvailable(): void
+    {
+        $service = $this->buildService();
+
+        // gemini-3-pro-image-preview : output = 12 USD/M, output_image = 120 USD/M
+        $cost = $service->calculateCostFromVO(
+            new TokenUsage(
+                promptTokens: 1_000_000,
+                completionTokens: 1_000_000,
+                thinkingTokens: 0,
+                imageCompletionTokens: 1_000_000,
+            ),
+            ['input' => 2.0, 'output' => 12.0, 'output_image' => 120.0, 'currency' => 'USD'],
+        );
+
+        // 1M*2 + 1M*12 + 1M*120 = 134 USD
+        $this->assertEqualsWithDelta(134.0, $cost, 0.000001);
+    }
+
+    public function testCalculateCostFallbacksToTextRateWhenImageRateMissing(): void
+    {
+        $service = $this->buildService();
+
+        // Pas de output_image → les tokens image sont facturés au tarif output texte
+        $cost = $service->calculateCostFromVO(
+            new TokenUsage(
+                promptTokens: 0,
+                completionTokens: 0,
+                imageCompletionTokens: 1_000_000,
+            ),
+            ['input' => 2.0, 'output' => 12.0, 'currency' => 'USD'],
+        );
+
+        // 1M * 12 / 1M = 12
+        $this->assertEqualsWithDelta(12.0, $cost, 0.000001);
+    }
+
+    public function testCalculateCostWithNullImageRateBehavesLikeMissing(): void
+    {
+        $service = $this->buildService();
+
+        $cost = $service->calculateCostFromVO(
+            new TokenUsage(0, 0, 0, 500_000),
+            ['input' => 2.0, 'output' => 10.0, 'output_image' => null, 'currency' => 'USD'],
+        );
+
+        // 500k * 10 / 1M = 5.0
+        $this->assertEqualsWithDelta(5.0, $cost, 0.000001);
+    }
+
+    public function testCalculateCostMixesTextAndImageCorrectly(): void
+    {
+        $service = $this->buildService();
+
+        // Cas réel : tour mixte gemini-3-pro-image-preview
+        // 100 tokens texte (output=12) + 1290 tokens image (output_image=120)
+        $cost = $service->calculateCostFromVO(
+            new TokenUsage(
+                promptTokens: 50,
+                completionTokens: 100,
+                thinkingTokens: 0,
+                imageCompletionTokens: 1290,
+            ),
+            ['input' => 2.0, 'output' => 12.0, 'output_image' => 120.0, 'currency' => 'USD'],
+        );
+
+        // 50*2 + 100*12 + 1290*120 = 100 + 1200 + 154800 = 156100 → /1M = 0.1561
+        $this->assertEqualsWithDelta(0.1561, $cost, 0.000001);
+    }
+
+    // -------------------------------------------------------------------------
     // convertToReferenceCurrency()
     // -------------------------------------------------------------------------
 
@@ -169,6 +243,71 @@ class TokenAccountingServiceCalculationsTest extends TestCase
         $result = $service->logUsage('chat', 'ask', 'modele-inconnu', new TokenUsage(1000, 500));
 
         $this->assertSame(0.0, $result->getCostModelCurrency());
+    }
+
+    // -------------------------------------------------------------------------
+    // logUsage() — persistance modalité image
+    // -------------------------------------------------------------------------
+
+    public function testLogUsagePersistsImageCompletionTokensAndImagePricing(): void
+    {
+        $capabilities = new ModelCapabilities(
+            model: 'gemini-3-pro-image-preview',
+            provider: 'google_vertex_ai',
+            pricingInput: 2.0,
+            pricingOutput: 12.0,
+            pricingOutputImage: 120.0,
+        );
+        $capabilityRegistry = $this->createStub(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($capabilities);
+
+        $service = $this->buildService(capabilityRegistry: $capabilityRegistry);
+        $result = $service->logUsage(
+            'chat',
+            'chat_turn',
+            'gemini-3-pro-image-preview',
+            new TokenUsage(
+                promptTokens: 10,
+                completionTokens: 20,
+                thinkingTokens: 0,
+                imageCompletionTokens: 1290,
+            ),
+        );
+
+        $this->assertSame(20, $result->getCompletionTokens());
+        $this->assertSame(1290, $result->getImageCompletionTokens());
+        $this->assertSame(10 + 20 + 1290, $result->getTotalTokens());
+        $this->assertEqualsWithDelta(120.0, $result->getPricingOutputImage(), 0.0001);
+        // 10*2 + 20*12 + 1290*120 = 20 + 240 + 154800 = 155060 → /1M = 0.15506
+        $this->assertEqualsWithDelta(0.15506, $result->getCostModelCurrency(), 0.000001);
+    }
+
+    public function testLogUsageWithoutImageRateFallsBackToOutputRate(): void
+    {
+        $capabilities = new ModelCapabilities(
+            model: 'gemini-flash',
+            provider: 'gemini',
+            pricingInput: 0.075,
+            pricingOutput: 0.30,
+        );
+        $capabilityRegistry = $this->createStub(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($capabilities);
+
+        $service = $this->buildService(capabilityRegistry: $capabilityRegistry);
+        $result = $service->logUsage(
+            'chat',
+            'chat_turn',
+            'gemini-flash',
+            new TokenUsage(
+                promptTokens: 0,
+                completionTokens: 0,
+                imageCompletionTokens: 1_000_000,
+            ),
+        );
+
+        // Fallback : 1M tokens image × 0.30 (tarif output texte) = 0.30
+        $this->assertEqualsWithDelta(0.30, $result->getCostModelCurrency(), 0.0001);
+        $this->assertNull($result->getPricingOutputImage());
     }
 
     // -------------------------------------------------------------------------

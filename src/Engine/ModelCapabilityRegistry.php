@@ -126,6 +126,8 @@ class ModelCapabilityRegistry
             supportsImageGeneration: (bool) ($data['supports_image_generation'] ?? false),
             // Lifecycle
             deprecatedAt: isset($data['deprecated_at']) && is_string($data['deprecated_at']) ? $data['deprecated_at'] : null,
+            // Attachments
+            acceptedMimeTypes: isset($data['accepted_mime_types']) && is_array($data['accepted_mime_types']) ? array_values(array_filter($data['accepted_mime_types'], 'is_string')) : [],
             // Provider-specific
             providerRegions: isset($data['provider_regions']) && is_array($data['provider_regions']) ? array_values(array_filter($data['provider_regions'], 'is_string')) : [],
             // RGPD
@@ -176,5 +178,43 @@ class ModelCapabilityRegistry
     public function isKnownModel(string $model): bool
     {
         return isset($this->models[$model]);
+    }
+
+    /**
+     * Retourne une map complète modelId → capabilities (array) pour tous les modèles connus.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function getAllCapabilitiesMap(): array
+    {
+        $result = [];
+        foreach ($this->getKnownModels() as $modelId) {
+            $caps = $this->getCapabilities($modelId);
+            $result[$modelId] = [
+                'provider' => $caps->provider,
+                'dimensions' => $caps->dimensions,
+                'supportsTextGeneration' => $caps->supportsTextGeneration,
+                'supportsEmbedding' => $caps->supportsEmbedding,
+                'supportsImageGeneration' => $caps->supportsImageGeneration,
+                'supportsThinking' => $caps->supportsThinking,
+                'supportsSafetySettings' => $caps->supportsSafetySettings,
+                'supportsTopK' => $caps->supportsTopK,
+                'supportsFunctionCalling' => $caps->supportsFunctionCalling,
+                'supportsStreaming' => $caps->supportsStreaming,
+                'supportsVision' => $caps->supportsVision,
+                'supportsParallelToolCalls' => $caps->supportsParallelToolCalls,
+                'supportsResponseSchema' => $caps->supportsResponseSchema,
+                'maxInputTokens' => $caps->maxInputTokens,
+                'maxOutputTokens' => $caps->maxOutputTokens,
+                'deprecatedAt' => $caps->deprecatedAt,
+                'providerRegions' => $caps->providerRegions,
+                'rgpdRisk' => $caps->rgpdRisk,
+                'pricingInput' => $caps->pricingInput,
+                'pricingOutput' => $caps->pricingOutput,
+                'pricingOutputImage' => $caps->pricingOutputImage,
+            ];
+        }
+
+        return $result;
     }
 }

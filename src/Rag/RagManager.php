@@ -71,7 +71,7 @@ class RagManager
             }
 
             // Générer les embeddings pour tous les chunks en batch
-            $embeddings = $this->embeddingService->generateEmbeddings($chunks);
+            $embeddings = $this->embeddingService->generateEmbeddings($chunks, purpose: 'rag_indexation');
             $vectors = $embeddings['embeddings'] ?? [];
 
             $chunkCount = count($chunks);
@@ -166,7 +166,7 @@ class RagManager
         }
 
         // Vectoriser la requête
-        $result = $this->embeddingService->generateEmbeddings($query);
+        $result = $this->embeddingService->generateEmbeddings($query, purpose: 'rag_search');
         if (empty($result['embeddings'])) {
             return [];
         }

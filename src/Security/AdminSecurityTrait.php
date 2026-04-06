@@ -19,7 +19,9 @@ trait AdminSecurityTrait
      */
     protected function denyAccessUnlessAdmin(PermissionCheckerInterface $permissionChecker): void
     {
-        // DISABLED FOR TESTING - all access allowed
+        if (!$permissionChecker->canAccessAdmin()) {
+            throw new AccessDeniedHttpException('Access denied.');
+        }
     }
 
     /**

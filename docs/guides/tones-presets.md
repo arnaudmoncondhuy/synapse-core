@@ -49,6 +49,9 @@ Un preset est une **configuration technique** (provider LLM, modèle, températu
 
 Un seul preset peut être actif à la fois — il s'applique à l'ensemble du système.
 
+!!! note "Presets sandbox"
+    Les presets créés via les outils MCP (champ `isSandbox = true`) sont exclus des listings admin. Ils sont néanmoins résolvables par le moteur d'exécution. Voir [MCP Sandbox](../../../mcp/docs/tools/sandbox.md).
+
 ## 3. Les Agents
 
 Un agent est une configuration de haut niveau qui combine un **prompt système**, un **preset** (optionnel), un **ton** (optionnel) et des **outils** (optionnel). C'est le moyen recommandé pour créer des agents IA spécialisés.
@@ -67,6 +70,8 @@ $chatService->ask("Analyse ce code", [
 - **Réutilisabilité** : Partagez des configurations d'agents entre différents modules.
 - **Contrôle d'accès** : Restreignez l'accès d'un agent à certains rôles ou utilisateurs.
 
+!!! note "Agents sandbox"
+    Les agents créés via les outils MCP (champ `isSandbox = true`) sont exclus des listings admin et du sélecteur de chat. Ils restent résolvables pour les tests autonomes. Voir [MCP Sandbox](../../../mcp/docs/tools/sandbox.md).
 
 ## Différence clé
 

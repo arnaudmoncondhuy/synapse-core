@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Exception\StructuredOutputParseException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
@@ -30,18 +31,26 @@ class MultiTurnExecutor
      * Exécute la boucle multi-tours et retourne le résultat consolidé.
      *
      * @param array<string, mixed> $prompt Modifié par référence (historique ajouté à chaque tour)
+     * @param array<string, mixed> $llmOptions Options forwardées aux appels LLM (ex : `response_format`,
+     *                                         `thinking`). Le `response_format` déclenche en plus le
+     *                                         parsing JSON de la réponse finale, exposé via
+     *                                         {@see MultiTurnResult::$structuredData}.
+     *
+     * @throws StructuredOutputParseException si `response_format` est fourni mais la réponse finale
+     *                                        n'est pas un JSON valide
      */
     public function execute(
         array &$prompt,
         LlmClientInterface $activeClient,
         bool $streamingEnabled,
         int $maxTurns,
+        array $llmOptions = [],
     ): MultiTurnResult {
         $fullTextAccumulator = '';
         $cumulativeUsage = TokenUsage::empty();
         $finalSafetyRatings = [];
         $allTurnsRawData = [];
-        $allGeneratedImages = [];
+        $allGeneratedAttachments = [];
 
         for ($turn = 0; $turn < $maxTurns; ++$turn) {
             if ($turn > 0) {
@@ -58,9 +67,9 @@ class MultiTurnExecutor
             $toolDefinitions = $prompt['toolDefinitions'] ?? [];
 
             if ($streamingEnabled) {
-                $chunks = $activeClient->streamGenerateContent($contents, $toolDefinitions, null, $debugOut);
+                $chunks = $activeClient->streamGenerateContent($contents, $toolDefinitions, null, $llmOptions, $debugOut);
             } else {
-                $response = $activeClient->generateContent($contents, $toolDefinitions, null, [], $debugOut);
+                $response = $activeClient->generateContent($contents, $toolDefinitions, null, $llmOptions, $debugOut);
                 $chunks = [$response];
             }
 
@@ -97,9 +106,9 @@ class MultiTurnExecutor
             if (!empty($chunkResult->safetyRatings)) {
                 $finalSafetyRatings = $chunkResult->safetyRatings;
             }
-            if (!empty($chunkResult->generatedImages)) {
-                foreach ($chunkResult->generatedImages as $img) {
-                    $allGeneratedImages[] = $img;
+            if (!empty($chunkResult->generatedAttachments)) {
+                foreach ($chunkResult->generatedAttachments as $att) {
+                    $allGeneratedAttachments[] = $att;
                 }
             }
 
@@ -129,6 +138,31 @@ class MultiTurnExecutor
             break;
         }
 
-        return new MultiTurnResult($fullTextAccumulator, $cumulativeUsage, $finalSafetyRatings, $allTurnsRawData, $allGeneratedImages);
+        // Parse structured output if requested (response_format activé).
+        // Le parsing intervient sur le texte accumulé du dernier tour (donc après résolution
+        // éventuelle de toutes les tool calls). Un JSON invalide lève une exception dédiée
+        // conservant le raw text pour debug.
+        $structuredData = null;
+        if (isset($llmOptions['response_format']) && '' !== $fullTextAccumulator) {
+            try {
+                /** @var array<string, mixed> $decoded */
+                $decoded = json_decode($fullTextAccumulator, true, 512, \JSON_THROW_ON_ERROR);
+                if (!\is_array($decoded)) {
+                    throw new StructuredOutputParseException('La réponse du LLM en mode structured output n\'est pas un objet JSON.', $fullTextAccumulator);
+                }
+                $structuredData = $decoded;
+            } catch (\JsonException $e) {
+                throw new StructuredOutputParseException(\sprintf('Impossible de décoder la réponse JSON du LLM : %s', $e->getMessage()), $fullTextAccumulator, $e);
+            }
+        }
+
+        return new MultiTurnResult(
+            $fullTextAccumulator,
+            $cumulativeUsage,
+            $finalSafetyRatings,
+            $allTurnsRawData,
+            $allGeneratedAttachments,
+            $structuredData,
+        );
     }
 }

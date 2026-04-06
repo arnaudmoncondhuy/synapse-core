@@ -532,7 +532,7 @@ class SynapseDoctorCommand extends Command
 
     private function checkDatabaseTables(SymfonyStyle $io): bool
     {
-        $expected = ['synapse_conversation', 'synapse_message', 'synapse_model_preset', 'synapse_provider', 'synapse_model', 'synapse_config', 'synapse_rag_source', 'synapse_rag_document'];
+        $expected = ['synapse_conversation', 'synapse_message', 'synapse_model_preset', 'synapse_provider', 'synapse_model', 'synapse_config', 'synapse_rag_source', 'synapse_rag_document', 'synapse_agent', 'synapse_tone', 'synapse_debug_log', 'synapse_workflow', 'synapse_workflow_run', 'synapse_agent_prompt_version', 'synapse_agent_test_case'];
         try {
             $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
             if (!$connection instanceof \Doctrine\DBAL\Connection) {

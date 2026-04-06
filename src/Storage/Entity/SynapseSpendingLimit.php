@@ -6,6 +6,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitPeriod;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\SpendingLimitScope;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\TimestampableEntityTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -19,6 +20,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'synapse_spending_limit')]
 class SynapseSpendingLimit
 {
+    use TimestampableEntityTrait;
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(type: Types::INTEGER)]
@@ -57,12 +59,6 @@ class SynapseSpendingLimit
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    #[ORM\PreUpdate]
-    public function updateTimestamp(): void
-    {
         $this->updatedAt = new \DateTimeImmutable();
     }
 

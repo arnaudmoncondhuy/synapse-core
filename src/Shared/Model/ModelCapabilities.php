@@ -97,6 +97,16 @@ class ModelCapabilities
         /** Régions disponibles pour ce modèle (vide = toutes les régions sont valides) */
         public readonly array $providerRegions = [],
 
+        // ── Attachments ──────────────────────────────────────────────────────
+
+        /**
+         * Types MIME acceptés en pièce jointe (ex: image/png, application/pdf).
+         * Si vide et supportsVision est true, un fallback images-only est appliqué.
+         *
+         * @var list<string>
+         */
+        public readonly array $acceptedMimeTypes = [],
+
         // ── RGPD ─────────────────────────────────────────────────────────────
 
         /**
@@ -164,6 +174,28 @@ class ModelCapabilities
     public function getRgpdMinStatus(): ?string
     {
         return $this->rgpdRisk;
+    }
+
+    /**
+     * Retourne les types MIME acceptés en pièce jointe.
+     *
+     * Si la liste explicite est vide, fallback sur les images classiques
+     * quand le modèle supporte la vision, sinon tableau vide (pas d'attachments).
+     *
+     * @return list<string>
+     */
+    public function getAcceptedMimeTypes(): array
+    {
+        if (!empty($this->acceptedMimeTypes)) {
+            return $this->acceptedMimeTypes;
+        }
+
+        // Rétrocompat : les modèles vision sans liste explicite acceptent les images
+        if ($this->supportsVision) {
+            return ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        }
+
+        return [];
     }
 
     /**

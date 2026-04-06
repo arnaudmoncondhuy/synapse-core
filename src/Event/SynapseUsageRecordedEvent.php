@@ -25,6 +25,7 @@ class SynapseUsageRecordedEvent extends Event
         private ?string $conversationId = null,
         private ?int $presetId = null,
         private ?int $agentId = null,
+        private int $imageCompletionTokens = 0,
     ) {
     }
 
@@ -56,6 +57,11 @@ class SynapseUsageRecordedEvent extends Event
     public function getThinkingTokens(): int
     {
         return $this->thinkingTokens;
+    }
+
+    public function getImageCompletionTokens(): int
+    {
+        return $this->imageCompletionTokens;
     }
 
     public function getCostInReferenceCurrency(): float

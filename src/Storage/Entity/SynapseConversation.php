@@ -6,6 +6,8 @@ namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ConversationStatus;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\MetadataAccessorTrait;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\TimestampableEntityTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -46,6 +48,9 @@ use Symfony\Component\Uid\Ulid;
 #[ORM\HasLifecycleCallbacks]
 abstract class SynapseConversation
 {
+    use TimestampableEntityTrait;
+
+    use MetadataAccessorTrait;
     /**
      * Identifiant unique (ULID au format UUID).
      */
@@ -156,12 +161,6 @@ abstract class SynapseConversation
         return $this->updatedAt;
     }
 
-    #[ORM\PreUpdate]
-    public function updateTimestamp(): void
-    {
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
     public function getStatus(): ConversationStatus
     {
         return $this->status;
@@ -200,27 +199,6 @@ abstract class SynapseConversation
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;
-
-        return $this;
-    }
-
-    /**
-     * Récupère une métadonnée spécifique.
-     */
-    public function getMetadataValue(string $key, mixed $default = null): mixed
-    {
-        return $this->metadata[$key] ?? $default;
-    }
-
-    /**
-     * Définit une métadonnée spécifique.
-     */
-    public function setMetadataValue(string $key, mixed $value): self
-    {
-        if (null === $this->metadata) {
-            $this->metadata = [];
-        }
-        $this->metadata[$key] = $value;
 
         return $this;
     }

@@ -1,29 +1,59 @@
 # MessageFormatterInterface
 
-L'interface `MessageFormatterInterface` gère la traduction entre vos entités Doctrine (`SynapseMessage`) et le format d'échange utilisé par les API LLM.
+L'interface `MessageFormatterInterface` gère la conversion bidirectionnelle entre les entités Doctrine (`SynapseMessage`) et le format OpenAI canonical utilisé en interne et par les clients LLM.
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **Personnalisation du format** : Si vous utilisez une API IA qui attend un format de message très spécifique (autre que le standard OpenAI).
-*   **Nettoyage des données** : Filtrer ou modifier le contenu des messages avant qu'ils ne sortent de votre serveur.
-*   **Enrichissement** : Ajouter des flags ou des métadonnées supplémentaires pour le traitement par le LLM.
+```
+ArnaudMoncondhuy\SynapseCore\Contract\MessageFormatterInterface
+```
+
+## Contrat complet
+
+```php
+interface MessageFormatterInterface
+{
+    public function entitiesToApiFormat(iterable $entities): array;
+    public function apiFormatToEntities(array $messages, SynapseConversation $conversation): array;
+}
+```
+
+## Méthodes
+
+| Méthode | Rôle |
+|---------|------|
+| `entitiesToApiFormat(iterable $entities): array` | Convertit des entités `SynapseMessage` vers le format OpenAI canonical (pour l'envoi au LLM). |
+| `apiFormatToEntities(array $messages, SynapseConversation $conversation): array` | Transforme des messages au format API en objets entités prêts à la persistance. |
 
 ---
 
-## 📋 Résumé du Contrat
+## Cas d'usage
 
-| Méthode | Entrée | Sortie | Rôle |
-| :--- | :--- | :--- | :--- |
-| `formatAsArray(...)` | `SynapseMessage` | `array` | Convertit une entité en tableau simple. |
-| `formatCollection(...)`| Liste d'entités | `array` | Convertit tout l'historique de chat. |
+Synapse Core inclut une implémentation par défaut conforme au standard OpenAI. Vous n'avez besoin d'implémenter cette interface que si vous avez des besoins de transformation très spécifiques :
 
----
+- Filtrer ou modifier le contenu des messages avant envoi au LLM
+- Ajouter des métadonnées supplémentaires pour le traitement par le LLM
+- Adapter le format pour un provider avec des contraintes particulières
 
-## 💡 Conseils d'implémentation
-
-*   **Format par défaut** : Synapse Core inclut déjà un formateur conforme au standard OpenAI. N'implémentez cette interface que si vous avez des besoins de transformation de données très spécifiques.
-*   **Performance** : Cette interface n'est généralement pas le lieu pour des calculs lourds, car elle est appelée juste avant chaque requête API.
+!!! tip "Conseil"
+    N'implémentez cette interface que si nécessaire. La grande majorité des projets n'ont pas à la personnaliser.
 
 ---
 
+## Format de sortie de `entitiesToApiFormat()`
 
+```php
+// Exemple de sortie (format OpenAI canonical)
+[
+    ['role' => 'user',      'content' => 'Bonjour !'],
+    ['role' => 'assistant', 'content' => 'Bonjour, comment puis-je vous aider ?'],
+    ['role' => 'user',      'content' => 'Quelle heure est-il ?'],
+]
+```
+
+---
+
+## Voir aussi
+
+- [Format OpenAI Canonical](../../explanation/architecture.md#format-messages-openai-canonical) — description du format interne
+- [LlmClientInterface](./llm-client-interface.md) — utilise ce format en entrée

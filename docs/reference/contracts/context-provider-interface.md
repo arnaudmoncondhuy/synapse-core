@@ -1,63 +1,91 @@
 # ContextProviderInterface
 
-L'interface `ContextProviderInterface` est l'un des outils les plus puissants de Synapse Core. Elle permet d'injecter dynamiquement des instructions système et des données métiers au tout début de chaque échange avec l'IA.
+L'interface `ContextProviderInterface` permet d'injecter dynamiquement un prompt système et des données contextuelles au début de chaque échange avec l'IA.
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **Prompt Engineering Dynamique** : Injecter le nom de l'utilisateur, ses préférences ou son historique d'achats dans le prompt système.
-*   **Multilinguisme** : Adapter la langue des instructions système selon la session de l'utilisateur.
-*   **Isolation des données** : Donner à l'IA uniquement les informations dont elle a besoin pour le cas d'usage actuel.
+```
+ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface
+```
+
+## Contrat complet
+
+```php
+interface ContextProviderInterface
+{
+    public function getSystemPrompt(): string;
+    public function getInitialContext(): array;
+}
+```
+
+## Méthodes
+
+| Méthode | Rôle |
+|---------|------|
+| `getSystemPrompt(): string` | Retourne le prompt système principal (identité et règles de base de l'IA). |
+| `getInitialContext(): array` | Retourne des données contextuelles additionnelles (converties en texte et injectées après le prompt système). |
 
 ---
 
-## 📋 Résumé du Contrat
+## Pourquoi l'utiliser ?
 
-| Méthode | Entrée | Sortie | Rôle |
-| :--- | :--- | :--- | :--- |
-| `getInstructions()` | - | `string` | Retourne le texte qui sera ajouté au prompt système. |
-| `getContextData()` | - | `array` | Retourne des données structurées (JSON) que l'IA peut exploiter. |
+- **Prompt Engineering dynamique** : injecter le nom de l'utilisateur, ses préférences ou son contexte métier.
+- **Multilinguisme** : adapter la langue des instructions selon la session.
+- **Isolation des données** : donner à l'IA uniquement ce dont elle a besoin pour le cas d'usage.
+
+!!! tip "Fraîcheur des données"
+    Ces méthodes sont appelées au moment de la génération. Les données injectées sont toujours à jour avec l'état actuel de votre application.
 
 ---
 
-## 🚀 Exemple : Injecter le profil utilisateur
+## Exemple : Injecter le profil utilisateur
 
-=== "UserContextProvider.php"
+```php
+namespace App\Synapse\Context;
 
-    ```php
-    namespace App\Synapse\Context;
+use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 
-    use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
-    use Symfony\Bundle\SecurityBundle\Security;
+class UserContextProvider implements ContextProviderInterface
+{
+    public function __construct(private Security $security) {}
 
-    class UserContextProvider implements ContextProviderInterface
+    public function getSystemPrompt(): string
     {
-        public function __construct(private Security $security) {}
-
-        public function getInstructions(): string
-        {
-            $user = $this->security->getUser();
+        $user = $this->security->getUser();
+        if ($user) {
             return sprintf("Tu discutes avec %s. Parle-lui de manière amicale.", $user->getUserIdentifier());
         }
-
-        public function getContextData(): array
-        {
-            return [
-                'language' => 'fr',
-                'current_time' => date('Y-m-d H:i:s')
-            ];
-        }
+        return "Tu es un assistant IA utile.";
     }
-    ```
+
+    public function getInitialContext(): array
+    {
+        return [
+            'language'     => 'fr',
+            'current_time' => date('Y-m-d H:i:s'),
+            'app_version'  => '2.1.0',
+        ];
+    }
+}
+```
 
 ---
 
-## 💡 Conseils d'implémentation
+## Enregistrement
 
-> [!TIP]
-> **Chaînage** : Synapse Core permet de configurer plusieurs providers. Les instructions de chacun seront concaténées automatiquement pour former le prompt final.
+Le service est résolu automatiquement via l'autoconfiguration Symfony. Si vous avez plusieurs providers, leurs instructions système sont concaténées dans l'ordre de priorité des services.
 
-*   **Fraîcheur des données** : Puisque cette méthode est appelée au moment de la génération, les données injectées sont toujours à jour avec l'état actuel de votre application.
+```yaml
+# config/services.yaml
+services:
+    App\Synapse\Context\UserContextProvider:
+        tags: ['synapse.context_provider']
+```
 
 ---
 
+## Voir aussi
 
+- [Phases du PromptPipeline](../../explanation/architecture.md) — phase BUILD où ce provider est appelé (`ContextBuilderSubscriber`)
+- [Configuration](../guides/configuration.md) — paramètres globaux du système

@@ -1,3 +1,21 @@
+parameters:
+    # Profondeur maximale autorisée pour l'imbrication agent-sur-agent (garde-fou #5).
+    # Empêche les boucles infinies et bornes le coût d'une composition. Voir
+    # .evolutions/CRITICAL_GUARDRAILS.md et AgentResolver::resolve().
+    synapse.agents.max_depth: 2
+
+    # Clé du preset utilisé par le LLM reviewer (Garde-fou #2 — PromptJudge).
+    # Vide par défaut : aucun judgment n'est produit (NullPromptJudge prend le
+    # relais via l'alias d'interface). Renseigner cette clé dans l'application
+    # hôte active la notation automatique des prompts d'agents. Voir
+    # ChatServiceBasedPromptJudge.
+    synapse.governance.judge_preset_key: ''
+
+    # Clé du preset utilisé par l'agent architecte (Phase 11 — auto-création).
+    # Vide par défaut : l'agent est désactivé. Doit pointer vers un preset
+    # supportant les structured outputs (response_schema). Voir ArchitectAgent.
+    synapse.governance.architect_preset_key: ''
+
 services:
     _defaults:
         autowire: true
@@ -19,6 +37,21 @@ services:
             - '../src/DataFixtures/'
             - '../src/Resources/'
             - '../src/Message/'
+            # Agent VOs & exceptions : non-services (pas de DI)
+            - '../src/Agent/Input.php'
+            - '../src/Agent/Output.php'
+            - '../src/Agent/AgentContext.php'
+            - '../src/Agent/Exception/'
+            # ConfiguredAgent / WorkflowDelegatingAgent : instanciés à la volée par AgentResolver, pas des singletons
+            - '../src/Agent/ConfiguredAgent.php'
+            - '../src/Agent/WorkflowDelegatingAgent.php'
+            # MultiAgent : instancié à la volée par WorkflowRunner (dépend d'un SynapseWorkflow + Run)
+            - '../src/Agent/MultiAgent/MultiAgent.php'
+            - '../src/Agent/MultiAgent/Exception/'
+            # JsonPathLite : utilitaire statique, pas un service
+            - '../src/Agent/MultiAgent/JsonPathLite.php'
+            # ArchitectResponseSchema : utilitaire statique, pas un service
+            - '../src/Governance/Architect/ArchitectResponseSchema.php'
 
     # UserAwareContextProvider : classe abstraite → $language injecté via YAML
     ArnaudMoncondhuy\SynapseCore\Context\UserAwareContextProvider:
@@ -32,3 +65,11 @@ services:
             $logger: '@logger'
         tags:
             - { name: 'monolog.logger', channel: 'synapse_debug' }
+
+    # ── Garde-fou #2 : PromptJudge (LLM-as-Judge) ─────────────────────────────
+    # Bascule automatique entre NullPromptJudge (par défaut, no-op) et
+    # ChatServiceBasedPromptJudge si un preset reviewer est configuré.
+    # L'alias de l'interface pointe sur Null tant que la clé n'est pas définie,
+    # garantissant que le recorder fonctionne sans dépendance LLM.
+    ArnaudMoncondhuy\SynapseCore\Contract\PromptJudgeInterface:
+        alias: ArnaudMoncondhuy\SynapseCore\Governance\NullPromptJudge

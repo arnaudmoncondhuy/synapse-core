@@ -39,7 +39,7 @@ class MemoryManager
         ?string $conversationId = null,
         string $sourceType = 'fact',
     ): void {
-        $result = $this->embeddingService->generateEmbeddings($text);
+        $result = $this->embeddingService->generateEmbeddings($text, purpose: 'memory_indexation');
 
         if (empty($result['embeddings'])) {
             return;
@@ -65,7 +65,12 @@ class MemoryManager
      */
     public function recall(string $query, ?string $userId = null, ?string $conversationId = null, int $limit = 5): array
     {
-        $result = $this->embeddingService->generateEmbeddings($query);
+        // Skip embedding generation entirely if the user has no memories stored.
+        if ($userId && 0 === $this->repository->count(['userId' => $userId])) {
+            return [];
+        }
+
+        $result = $this->embeddingService->generateEmbeddings($query, purpose: 'memory_search');
 
         if (empty($result['embeddings'])) {
             return [];
@@ -138,12 +143,15 @@ class MemoryManager
      */
     private function reindexInvalidatedForUser(?string $userId): void
     {
-        $criteria = ['embedding' => []];
+        $qb = $this->repository->createQueryBuilder('v')
+            ->where('v.embedding IS NULL')
+            ->setMaxResults(20);
+
         if ($userId) {
-            $criteria['userId'] = $userId;
+            $qb->andWhere('v.userId = :uid')->setParameter('uid', $userId);
         }
 
-        $invalidated = $this->repository->findBy($criteria, null, 20);
+        $invalidated = $qb->getQuery()->getResult();
 
         if (empty($invalidated)) {
             return;
@@ -165,7 +173,7 @@ class MemoryManager
             }
 
             try {
-                $result = $this->embeddingService->generateEmbeddings($content);
+                $result = $this->embeddingService->generateEmbeddings($content, purpose: 'memory_indexation');
                 if (!empty($result['embeddings'][0])) {
                     $memory->setEmbedding($result['embeddings'][0]);
                     $payload = $memory->getPayload();
@@ -195,7 +203,7 @@ class MemoryManager
         }
 
         // On doit re-générer l'embedding pour le nouveau texte
-        $result = $this->embeddingService->generateEmbeddings($newText);
+        $result = $this->embeddingService->generateEmbeddings($newText, purpose: 'memory_indexation');
 
         if (!empty($result['embeddings'])) {
             $memory->setEmbedding($result['embeddings'][0]);

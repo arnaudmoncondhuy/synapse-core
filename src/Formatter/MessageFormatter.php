@@ -22,8 +22,8 @@ use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 #[AsAlias(id: MessageFormatterInterface::class)]
 class MessageFormatter implements MessageFormatterInterface
 {
-    /** @var SynapseMessageAttachment[] Images générées non consommées (dernier assistant [image] sans user suivant) */
-    private array $trailingGeneratedImages = [];
+    /** @var SynapseMessageAttachment[] Pièces jointes générées non consommées (dernier assistant [image] sans user suivant) */
+    private array $trailingGeneratedAttachments = [];
 
     public function __construct(
         private ?EncryptionServiceInterface $encryptionService = null,
@@ -42,8 +42,8 @@ class MessageFormatter implements MessageFormatterInterface
     public function entitiesToApiFormat(iterable $entities): array
     {
         $messages = [];
-        /** @var SynapseMessageAttachment[] $pendingGeneratedImages */
-        $pendingGeneratedImages = [];
+        /** @var SynapseMessageAttachment[] $pendingGeneratedAttachments */
+        $pendingGeneratedAttachments = [];
 
         foreach ($entities as $entity) {
             // Handle serialized entities (Doctrine converts to arrays in closure context)
@@ -71,36 +71,36 @@ class MessageFormatter implements MessageFormatterInterface
             $content = $entity->getDecryptedContent();
             $mappedRole = $this->mapRoleToOpenAi($role);
 
-            // Assistant image-only message: collect generated image attachment UUIDs for next user message
-            if ('[image]' === $content && null !== $this->em) {
+            // Assistant attachment-only message: collect generated attachment UUIDs for next user message
+            if ('[image]' === $content && 'assistant' === $mappedRole && null !== $this->em) {
                 $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $entity->getId()]);
                 foreach ($attachmentEntities as $att) {
-                    $pendingGeneratedImages[] = $att;
+                    $pendingGeneratedAttachments[] = $att;
                 }
                 $messages[] = ['role' => $mappedRole, 'content' => '[Image générée]'];
                 continue;
             }
 
-            // User message: prepend any pending generated images + own attached images
+            // User message: prepend any pending generated attachments + own attached files
             if ('user' === $mappedRole && null !== $this->em) {
                 $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $entity->getId()]);
-                $allAttachments = array_merge($pendingGeneratedImages, $attachmentEntities);
-                $pendingGeneratedImages = [];
+                $allAttachments = array_merge($pendingGeneratedAttachments, $attachmentEntities);
+                $pendingGeneratedAttachments = [];
 
                 if (!empty($allAttachments)) {
-                    $imageParts = $this->loadImageParts($allAttachments);
-                    if (!empty($imageParts)) {
+                    $attachmentParts = $this->loadAttachmentParts($allAttachments);
+                    if (!empty($attachmentParts)) {
                         $parts = [];
                         if (!empty($content)) {
                             $parts[] = ['type' => 'text', 'text' => $content];
                         }
-                        $messages[] = ['role' => $mappedRole, 'content' => array_merge($parts, $imageParts)];
+                        $messages[] = ['role' => $mappedRole, 'content' => array_merge($parts, $attachmentParts)];
                         continue;
                     }
                 }
             } else {
-                // Non-user message: discard any pending images (conversation branched)
-                $pendingGeneratedImages = [];
+                // Non-user message: discard any pending attachments (conversation branched)
+                $pendingGeneratedAttachments = [];
             }
 
             $messages[] = [
@@ -109,22 +109,22 @@ class MessageFormatter implements MessageFormatterInterface
             ];
         }
 
-        // Images pending non consommées = dernier message assistant était [image] sans user suivant dans l'historique
-        $this->trailingGeneratedImages = $pendingGeneratedImages;
+        // Pièces jointes non consommées = dernier message assistant était [image] sans user suivant dans l'historique
+        $this->trailingGeneratedAttachments = $pendingGeneratedAttachments;
 
         return $messages;
     }
 
     /**
-     * Retourne les images générées du dernier message [image] non injectées dans un user suivant.
+     * Retourne les pièces jointes générées du dernier message [image] non injectées dans un user suivant.
      * À appeler après entitiesToApiFormat() pour les injecter dans le message courant.
      *
      * @return list<array{type: string, image_url: array{url: string}}>
      */
-    public function getAndClearTrailingImages(): array
+    public function getAndClearTrailingAttachments(): array
     {
-        $images = $this->loadImageParts($this->trailingGeneratedImages);
-        $this->trailingGeneratedImages = [];
+        $images = $this->loadAttachmentParts($this->trailingGeneratedAttachments);
+        $this->trailingGeneratedAttachments = [];
 
         return $images;
     }
@@ -184,13 +184,16 @@ class MessageFormatter implements MessageFormatterInterface
     }
 
     /**
-     * Load image data from attachment entities and return as OpenAI multipart image_url parts.
+     * Load attachment data from entities and return as OpenAI multipart content parts.
+     *
+     * Uses image_url type with data URIs for all file types — the MIME type
+     * is embedded in the data URI and extracted by each LLM client.
      *
      * @param SynapseMessageAttachment[] $attachments
      *
      * @return list<array{type: string, image_url: array{url: string}}>
      */
-    private function loadImageParts(array $attachments): array
+    private function loadAttachmentParts(array $attachments): array
     {
         $parts = [];
         foreach ($attachments as $att) {

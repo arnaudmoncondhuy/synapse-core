@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\MetadataAccessorTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Ulid;
@@ -44,6 +45,7 @@ use Symfony\Component\Uid\Ulid;
 #[ORM\HasLifecycleCallbacks]
 abstract class SynapseMessage
 {
+    use MetadataAccessorTrait;
     /**
      * Identifiant unique (ULID au format UUID).
      */
@@ -311,27 +313,6 @@ abstract class SynapseMessage
     public function setMetadata(?array $metadata): self
     {
         $this->metadata = $metadata;
-
-        return $this;
-    }
-
-    /**
-     * Récupère une métadonnée spécifique.
-     */
-    public function getMetadataValue(string $key, mixed $default = null): mixed
-    {
-        return $this->metadata[$key] ?? $default;
-    }
-
-    /**
-     * Définit une métadonnée spécifique.
-     */
-    public function setMetadataValue(string $key, mixed $value): self
-    {
-        if (null === $this->metadata) {
-            $this->metadata = [];
-        }
-        $this->metadata[$key] = $value;
 
         return $this;
     }

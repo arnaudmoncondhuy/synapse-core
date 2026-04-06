@@ -1,55 +1,83 @@
 # ConfigProviderInterface
 
-L'interface `ConfigProviderInterface` permet d'ajuster dynamiquement les paramètres techniques de l'IA (température, filtres de sécurité) en fonction du contexte de votre application.
+L'interface `ConfigProviderInterface` permet d'obtenir et de surcharger dynamiquement la configuration runtime de l'IA (modèle, température, preset actif, etc.).
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **Adaptabilité** : Utiliser une température basse (précision) pour l'analyse de données et une température haute (créativité) pour la rédaction de mails.
-*   **Sécurité à géométrie variable** : Activer des filtres de sécurité plus stricts selon le profil de l'utilisateur ou le salon de discussion.
-*   **A/B Testing** : Comparer différents réglages de modèles sans modifier le code source.
+```
+ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface
+```
 
----
+## Contrat complet
 
-## 📋 Résumé du Contrat
+```php
+interface ConfigProviderInterface
+{
+    public function getConfig(): SynapseRuntimeConfig;
+    public function setOverride(?SynapseRuntimeConfig $config): void;
+    public function getConfigForPreset(SynapseModelPreset $preset): SynapseRuntimeConfig;
+}
+```
+
+## Méthodes
 
 | Méthode | Rôle |
-| :--- | :--- |
-| `getConfig()` | Retourne un tableau de paramètres techniques (ex: `temperature`, `top_p`). |
+|---------|------|
+| `getConfig(): SynapseRuntimeConfig` | Retourne la configuration dynamique active sous forme typée. |
+| `setOverride(?SynapseRuntimeConfig $config): void` | Configure un override temporaire en mémoire (réinitialisé après chaque échange). |
+| `getConfigForPreset(SynapseModelPreset $preset): SynapseRuntimeConfig` | Retourne la configuration complète pour un preset Doctrine spécifique. |
+
+!!! note "Objet typé, pas un tableau"
+    Contrairement à une configuration YAML statique, `getConfig()` retourne un objet `SynapseRuntimeConfig` qui encapsule tous les paramètres runtime : modèle, température, streaming, maxTurns, presetId, agentId, debugMode, etc.
 
 ---
 
-## 🚀 Exemple : Configuration basée sur le rôle utilisateur
+## SynapseRuntimeConfig
 
-=== "RoleConfigProvider.php"
+Le Value Object `SynapseRuntimeConfig` contient les propriétés suivantes (principales) :
 
-    ```php
-    namespace App\Synapse\Config;
-
-    use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
-    use Symfony\Bundle\SecurityBundle\Security;
-
-    class RoleConfigProvider implements ConfigProviderInterface
-    {
-        public function __construct(private Security $security) {}
-
-        public function getConfig(): array
-        {
-            if ($this->security->isGranted('ROLE_CREATIVE')) {
-                return ['temperature' => 1.2];
-            }
-
-            return ['temperature' => 0.2, 'top_p' => 0.1];
-        }
-    }
-    ```
+```php
+class SynapseRuntimeConfig
+{
+    public ?string $model;
+    public ?string $provider;
+    public ?float $temperature;
+    public ?int $maxOutputTokens;
+    public bool $debugMode;
+    public ?int $presetId;
+    public ?int $agentId;
+    public ?int $maxTurns;
+    // ... et d'autres paramètres techniques
+}
+```
 
 ---
 
-## 💡 Conseils d'implémentation
+## Override temporaire
 
-*   **Fusion des options** : Synapse Core fusionne intelligemment la configuration par défaut avec celle retournée par votre provider. Vous ne devez renvoyer que les clés que vous souhaitez surcharger.
-*   **Limites** : Attention à ne pas renvoyer de valeurs hors limites (ex: température > 2.0 pour certains modèles), car cela pourrait provoquer des erreurs de l'API LLM.
+Le `ChatService` utilise `setOverride()` pour appliquer temporairement la configuration d'un preset ou d'un agent. L'override est **toujours réinitialisé** (`null`) à la fin de l'échange (même en cas d'exception) via un bloc `finally`.
+
+```php
+// Exemple interne dans ChatService::ask()
+$this->configProvider->setOverride($config);
+// ... traitement ...
+$this->configProvider->setOverride(null); // dans le bloc finally
+```
+
+!!! warning "Mode FrankenPHP Worker"
+    En mode worker (processus long), les services sont partagés entre requêtes. La réinitialisation de l'override dans `finally` est critique pour éviter qu'une config d'une requête ne contamine la suivante.
 
 ---
 
+## Pourquoi l'utiliser ?
 
+- **Adaptabilité** : utiliser une température basse pour l'analyse de données, haute pour la créativité.
+- **A/B Testing** : comparer différents réglages de modèles sans modifier le code source.
+- **Override par requête** : passer un preset spécifique via l'option `preset` de `ChatService::ask()`.
+
+---
+
+## Voir aussi
+
+- [ChatService](../chat-service.md) — utilise `ConfigProviderInterface` pour chaque échange
+- [Presets via l'admin](../../guides/tones-presets.md#2-les-presets) — presets gérés en BDD

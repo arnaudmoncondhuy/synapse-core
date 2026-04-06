@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\TimestampableEntityTrait;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,6 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class SynapseAgent
 {
+    use TimestampableEntityTrait;
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(type: Types::INTEGER)]
@@ -37,7 +39,7 @@ class SynapseAgent
      * Emoji d'illustration affiché dans l'interface.
      */
     #[ORM\Column(type: Types::STRING, length: 10)]
-    private string $emoji = '';
+    private string $emoji = "\u{1F916}";
 
     /**
      * Nom lisible affiché dans l'interface.
@@ -64,6 +66,14 @@ class SynapseAgent
     #[ORM\ManyToOne(targetEntity: SynapseModelPreset::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?SynapseModelPreset $modelPreset = null;
+
+    /**
+     * Si renseigné, cet agent délègue son exécution au workflow identifié par cette clé.
+     * L'agent devient une "façade" : le chat UI l'affiche comme un agent normal, mais
+     * l'exécution passe par WorkflowRunner → MultiAgent → sous-agents.
+     */
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $workflowKey = null;
 
     /**
      * Ton de réponse optionnel pour cet agent.
@@ -111,10 +121,17 @@ class SynapseAgent
     private bool $isBuiltin = true;
 
     /**
-     * Agent activé (visible dans les sélecteurs de l'interface).
+     * Agent activé (résolvable par le moteur).
      */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
     private bool $isActive = true;
+
+    /**
+     * Visible dans le sélecteur du chat.
+     * Un agent invisible reste utilisable par les workflows mais n'apparaît pas dans le picker.
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $visibleInChat = true;
 
     /**
      * Ordre d'affichage dans les listes (plus petit = affiché en premier).
@@ -139,6 +156,14 @@ class SynapseAgent
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $accessControl = null;
 
+    /**
+     * Entité temporaire créée via MCP pour des tests autonomes (sandbox).
+     * Les entités sandbox sont exclues des listings admin/chat mais restent
+     * résolvables par {@see \ArnaudMoncondhuy\SynapseCore\Agent\AgentResolver}.
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isSandbox = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -148,12 +173,6 @@ class SynapseAgent
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    #[ORM\PreUpdate]
-    public function updateTimestamp(): void
-    {
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -232,6 +251,18 @@ class SynapseAgent
     public function setModelPreset(?SynapseModelPreset $modelPreset): self
     {
         $this->modelPreset = $modelPreset;
+
+        return $this;
+    }
+
+    public function getWorkflowKey(): ?string
+    {
+        return $this->workflowKey;
+    }
+
+    public function setWorkflowKey(?string $workflowKey): self
+    {
+        $this->workflowKey = $workflowKey;
 
         return $this;
     }
@@ -329,6 +360,18 @@ class SynapseAgent
         return $this;
     }
 
+    public function isVisibleInChat(): bool
+    {
+        return $this->visibleInChat;
+    }
+
+    public function setVisibleInChat(bool $visibleInChat): self
+    {
+        $this->visibleInChat = $visibleInChat;
+
+        return $this;
+    }
+
     public function getSortOrder(): int
     {
         return $this->sortOrder;
@@ -386,6 +429,18 @@ class SynapseAgent
             || (empty($this->accessControl['roles']) && empty($this->accessControl['userIdentifiers']));
     }
 
+    public function isSandbox(): bool
+    {
+        return $this->isSandbox;
+    }
+
+    public function setIsSandbox(bool $isSandbox): self
+    {
+        $this->isSandbox = $isSandbox;
+
+        return $this;
+    }
+
     /**
      * Représentation tableau pour Twig.
      */
@@ -408,7 +463,10 @@ class SynapseAgent
             'ragMinScore' => $this->ragMinScore,
             'isBuiltin' => $this->isBuiltin,
             'isActive' => $this->isActive,
+            'visibleInChat' => $this->visibleInChat,
             'isPublic' => $this->isPublic(),
+            'isSandbox' => $this->isSandbox,
+            'workflowKey' => $this->workflowKey,
         ];
     }
 }

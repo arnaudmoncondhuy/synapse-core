@@ -1,77 +1,128 @@
 # PermissionCheckerInterface
 
-L'interface `PermissionCheckerInterface` permet de déléguer la logique de sécurité de Synapse Core à votre système de droits existant (Voters Symfony, ACL, etc.).
+L'interface `PermissionCheckerInterface` délègue la gestion des droits d'accès au système de sécurité de votre application (Voters Symfony, ACL, etc.).
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **Intégration native** : Utilisez vos rôles (`ROLE_ADMIN`, `ROLE_USER`) pour contrôler l'accès aux fils de discussion.
-*   **Isolation** : Garantir qu'un utilisateur ne puisse ni voir ni modifier les conversations des autres.
-*   **Multi-niveaux** : Distinguer le droit de lecture, d'édition et de suppression.
+```
+ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface
+```
+
+## Contrat complet
+
+```php
+interface PermissionCheckerInterface
+{
+    public function canView(SynapseConversation $conversation): bool;
+    public function canEdit(SynapseConversation $conversation): bool;
+    public function canDelete(SynapseConversation $conversation): bool;
+    public function canAccessAdmin(): bool;
+    public function canCreateConversation(): bool;
+    public function canUseAgent(SynapseAgent $agent): bool;
+}
+```
+
+## Méthodes
+
+| Méthode | Rôle |
+|---------|------|
+| `canView(SynapseConversation $conversation): bool` | Vérifie si l'utilisateur peut consulter le contenu d'une conversation. |
+| `canEdit(SynapseConversation $conversation): bool` | Vérifie si l'utilisateur peut envoyer un message dans cette conversation. |
+| `canDelete(SynapseConversation $conversation): bool` | Vérifie si l'utilisateur peut supprimer cette conversation. |
+| `canAccessAdmin(): bool` | Vérifie les droits d'accès à l'interface d'administration `/synapse/admin`. |
+| `canCreateConversation(): bool` | Vérifie si l'utilisateur peut créer une nouvelle conversation. |
+| `canUseAgent(SynapseAgent $agent): bool` | Vérifie si l'utilisateur peut utiliser un agent spécifique. |
 
 ---
 
-## 📋 Résumé du Contrat
+## Pourquoi l'utiliser ?
 
-| Méthode | Cible | Rôle |
-| :--- | :--- | :--- |
-| `canView($conversation)` | Conversation | Autorise ou non la lecture. |
-| `canEdit($conversation)` | Conversation | Autorise ou non l'envoi de messages. |
-| `canDelete($conversation)` | Conversation | Autorise ou non la suppression/archivage. |
-| `canAccessAdmin()` | - | Vérifie l'accès à `/synapse/admin`. |
-| `canCreateConversation()`| - | Autorise la création d'un nouveau chat. |
+- **Intégration native** : déléguer à vos Voters Symfony existants.
+- **Isolation** : garantir qu'un utilisateur ne puisse ni voir ni modifier les conversations des autres.
+- **Contrôle d'accès aux agents** : filtrer les agents disponibles selon les rôles et identifiants.
+
+!!! note "Secure by Default"
+    Par défaut, sans implémentation personnalisée, l'accès à l'administration est bloqué. C'est la posture sécurisée par défaut.
 
 ---
 
-## 🚀 Exemple : Implémentation via Symfony Security
+## Exemple : Implémentation via Symfony Security
 
-=== "SynapseVoterChecker.php"
+```php
+namespace App\Security;
 
-    ```php
-    namespace App\Synapse\Security;
+use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
+use Symfony\Bundle\SecurityBundle\Security;
 
-    use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
-    use Symfony\Bundle\SecurityBundle\Security;
+class AppPermissionChecker implements PermissionCheckerInterface
+{
+    public function __construct(private Security $security) {}
 
-    class SynapseVoterChecker implements PermissionCheckerInterface
+    public function canView(SynapseConversation $conversation): bool
     {
-        public function __construct(private Security $security) {}
-
-        public function canView($conversation): bool
-        {
-            return $this->security->isGranted('VIEW', $conversation);
-        }
-
-        public function canEdit($conversation): bool
-        {
-            return $this->security->isGranted('EDIT', $conversation);
-        }
-
-        public function canDelete($conversation): bool
-        {
-            // Seuls les admins peuvent supprimer
-            return $this->security->isGranted('ROLE_ADMIN');
-        }
-
-        public function canAccessAdmin(): bool
-        {
-            return $this->security->isGranted('ROLE_ADMIN');
-        }
-
-        public function canCreateConversation(): bool
-        {
-            // Tout utilisateur connecté peut créer un chat
-            return $this->security->getUser() !== null;
-        }
+        return $this->security->isGranted('VIEW', $conversation);
     }
-    ```
+
+    public function canEdit(SynapseConversation $conversation): bool
+    {
+        return $this->security->isGranted('EDIT', $conversation);
+    }
+
+    public function canDelete(SynapseConversation $conversation): bool
+    {
+        return $this->security->isGranted('ROLE_ADMIN');
+    }
+
+    public function canAccessAdmin(): bool
+    {
+        return $this->security->isGranted('ROLE_ADMIN');
+    }
+
+    public function canCreateConversation(): bool
+    {
+        return $this->security->getUser() !== null;
+    }
+
+    public function canUseAgent(SynapseAgent $agent): bool
+    {
+        $accessControl = $agent->getAccessControl();
+        if ($accessControl === null) {
+            return true; // Agent public
+        }
+
+        $user = $this->security->getUser();
+        if ($user === null) {
+            return false;
+        }
+
+        foreach ($accessControl['roles'] ?? [] as $role) {
+            if ($this->security->isGranted($role)) {
+                return true;
+            }
+        }
+
+        return in_array(
+            $user->getUserIdentifier(),
+            $accessControl['userIdentifiers'] ?? [],
+            true
+        );
+    }
+}
+```
+
+Puis enregistrez dans `services.yaml` :
+
+```yaml
+services:
+    ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface:
+        class: App\Security\AppPermissionChecker
+```
 
 ---
 
-## 💡 Conseils d'implémentation
+## Voir aussi
 
-*   **Délégation** : Si vous ne souhaitez pas gérer de permissions complexes, vous pouvez laisser le bundle utiliser `DefaultPermissionChecker`. Notez que par défaut, l'accès à l'administration est **bloqué** si aucun système de sécurité n'est configuré (posture "Secure by Default").
-*   **Performance** : Ces méthodes sont appelées à chaque accès aux messages ou au dashboard. Veillez à ce qu'elles ne fassent pas de requêtes SQL lourdes.
-
----
-
-
+- [Contrôle d'accès aux agents](../../agent-access-control.md) — configuration détaillée
+- [ConversationManager](../conversation-manager.md) — utilise ce checker pour chaque accès

@@ -119,6 +119,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: false
     supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/gif, image/webp]
     pricing_input: 0.09
     pricing_output: 0.28
 
@@ -153,5 +154,6 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: false
     supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/gif, image/webp]
     pricing_input: 0.91
     pricing_output: 0.91

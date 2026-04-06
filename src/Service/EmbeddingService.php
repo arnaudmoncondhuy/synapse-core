@@ -31,10 +31,24 @@ class EmbeddingService
         private EventDispatcherInterface $eventDispatcher,
         private \ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository $configRepository,
     ) {
+        // Alias courants : le nom du provider en BDD peut différer du nom technique du client
+        $providerAliases = [
+            'gemini' => 'google_vertex_ai',
+            'google' => 'google_vertex_ai',
+            'ovh' => 'ovh_ai',
+        ];
+
         foreach ($clients as $client) {
             // Seuls les clients implémentant l'interface d'embedding nous intéressent ici
             if ($client instanceof EmbeddingClientInterface) {
                 $this->clients[$client->getProviderName()] = $client;
+            }
+        }
+
+        // Enregistrer les alias vers les clients existants
+        foreach ($providerAliases as $alias => $target) {
+            if (!isset($this->clients[$alias]) && isset($this->clients[$target])) {
+                $this->clients[$alias] = $this->clients[$target];
             }
         }
     }
@@ -44,10 +58,12 @@ class EmbeddingService
      *
      * @param string|string[] $input texte unique ou liste de textes
      * @param string|null $model modèle optionnel (si null, le défaut est résolu dynamiquement)
+     * @param string $purpose contexte d'appel pour le token accounting
+     *                        ('rag_indexation', 'rag_search', 'memory_indexation', 'memory_search')
      *
      * @return array{embeddings: float[][], usage: array{prompt_tokens: int, total_tokens: int}}
      */
-    public function generateEmbeddings(string|array $input, ?string $model = null): array
+    public function generateEmbeddings(string|array $input, ?string $model = null, string $purpose = 'rag_indexation'): array
     {
         $config = $this->configRepository->getGlobalConfig();
 
@@ -83,7 +99,8 @@ class EmbeddingService
             $resolvedModel,
             $providerName,
             $result['usage']['prompt_tokens'],
-            $result['usage']['total_tokens']
+            $result['usage']['total_tokens'],
+            $purpose,
         );
         $this->eventDispatcher->dispatch($event, SynapseEmbeddingCompletedEvent::NAME);
 

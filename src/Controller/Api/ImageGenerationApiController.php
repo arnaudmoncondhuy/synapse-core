@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Controller\Api;
 
+use ArnaudMoncondhuy\SynapseCore\Accounting\TokenAccountingService;
+use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
 use ArnaudMoncondhuy\SynapseCore\Service\ImageGenerationService;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -44,6 +47,7 @@ class ImageGenerationApiController extends AbstractController
     public function __construct(
         private readonly ImageGenerationService $imageGenerationService,
         private readonly PermissionCheckerInterface $permissionChecker,
+        private readonly ?TokenAccountingService $tokenAccountingService = null,
     ) {
     }
 
@@ -73,6 +77,25 @@ class ImageGenerationApiController extends AbstractController
 
         try {
             $generatedImages = $this->imageGenerationService->generate($prompt, $provider, $options);
+
+            // Analytics : comptabiliser la requête sous 'image_generation' (tokens inconnus côté providers image-only)
+            if (null !== $this->tokenAccountingService) {
+                $user = $this->getUser();
+                $modelLabel = (isset($options['model']) && is_string($options['model']))
+                    ? $options['model']
+                    : ($provider ?? 'unknown');
+                $this->tokenAccountingService->logUsage(
+                    'chat',
+                    'image_generation',
+                    $modelLabel,
+                    TokenUsage::empty(),
+                    $user instanceof ConversationOwnerInterface ? (string) $user->getId() : null,
+                    null,
+                    null,
+                    null,
+                    ['images_count' => count($generatedImages), 'source' => 'standalone_api']
+                );
+            }
 
             return $this->json([
                 'images' => array_map(

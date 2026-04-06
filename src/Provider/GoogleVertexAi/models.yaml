@@ -21,6 +21,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 2.00
     pricing_output: 12.00
 
@@ -39,6 +40,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 0.50
     pricing_output: 3.00
 
@@ -57,6 +59,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 0.25
     pricing_output: 1.50
 
@@ -75,6 +78,7 @@ models:
     supports_function_calling: false
     supports_parallel_tool_calls: false
     supports_response_schema: false
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     max_input_tokens: 131072
     max_output_tokens: 32768
     pricing_input: 0.50
@@ -95,6 +99,7 @@ models:
     supports_function_calling: false
     supports_parallel_tool_calls: false
     supports_response_schema: false
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     max_input_tokens: 65536
     max_output_tokens: 32768
     pricing_input: 2.00
@@ -134,6 +139,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 1.25
     pricing_output: 10.00
 
@@ -173,6 +179,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 0.30
     pricing_output: 2.50
 
@@ -206,6 +213,7 @@ models:
     supports_vision: true
     supports_parallel_tool_calls: true
     supports_response_schema: true
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     pricing_input: 0.10
     pricing_output: 0.40
 
@@ -236,6 +244,7 @@ models:
     supports_function_calling: false
     supports_parallel_tool_calls: false
     supports_response_schema: false
+    accepted_mime_types: [image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf, text/plain]
     max_input_tokens: 32768
     max_output_tokens: 32768
     pricing_input: 0.30

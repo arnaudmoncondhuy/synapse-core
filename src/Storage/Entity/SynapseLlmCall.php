@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\MetadataAccessorTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -34,6 +35,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 class SynapseLlmCall
 {
+    use MetadataAccessorTrait;
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(type: Types::INTEGER)]
@@ -91,7 +93,17 @@ class SynapseLlmCall
     private int $thinkingTokens = 0;
 
     /**
-     * Nombre total de tokens.
+     * Nombre de tokens de sortie image (modèles multi-modaux type gemini-2.5-flash-image,
+     * gemini-3-pro-image-preview qui renvoient texte + image dans une même réponse).
+     *
+     * Ces tokens sont comptés séparément de `completionTokens` (qui ne contient que le texte)
+     * car leur tarification est différente (voir `pricing_output_image`).
+     */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $imageCompletionTokens = 0;
+
+    /**
+     * Nombre total de tokens (prompt + completion texte + thinking + completion image).
      */
     #[ORM\Column(type: Types::INTEGER)]
     private int $totalTokens = 0;
@@ -149,6 +161,13 @@ class SynapseLlmCall
      */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
     private ?string $pricingOutput = null;
+
+    /**
+     * Snapshot du tarif output image ($/1M tokens) appliqué au moment de la requête.
+     * Null si le modèle n'a pas de tarif image dédié (fallback sur pricingOutput).
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 8, nullable: true)]
+    private ?string $pricingOutputImage = null;
 
     /**
      * Devise du snapshot de tarif (USD, EUR…).
@@ -254,6 +273,18 @@ class SynapseLlmCall
         return $this;
     }
 
+    public function getImageCompletionTokens(): int
+    {
+        return $this->imageCompletionTokens;
+    }
+
+    public function setImageCompletionTokens(int $imageCompletionTokens): self
+    {
+        $this->imageCompletionTokens = $imageCompletionTokens;
+
+        return $this;
+    }
+
     public function getTotalTokens(): int
     {
         return $this->totalTokens;
@@ -268,7 +299,7 @@ class SynapseLlmCall
 
     public function calculateTotalTokens(): self
     {
-        $this->totalTokens = $this->promptTokens + $this->completionTokens + $this->thinkingTokens;
+        $this->totalTokens = $this->promptTokens + $this->completionTokens + $this->thinkingTokens + $this->imageCompletionTokens;
 
         return $this;
     }
@@ -344,21 +375,6 @@ class SynapseLlmCall
         return $this;
     }
 
-    public function getMetadataValue(string $key, mixed $default = null): mixed
-    {
-        return $this->metadata[$key] ?? $default;
-    }
-
-    public function setMetadataValue(string $key, mixed $value): self
-    {
-        if (null === $this->metadata) {
-            $this->metadata = [];
-        }
-        $this->metadata[$key] = $value;
-
-        return $this;
-    }
-
     public function getCostModelCurrency(): ?float
     {
         return null !== $this->costModelCurrency ? (float) $this->costModelCurrency : null;
@@ -403,6 +419,18 @@ class SynapseLlmCall
     public function setPricingOutput(?float $pricingOutput): self
     {
         $this->pricingOutput = null !== $pricingOutput ? (string) $pricingOutput : null;
+
+        return $this;
+    }
+
+    public function getPricingOutputImage(): ?float
+    {
+        return null !== $this->pricingOutputImage ? (float) $this->pricingOutputImage : null;
+    }
+
+    public function setPricingOutputImage(?float $pricingOutputImage): self
+    {
+        $this->pricingOutputImage = null !== $pricingOutputImage ? (string) $pricingOutputImage : null;
 
         return $this;
     }

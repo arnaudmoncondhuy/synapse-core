@@ -11,6 +11,35 @@ Les modifications importantes sont classées par catégorie :
 
 ---
 
+## [0.26] — 2026-04-06
+
+### Features
+
+#### MCP Sandbox — Tests autonomes multi-agents (Phase 10)
+
+7 nouveaux outils MCP pour permettre aux clients MCP (Claude, etc.) de tester Synapse de manière autonome :
+
+- **`list_presets`** : Liste les presets disponibles avec provider, modèle, paramètres de génération
+- **`create_sandbox_preset`** : Crée un preset temporaire avec choix de provider+modèle, validé via `ModelCapabilityRegistry`
+- **`create_sandbox_agent`** : Crée un agent temporaire avec system prompt et preset assigné
+- **`create_sandbox_workflow`** : Assemble un pipeline multi-agents (format pivot JSON)
+- **`run_workflow`** : Exécute via `WorkflowRunner` → `MultiAgent` → sous-agents via `AgentResolver`
+- **`inspect_workflow_run`** : Inspecte status, tokens, output, durée d'un run
+- **`cleanup_sandbox`** : Supprime toutes les entités sandbox (runs → workflows → agents → presets)
+
+**Pattern sandbox** : flag `isSandbox` (bool, default false) sur `SynapseAgent`, `SynapseWorkflow`, `SynapseModelPreset`. Filtré dans les queries admin (`findAllActive`, `findAllOrdered`, `findAllPresets`) mais résolvable pour l'exécution (`findByKey` non filtré). Migration Doctrine : 3 colonnes `is_sandbox` ajoutées.
+
+**`ListAgentsTool` enrichi** : param `includeSandbox` + champ `isSandbox` + `model` dans l'output.
+
+### Fixes
+
+- **`ConfiguredAgent::call()` — message vide** : quand le `MultiAgent` passe `Input::ofStructured(...)` à un agent configuré, `getMessage()` retournait une chaîne vide car seul le champ `structured` était peuplé. Ajout de `buildMessageFromStructured()` qui convertit l'input structuré en message texte (valeur unique = string directe, sinon JSON).
+- **`ConfiguredAgent::call()` — pas de token accounting** : `module`/`action` manquants dans les options passées à `ChatService::ask()` → `recordTokenUsage()` court-circuitait. Fix : `module='agent'`, `action='agent_call'` par défaut.
+- **`SynapseDebugLogRepository::findRoots()` — workflow steps invisibles** : la condition `WHERE parentRunId IS NULL` excluait les logs de workflow steps (depth=1, origin=workflow) qui ont un `parentRunId`. Fix : `OR (origin = 'workflow' AND depth = 1)`.
+- **Labels dynamiques admin** : ajout du filtre Twig `synapse_label` qui tente la traduction et fallback sur une version humanisée de la clé brute. Appliqué sur les pages debug et analytics pour éviter l'affichage de clés de traduction brutes pour les actions d'agents dynamiques.
+
+---
+
 ## [Non classé] — Développement actuel
 
 ### Security

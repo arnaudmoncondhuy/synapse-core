@@ -69,6 +69,7 @@ class TokenAccountingService
         $llmCall->setPromptTokens($usage->promptTokens);
         $llmCall->setCompletionTokens($usage->completionTokens);
         $llmCall->setThinkingTokens($usage->thinkingTokens);
+        $llmCall->setImageCompletionTokens($usage->imageCompletionTokens);
         $llmCall->calculateTotalTokens();
 
         if (null !== $userId) {
@@ -95,6 +96,7 @@ class TokenAccountingService
         $llmCall->setCostReference($costRef);
         $llmCall->setPricingInput($modelPricing['input'] ?? null);
         $llmCall->setPricingOutput($modelPricing['output'] ?? null);
+        $llmCall->setPricingOutputImage($modelPricing['output_image'] ?? null);
         $llmCall->setPricingCurrency($currency);
 
         $llmCall->setMetadata($metadata ?: null);
@@ -119,6 +121,7 @@ class TokenAccountingService
                 $conversationId,
                 $presetId,
                 $agentId,
+                $usage->imageCompletionTokens,
             ));
         }
 
@@ -178,21 +181,29 @@ class TokenAccountingService
     /**
      * Calcule le coût estimé d'un usage dans la devise du modèle.
      *
-     * @param array{input: float, output: float, currency: string} $pricing
+     * `completionTokens` représente le texte pur (sans les tokens image). Les tokens image
+     * sont comptés séparément via `imageCompletionTokens` et facturés au tarif `output_image`
+     * si présent, sinon au tarif `output` (fallback).
+     *
+     * @param array{input: float, output: float, output_image?: float|null, currency: string} $pricing
      */
     public function calculateCostFromVO(TokenUsage $usage, array $pricing): float
     {
-        $inputCost = ($usage->promptTokens / 1_000_000) * $pricing['input'];
-        $outputCost = (($usage->completionTokens + $usage->thinkingTokens) / 1_000_000) * $pricing['output'];
+        $outputRate = $pricing['output'];
+        $imageRate = $pricing['output_image'] ?? $outputRate;
 
-        return round($inputCost + $outputCost, 6);
+        $inputCost = $usage->promptTokens * $pricing['input'];
+        $textOutputCost = ($usage->completionTokens + $usage->thinkingTokens) * $outputRate;
+        $imageOutputCost = $usage->imageCompletionTokens * $imageRate;
+
+        return round(($inputCost + $textOutputCost + $imageOutputCost) / 1_000_000, 6);
     }
 
     /**
      * @deprecated Utiliser calculateCostFromVO(TokenUsage, pricing)
      *
      * @param array<string, int> $usage
-     * @param array{input: float, output: float, currency: string} $pricing
+     * @param array{input: float, output: float, output_image?: float|null, currency: string} $pricing
      */
     public function calculateCost(array $usage, array $pricing): float
     {
@@ -228,7 +239,7 @@ class TokenAccountingService
      * 2. ModelCapabilityRegistry (YAML config) — source de tarifs par défaut
      * 3. Defaults (0.0 USD)
      *
-     * @return array{input: float, output: float, currency: string}
+     * @return array{input: float, output: float, output_image: float|null, currency: string}
      */
     private function getPricingForModel(string $model): array
     {
@@ -242,10 +253,11 @@ class TokenAccountingService
         if (null !== $this->capabilityRegistry) {
             try {
                 $capabilities = $this->capabilityRegistry->getCapabilities($model);
-                if (null !== $capabilities->pricingInput || null !== $capabilities->pricingOutput) {
+                if (null !== $capabilities->pricingInput || null !== $capabilities->pricingOutput || null !== $capabilities->pricingOutputImage) {
                     return [
                         'input' => $capabilities->pricingInput ?? 0.0,
                         'output' => $capabilities->pricingOutput ?? 0.0,
+                        'output_image' => $capabilities->pricingOutputImage,
                         'currency' => $capabilities->currency,
                     ];
                 }
@@ -255,6 +267,6 @@ class TokenAccountingService
         }
 
         // 3. Defaults
-        return ['input' => 0.0, 'output' => 0.0, 'currency' => 'USD'];
+        return ['input' => 0.0, 'output' => 0.0, 'output_image' => null, 'currency' => 'USD'];
     }
 }

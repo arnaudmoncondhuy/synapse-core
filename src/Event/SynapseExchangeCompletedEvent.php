@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\AgentContext;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -32,6 +33,9 @@ class SynapseExchangeCompletedEvent extends Event
         private bool $debugMode = false,
         private array $rawData = [],
         private array $timings = [],
+        private ?AgentContext $agentContext = null,
+        private ?string $module = null,
+        private ?string $action = null,
     ) {
     }
 
@@ -82,5 +86,37 @@ class SynapseExchangeCompletedEvent extends Event
     public function getTimings(): array
     {
         return $this->timings;
+    }
+
+    /**
+     * Contexte d'exécution agent (traçabilité parent/enfant, profondeur, origine).
+     *
+     * `null` si l'échange n'a pas été initié depuis un agent
+     * (ex: appel chat interactif classique sans `AgentResolver` en amont).
+     */
+    public function getAgentContext(): ?AgentContext
+    {
+        return $this->agentContext;
+    }
+
+    /**
+     * Module logique à l'origine de l'appel (ex: `chat`, `memory`, `rag`, `admin`).
+     *
+     * Aligné sur {@see \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::$module}
+     * et propagé vers `synapse_debug_log.module` pour la liste de debug.
+     */
+    public function getModule(): ?string
+    {
+        return $this->module;
+    }
+
+    /**
+     * Action précise au sein du module (ex: `chat_turn`, `title_generation`, `image_generation`).
+     *
+     * Aligné sur {@see \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseLlmCall::$action}.
+     */
+    public function getAction(): ?string
+    {
+        return $this->action;
     }
 }

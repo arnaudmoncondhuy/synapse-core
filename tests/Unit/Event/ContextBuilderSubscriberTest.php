@@ -194,7 +194,13 @@ class ContextBuilderSubscriberTest extends TestCase
     {
         $images = [['mime_type' => 'image/png', 'data' => base64_encode('fake-png')]];
 
+        $visionCaps = new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+            model: 'gemini-flash',
+            provider: 'gemini',
+            supportsVision: true,
+        );
         $capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($visionCaps);
         $capabilityRegistry->method('supports')->willReturn(true);
 
         $event = new PromptBuildEvent('Décris cette image', [], [], null, $images);

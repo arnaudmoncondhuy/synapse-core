@@ -8,7 +8,9 @@ nav:
   - Guides d'utilisation:
       - Configuration: guides/configuration.md
       - Créer des outils IA: guides/ai-tools.md
-      - Personas & Presets: guides/personas-presets.md
+      - Tons & Presets & Agents: guides/tones-presets.md
+      - Créer un agent en code: guides/custom-agents.md
+      - Contrôle d'accès aux agents: agent-access-control.md
       - Conversations & Persistance: guides/rle-management.md
       - RAG & Mémoire Vectorielle: guides/rag-memory.md
       - Mémoire Sémantique (Human-in-the-loop): guides/semantic-memory.md
@@ -20,6 +22,7 @@ nav:
           - Vue d'ensemble: reference/contracts/overview.md
           - AgentInterface: reference/contracts/agent-interface.md
           - AiToolInterface: reference/contracts/ai-tool-interface.md
+          - StatusAwareTool: reference/contracts/status-aware-tool-interface.md
           - ConfigProvider: reference/contracts/config-provider-interface.md
           - ContextProvider: reference/contracts/context-provider-interface.md
           - ConversationOwner: reference/contracts/conversation-owner-interface.md
@@ -28,6 +31,7 @@ nav:
           - LlmClient: reference/contracts/llm-client-interface.md
           - MessageFormatter: reference/contracts/message-formatter-interface.md
           - PermissionChecker: reference/contracts/permission-checker-interface.md
+          - RagSourceProvider: reference/contracts/rag-source-provider-interface.md
           - RetentionPolicy: reference/contracts/retention-policy-interface.md
           - TextSplitter: reference/contracts/text-splitter-interface.md
           - DebugLogger: reference/contracts/synapse-debug-logger-interface.md
@@ -35,7 +39,7 @@ nav:
       - Événements (Events):
           - Cycle de vie: reference/events/overview.md
           - GenerationStarted: reference/events/generation-started-event.md
-          - PrePrompt: reference/events/pre-prompt-event.md
+          - Pipeline de Prompt: reference/events/pre-prompt-event.md
           - ChunkReceived: reference/events/chunk-received-event.md
           - ToolCallRequested: reference/events/tool-call-requested-event.md
           - ToolCallCompleted: reference/events/tool-call-completed-event.md

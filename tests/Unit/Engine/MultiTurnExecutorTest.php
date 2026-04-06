@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChunkProcessor;
 use ArnaudMoncondhuy\SynapseCore\Engine\MultiTurnExecutor;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolExecutor;
+use ArnaudMoncondhuy\SynapseCore\Shared\Exception\StructuredOutputParseException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ChunkProcessorResult;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
@@ -128,5 +129,79 @@ class MultiTurnExecutorTest extends TestCase
         $result = $this->executor->execute($prompt, $this->buildClient(), true, 5);
 
         $this->assertSame(10 + 5 + 8 + 4, $result->usage->totalTokens);
+    }
+
+    public function testForwardsOptionsToClient(): void
+    {
+        // JSON valide pour ne pas déclencher le parser en mode structured output.
+        $this->chunkProcessor->method('process')
+            ->willReturn($this->buildChunkResult('{}'));
+
+        $client = $this->createMock(LlmClientInterface::class);
+        $capturedOptions = null;
+        $client->expects($this->once())
+            ->method('generateContent')
+            ->willReturnCallback(function (array $contents, array $tools, ?string $model, array $options) use (&$capturedOptions): array {
+                $capturedOptions = $options;
+
+                return [];
+            });
+
+        $options = [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'x', 'schema' => [], 'strict' => true]],
+        ];
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
+        $this->executor->execute($prompt, $client, false, 1, $options);
+
+        $this->assertSame($options, $capturedOptions);
+    }
+
+    public function testParsesStructuredOutputOnFinalTurn(): void
+    {
+        $jsonText = '{"city":"Lyon","temp":22.5}';
+
+        $this->chunkProcessor->method('process')
+            ->willReturn($this->buildChunkResult($jsonText));
+
+        $options = [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'x', 'schema' => [], 'strict' => true]],
+        ];
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
+        $result = $this->executor->execute($prompt, $this->buildClient(), true, 1, $options);
+
+        $this->assertSame(['city' => 'Lyon', 'temp' => 22.5], $result->structuredData);
+    }
+
+    public function testDoesNotParseStructuredOutputWhenResponseFormatAbsent(): void
+    {
+        // Même un texte ressemblant à du JSON ne doit pas être parsé sans response_format.
+        $this->chunkProcessor->method('process')
+            ->willReturn($this->buildChunkResult('{"a":1}'));
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
+        $result = $this->executor->execute($prompt, $this->buildClient(), true, 1);
+
+        $this->assertNull($result->structuredData);
+    }
+
+    public function testThrowsStructuredOutputParseExceptionOnInvalidJson(): void
+    {
+        $this->chunkProcessor->method('process')
+            ->willReturn($this->buildChunkResult('not json'));
+
+        $options = [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'x', 'schema' => [], 'strict' => true]],
+        ];
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
+
+        try {
+            $this->executor->execute($prompt, $this->buildClient(), true, 1, $options);
+            $this->fail('Expected StructuredOutputParseException was not thrown');
+        } catch (StructuredOutputParseException $e) {
+            $this->assertSame('not json', $e->getRawText());
+        }
     }
 }

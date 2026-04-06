@@ -239,6 +239,18 @@ class DebugLogSubscriber implements EventSubscriberInterface
             $this->debugAccumulator['estimated_cost_currency'] = 'USD';
         }
 
+        // Module & action : propagés par ChatService depuis les options d'appel ($askOptions).
+        // Utilisés pour dénormaliser `synapse_debug_log.module` / `.action` (affichage liste debug)
+        // avec le MÊME vocabulaire que `synapse_llm_call` (Analytics). Source unique : ChatService.
+        $module = $event->getModule();
+        $action = $event->getAction();
+        if (null !== $module) {
+            $this->debugAccumulator['module'] = $module;
+        }
+        if (null !== $action) {
+            $this->debugAccumulator['action'] = $action;
+        }
+
         // Prepare lightweight metadata for DB storage
         $metadata = [
             'model' => $event->getModel(),
@@ -247,7 +259,32 @@ class DebugLogSubscriber implements EventSubscriberInterface
             'safety_ratings' => $event->getSafety(),
             'timings' => $event->getTimings(),
             'thinking_enabled' => (isset($this->debugAccumulator['config']) && is_array($this->debugAccumulator['config'])) ? ($this->debugAccumulator['config']['thinking_enabled'] ?? false) : false,
+            'module' => $module,
+            'action' => $action,
         ];
+
+        // Enrichissement avec le contexte agent (traçabilité arborescente).
+        // Absent = appel racine non-agent → valeurs par défaut (depth=0, origin='direct').
+        $agentContext = $event->getAgentContext();
+        if (null !== $agentContext) {
+            $metadata['agent_run_id'] = $agentContext->getRequestId();
+            $metadata['parent_run_id'] = $agentContext->getParentRunId();
+            $metadata['depth'] = $agentContext->getDepth();
+            $metadata['origin'] = $agentContext->getOrigin();
+            // Propagation vers la colonne dénormalisée `synapse_debug_log.workflow_run_id`
+            // (Phase 7). NULL si l'appel n'a pas été déclenché depuis un workflow.
+            $metadata['workflow_run_id'] = $agentContext->getWorkflowRunId();
+            // Propagate into rawPayload too so that templates/exports have access
+            $this->debugAccumulator['agent_context'] = [
+                'request_id' => $agentContext->getRequestId(),
+                'parent_run_id' => $agentContext->getParentRunId(),
+                'workflow_run_id' => $agentContext->getWorkflowRunId(),
+                'depth' => $agentContext->getDepth(),
+                'max_depth' => $agentContext->getMaxDepth(),
+                'origin' => $agentContext->getOrigin(),
+                'user_id' => $agentContext->getUserId(),
+            ];
+        }
 
         // Pass COMPLETE debug data (not just metadata) for template rendering
         $this->debugLogger->logExchange($event->getDebugId(), $metadata, $this->debugAccumulator);

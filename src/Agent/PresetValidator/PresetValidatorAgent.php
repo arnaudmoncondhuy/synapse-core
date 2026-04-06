@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Agent\PresetValidator;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\Input;
+use ArnaudMoncondhuy\SynapseCore\Agent\Output;
 use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
@@ -42,13 +44,25 @@ class PresetValidatorAgent implements AgentInterface
     }
 
     /**
-     * @param array{preset: SynapseModelPreset} $input
+     * Exécute l'agent via le contrat unifié.
      *
-     * @return array<string, mixed>
+     * Cet agent étant non-conversationnel, l'entité `SynapseModelPreset` à valider est
+     * attendue sous la clé `$options['preset']`. C'est une exception assumée à la règle
+     * "tout doit être Messenger-serializable" — `PresetValidatorAgent` est un agent
+     * interne au bundle, appelé en synchrone depuis des contrôleurs, jamais via file.
+     * Pour une utilisation via Messenger, préférer directement `runAll()` après avoir
+     * résolu l'entité dans le handler ({@see \ArnaudMoncondhuy\SynapseCore\MessageHandler\TestModelPresetMessageHandler}).
+     *
+     * @param array<string, mixed> $options Doit contenir `preset` => SynapseModelPreset
      */
-    public function run(array $input): array
+    public function call(Input $input, array $options = []): Output
     {
-        return $this->runAll($input['preset']);
+        $preset = $options['preset'] ?? null;
+        if (!$preset instanceof SynapseModelPreset) {
+            throw new \InvalidArgumentException('PresetValidatorAgent::call() requires $options["preset"] to be a SynapseModelPreset instance.');
+        }
+
+        return Output::ofData($this->runAll($preset));
     }
 
     /**

@@ -48,7 +48,7 @@ $chatService->ask($message, [
 Utilisez le `MemoryManager` pour manipuler la mémoire programmatiquement :
 
 ```php
-use ArnaudMoncondhuy\SynapseCore\Core\Memory\MemoryManager;
+use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MemoryScope;
 
 class MyService

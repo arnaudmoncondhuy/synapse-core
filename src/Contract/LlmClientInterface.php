@@ -44,6 +44,11 @@ interface LlmClientInterface
      * @param array<int, array<string, mixed>> $contents Historique complet (format OpenAI canonical)
      * @param array<int, array<string, mixed>> $tools Déclarations des outils disponibles au format JSON Schema
      * @param string|null $model Identifiant du modèle à utiliser
+     * @param array<string, mixed> $options Options additionnelles. Clés reconnues :
+     *                                      - `thinking` : config de raisonnement (Gemini)
+     *                                      - `response_format` : forme canonique retournée par
+     *                                      {@see \ArnaudMoncondhuy\SynapseCore\Engine\ResponseFormatNormalizer}
+     *                                      pour forcer une sortie JSON structurée
      * @param array<string, mixed> $debugOut Sortie de debug (passage par référence)
      *
      * @return \Generator<int, array<string, mixed>> yield des chunks normalisés contenant 'text', 'usage', etc
@@ -52,6 +57,7 @@ interface LlmClientInterface
         array $contents,
         array $tools = [],
         ?string $model = null,
+        array $options = [],
         array &$debugOut = [],
     ): \Generator;
 
@@ -61,7 +67,8 @@ interface LlmClientInterface
      * @param array<int, array<string, mixed>> $contents Historique complet
      * @param array<int, array<string, mixed>> $tools Déclarations des outils
      * @param string|null $model Modèle à utiliser
-     * @param array<string, mixed> $options Options additionnelles (température, top-p, etc.)
+     * @param array<string, mixed> $options Options additionnelles (température, top-p, `thinking`,
+     *                                      `response_format` — voir {@see streamGenerateContent()})
      * @param array<string, mixed> $debugOut Sortie de debug
      *
      * @return array<string, mixed> Le dernier chunk normalisé de la réponse

@@ -7,17 +7,16 @@ Synapse Core repose sur un flux d'exécution séquentiel et hautement **événem
 Le système de prompt est structuré en **5 phases événementielles** orchestrées par `PromptPipeline` :
 
 ### Phase 1 : BUILD (`PromptBuildEvent`)
-Construction initiale du prompt système avec :
-- System prompt de base (`SynapseConfig.systemPrompt`)
+Construction initiale du prompt par `ContextBuilderSubscriber` :
+- System prompt de base (depuis la config ou l'agent actif)
 - Tone injecté (`SynapseTone.systemPrompt` si agent a un ton)
-- Variables interpolées (`{user_name}`, `{context}`, etc.)
+- Historique des messages (depuis les options ou la BDD)
+- Définitions des outils disponibles (depuis `ToolRegistry`)
 
 ### Phase 2 : ENRICH (`PromptEnrichEvent`)
 Enrichissement du contexte via subscribers :
 - **`RagContextSubscriber`** : Injecte les chunks RAG pertinents (si agent a des sources RAG)
 - **`MemoryContextSubscriber`** : Injecte les souvenirs vectoriels de l'utilisateur (score ≥ 0.7)
-- **`MasterPromptSubscriber`** : Ajoute le master prompt global
-- **`ContextBuilderSubscriber`** : Ajoute le contexte applicatif personnalisé
 
 ### Phase 3 : OPTIMIZE (`PromptOptimizeEvent`)
 Optimisation et troncature :
@@ -25,7 +24,8 @@ Optimisation et troncature :
 - Utilise une heuristique locale (règle simple : tokens ≈ chars/4)
 
 ### Phase 4 : FINALIZE (`PromptFinalizeEvent`)
-Finalisation avant envoi au LLM (transformation dans le format du provider)
+Finalisation avec la directive fondamentale :
+- **`MasterPromptSubscriber`** : Injecte le master prompt global en queue du message système — s'exécute après ENRICH et OPTIMIZE pour garantir qu'il est toujours présent et jamais tronqué
 
 ### Phase 5 : CAPTURE (`PromptCaptureEvent`)
 Capture du prompt final pour le debug :
@@ -77,6 +77,8 @@ Tour 2+ : Retour au streaming avec résultat du tool en message assistant
 | **MultiTurnExecutor** | Gère la boucle jusqu'à `maxTurns` |
 | **ToolRegistry** | Registre des outils disponibles |
 | **ToolExecutor** | Exécute les tool calls |
+| **AgentResolver** | Résout un agent par nom (agents code + agents BDD) |
+| **WorkflowRunner** | Exécute un `SynapseWorkflow` via `MultiAgent` |
 
 ---
 
@@ -128,6 +130,53 @@ graph TD
     ExchangeEvent --> DB["Persistance BDD<br/>(SynapseMessage, etc.)"]
     DB --> UserResult([Réponse finale])
 ```
+
+---
+
+---
+
+## Architecture Multi-Agents
+
+En plus du flux chat standard, Synapse supporte l'exécution de pipelines multi-agents via `WorkflowRunner`.
+
+### Flux d'exécution d'un workflow
+
+```
+WorkflowRunner::run(SynapseWorkflow, Input, options)
+  ↓
+  MultiAgent::execute(definition, input, AgentContext)
+  ↓ pour chaque étape
+  AgentResolver::resolve(agent_name, childContext)
+    → ConfiguredAgent (entité BDD) ou agent code (classe PHP)
+  ↓
+  AgentInterface::call(Input, options)  ← ChatService::ask() en sous-jacent
+  ↓
+  Output collecté, output_key stocké
+  ↓
+  Étape suivante avec input_mapping depuis les outputs précédents
+  ↓
+SynapseWorkflowRun enregistré (statut, tokens, durée, inputs, outputs)
+```
+
+### ConfiguredAgent — adaptation entité → contrat
+
+`ConfiguredAgent` est le pont entre une entité `SynapseAgent` (BDD) et le contrat `AgentInterface`. Il est créé à la volée par `AgentResolver` et délègue l'exécution à `ChatService::ask()`.
+
+Deux comportements clés garantis par `ConfiguredAgent::call()` :
+
+1. **Input structuré → message texte** : quand `MultiAgent` passe un `Input::ofStructured(...)` (mapping de sorties d'étapes précédentes), `buildMessageFromStructured()` convertit l'input en texte exploitable.
+2. **Token accounting** : les options `module='agent'` et `action='agent_call'` sont injectées par défaut pour que chaque appel soit traçé dans `SynapseLlmCall`.
+
+### AgentResolver — ordre de résolution
+
+1. `CodeAgentRegistry` — agents "code" (classes PHP avec tag `synapse.agent`)
+2. `AgentRegistry` → `SynapseAgentRepository::findByKey()` — agents "config" (BDD, **y compris sandbox**)
+
+En cas de collision de nom, l'agent code prend la préséance (warning loggé).
+
+### Garde-fou profondeur
+
+`AgentContext` transporte la profondeur courante et la profondeur max (`synapse.agents.max_depth`, défaut : 5). Si la limite est atteinte, `AgentResolver` dispatche `AgentDepthLimitReachedEvent` et lève `AgentDepthExceededException`.
 
 ---
 

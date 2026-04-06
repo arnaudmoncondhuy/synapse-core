@@ -133,7 +133,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
 
         // ── 4. Load history ──
         $modelId = $config->model ?? '';
-        $supportsVision = '' === $modelId || $this->capabilityRegistry->supports($modelId, 'vision');
+        $caps = '' !== $modelId ? $this->capabilityRegistry->getCapabilities($modelId) : null;
+        $supportsVision = null === $caps || !empty($caps->getAcceptedMimeTypes());
 
         $contents = [];
         if (isset($options['history']) && is_array($options['history'])) {
@@ -142,26 +143,26 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             $contents = $this->sanitizeHistoryForNewTurn($history, $supportsVision);
         }
 
-        // Vision: construire un content multipart si des images sont attachées ET que le modèle supporte la vision
-        $images = $supportsVision ? $event->getImages() : [];
+        // Construire un content multipart si des fichiers sont attachés ET que le modèle les supporte
+        $attachments = $supportsVision ? $event->getAttachments() : [];
 
-        // Récupérer les images générées précédemment (trailing) à injecter dans le message courant
-        $trailingGeneratedImages = ($supportsVision && is_array($options['_trailing_generated_images'] ?? null))
-            ? $options['_trailing_generated_images']
+        // Récupérer les pièces jointes générées précédemment (trailing) à injecter dans le message courant
+        $trailingGeneratedAttachments = ($supportsVision && is_array($options['_trailing_generated_attachments'] ?? null))
+            ? $options['_trailing_generated_attachments']
             : [];
 
-        if (!empty($images) || !empty($trailingGeneratedImages)) {
+        if (!empty($attachments) || !empty($trailingGeneratedAttachments)) {
             $parts = [];
             if ('' !== $message) {
                 $parts[] = ['type' => 'text', 'text' => $message];
             }
-            foreach ($trailingGeneratedImages as $imgPart) {
-                $parts[] = $imgPart;
+            foreach ($trailingGeneratedAttachments as $attPart) {
+                $parts[] = $attPart;
             }
-            foreach ($images as $image) {
+            foreach ($attachments as $attachment) {
                 $parts[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => 'data:'.$image['mime_type'].';base64,'.$image['data']],
+                    'image_url' => ['url' => 'data:'.$attachment['mime_type'].';base64,'.$attachment['data']],
                 ];
             }
             $contents[] = ['role' => 'user', 'content' => $parts];

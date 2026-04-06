@@ -75,6 +75,36 @@ class SynapseLlmCallTest extends TestCase
         $this->assertSame(1000, $call->getTotalTokens());
     }
 
+    public function testImageCompletionTokensDefaultsToZero(): void
+    {
+        $call = new SynapseLlmCall();
+
+        $this->assertSame(0, $call->getImageCompletionTokens());
+    }
+
+    public function testCalculateTotalTokensIncludesImageCompletionTokens(): void
+    {
+        $call = new SynapseLlmCall();
+        $call->setPromptTokens(10);
+        $call->setCompletionTokens(20);
+        $call->setThinkingTokens(5);
+        $call->setImageCompletionTokens(1290);
+
+        $call->calculateTotalTokens();
+        $this->assertSame(1325, $call->getTotalTokens());
+    }
+
+    public function testPricingOutputImageRoundTrip(): void
+    {
+        $call = new SynapseLlmCall();
+        $call->setPricingOutputImage(120.0);
+
+        $this->assertEqualsWithDelta(120.0, $call->getPricingOutputImage(), 0.000001);
+
+        $call->setPricingOutputImage(null);
+        $this->assertNull($call->getPricingOutputImage());
+    }
+
     public function testCreatedAtIsSetOnConstruction(): void
     {
         $before = new \DateTimeImmutable();

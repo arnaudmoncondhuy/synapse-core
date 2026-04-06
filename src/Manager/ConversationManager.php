@@ -131,7 +131,7 @@ class ConversationManager
      *     metadata?: array<string, mixed>
      * } $metadata Données techniques de l'échange
      * @param string|null $callId UUID de l'appel LLM (SynapseLlmCall.callId) — pour les messages MODEL.
-     * @param array<int, array{mime_type: string, data: string}> $images images à stocker comme pièces jointes
+     * @param array<int, array{mime_type: string, data: string, name?: string}> $attachments Pièces jointes à stocker
      *
      * @return SynapseMessage L'entité message créée
      */
@@ -141,7 +141,7 @@ class ConversationManager
         string $content,
         array $metadata = [],
         ?string $callId = null,
-        array $images = [],
+        array $attachments = [],
     ): SynapseMessage {
         $message = $this->instantiateMessage();
         $message->setConversation($conversation);
@@ -198,10 +198,10 @@ class ConversationManager
         }
         $this->em->persist($message);
 
-        // Store images as file attachments (replaces base64 storage in metadata)
-        if (!empty($images) && null !== $this->attachmentStorage) {
-            foreach ($images as $image) {
-                $this->attachmentStorage->store($image, $message->getId(), $conversation->getId());
+        // Store file attachments on disk
+        if (!empty($attachments) && null !== $this->attachmentStorage) {
+            foreach ($attachments as $attachment) {
+                $this->attachmentStorage->store($attachment, $message->getId(), $conversation->getId());
             }
         }
 
@@ -393,7 +393,7 @@ class ConversationManager
      * @param bool $forDisplay When true (Twig rendering), includes attachments info.
      *                         When false (LLM), replaces image content with placeholder text.
      *
-     * @return array<int, array{role: string, content: array<mixed>|string, metadata: array<string, mixed>, attachments?: array<int, array{uuid: string, mime_type: string}>}>
+     * @return array<int, array{role: string, content: array<mixed>|string, metadata: array<string, mixed>, attachments?: array<int, array{uuid: string, mime_type: string, display_name: string}>}>
      */
     public function getHistoryArray(SynapseConversation $conversation, bool $forDisplay = false): array
     {
@@ -412,7 +412,7 @@ class ConversationManager
             $attachments = [];
             $attachmentEntities = $this->em->getRepository(SynapseMessageAttachment::class)->findBy(['messageId' => $msg->getId()]);
             foreach ($attachmentEntities as $att) {
-                $attachments[] = ['uuid' => $att->getId(), 'mime_type' => $att->getMimeType()];
+                $attachments[] = ['uuid' => $att->getId(), 'mime_type' => $att->getMimeType(), 'display_name' => $att->getDisplayName()];
             }
 
             if ($forDisplay) {

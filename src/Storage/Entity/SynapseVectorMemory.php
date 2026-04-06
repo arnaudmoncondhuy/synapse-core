@@ -27,8 +27,8 @@ class SynapseVectorMemory
     /**
      * @var array<int, float>
      */
-    #[ORM\Column(type: 'json')]
-    private array $embedding = [];
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $embedding = null;
 
     /**
      * @var array<string, mixed>
@@ -65,17 +65,17 @@ class SynapseVectorMemory
     }
 
     /**
-     * @return array<int, float>
+     * @return array<int, float>|null
      */
-    public function getEmbedding(): array
+    public function getEmbedding(): ?array
     {
         return $this->embedding;
     }
 
     /**
-     * @param array<int, float> $embedding
+     * @param array<int, float>|null $embedding
      */
-    public function setEmbedding(array $embedding): self
+    public function setEmbedding(?array $embedding): self
     {
         $this->embedding = $embedding;
 

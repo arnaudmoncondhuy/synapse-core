@@ -57,9 +57,8 @@ class SynapseVectorMemoryRepository extends ServiceEntityRepository
      */
     public function clearAllEmbeddings(): int
     {
-        return (int) $this->getEntityManager()
-            ->createQuery('UPDATE '.SynapseVectorMemory::class.' v SET v.embedding = :empty')
-            ->setParameter('empty', '[]')
-            ->execute();
+        $conn = $this->getEntityManager()->getConnection();
+
+        return (int) $conn->executeStatement('UPDATE synapse_vector_memory SET embedding = NULL');
     }
 }

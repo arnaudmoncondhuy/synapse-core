@@ -42,7 +42,39 @@ class DoctrineAdminLogger implements SynapseDebugLoggerInterface
             $debugLog->setConversationId(is_scalar($conversationId) ? (string) $conversationId : null);
         }
 
+        // Module/action : peuplés par DebugLogSubscriber depuis SynapseExchangeCompletedEvent
+        // (source = options `module`/`action` passées à ChatService::ask()). Dénormalisation
+        // alignée sur SynapseLlmCall pour pouvoir afficher la liste debug sans charger le JSON.
+        $debugLog->setModule(isset($rawPayload['module']) && is_string($rawPayload['module']) ? $rawPayload['module'] : null);
+        $debugLog->setAction(isset($rawPayload['action']) && is_string($rawPayload['action']) ? $rawPayload['action'] : null);
+        $debugLog->setModel(isset($rawPayload['model']) && is_string($rawPayload['model']) ? $rawPayload['model'] : null);
+
+        $usage = $rawPayload['usage'] ?? $rawPayload['token_usage'] ?? null;
+        if (is_array($usage)) {
+            $total = $usage['total_tokens'] ?? (($usage['prompt_tokens'] ?? 0) + ($usage['completion_tokens'] ?? 0));
+            $debugLog->setTotalTokens(is_int($total) ? $total : null);
+        }
+
         $debugLog->setCreatedAt(new \DateTimeImmutable());
+
+        // Agent traceability (populated if the call came from AgentResolver + AgentContext).
+        if (isset($metadata['agent_run_id']) && is_string($metadata['agent_run_id'])) {
+            $debugLog->setAgentRunId($metadata['agent_run_id']);
+        }
+        if (isset($metadata['parent_run_id']) && is_string($metadata['parent_run_id'])) {
+            $debugLog->setParentRunId($metadata['parent_run_id']);
+        }
+        if (isset($metadata['depth']) && is_int($metadata['depth'])) {
+            $debugLog->setDepth($metadata['depth']);
+        }
+        if (isset($metadata['origin']) && is_string($metadata['origin'])) {
+            $debugLog->setOrigin($metadata['origin']);
+        }
+        // Workflow traceability (Phase 7) — propagé depuis AgentContext::$workflowRunId
+        // via DebugLogSubscriber. NULL si l'appel n'est pas dans un workflow.
+        if (isset($metadata['workflow_run_id']) && is_string($metadata['workflow_run_id'])) {
+            $debugLog->setWorkflowRunId($metadata['workflow_run_id']);
+        }
 
         $this->em->persist($debugLog);
         $this->em->flush();

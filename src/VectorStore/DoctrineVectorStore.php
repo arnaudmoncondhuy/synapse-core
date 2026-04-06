@@ -205,7 +205,11 @@ class DoctrineVectorStore implements VectorStoreInterface
                 }
             }
 
-            $score = $this->calculateCosineSimilarity($vector, $item->getEmbedding());
+            $embedding = $item->getEmbedding();
+            if (null === $embedding) {
+                continue;
+            }
+            $score = $this->calculateCosineSimilarity($vector, $embedding);
             $results[] = [
                 'payload' => $item->getPayload(),
                 'score' => $score,

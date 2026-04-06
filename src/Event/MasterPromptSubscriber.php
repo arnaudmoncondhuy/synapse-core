@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptFinalizeEvent;
+use ArnaudMoncondhuy\SynapseCore\Shared\Util\PromptUtil;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -62,27 +63,7 @@ class MasterPromptSubscriber implements EventSubscriberInterface
         $contentsRaw = $prompt['contents'] ?? [];
         $messages = is_array($contentsRaw) ? $contentsRaw : [];
 
-        $systemFound = false;
-        foreach ($messages as $i => $entry) {
-            if (is_array($entry) && isset($entry['role']) && 'system' === $entry['role']) {
-                $oldContent = is_string($entry['content'] ?? null) ? (string) $entry['content'] : '';
-                $messages[$i] = [
-                    'role' => 'system',
-                    'content' => $oldContent.$masterBlock,
-                ];
-                $systemFound = true;
-                break;
-            }
-        }
-
-        if (!$systemFound) {
-            array_unshift($messages, [
-                'role' => 'system',
-                'content' => ltrim($masterBlock),
-            ]);
-        }
-
-        $prompt['contents'] = $messages;
+        $prompt['contents'] = PromptUtil::appendToSystemMessage($messages, $masterBlock);
         $event->setPrompt($prompt);
     }
 }

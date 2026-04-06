@@ -80,13 +80,30 @@ class SynapseModelPresetRepository extends ServiceEntityRepository
     }
 
     /**
-     * Tous les presets, triés par id.
+     * Tous les presets non-sandbox, triés par id. Utilisé pour l'admin.
      *
      * @return SynapseModelPreset[]
      */
     public function findAllPresets(): array
     {
-        return $this->findBy([], ['id' => 'ASC']);
+        /** @var SynapseModelPreset[] $result */
+        $result = $this->createQueryBuilder('p')
+            ->andWhere('p.isSandbox = false')
+            ->orderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $result;
+    }
+
+    /**
+     * Retourne tous les presets sandbox (pour le cleanup MCP).
+     *
+     * @return SynapseModelPreset[]
+     */
+    public function findSandbox(): array
+    {
+        return $this->findBy(['isSandbox' => true]);
     }
 
     /**

@@ -1,78 +1,252 @@
 # LlmClientInterface
 
-L'interface `LlmClientInterface` est le connecteur universel de Synapse Core. C'est elle qui permet de dialoguer avec les différents fournisseurs d'IA (OpenAI, Gemini, Mistral, Ollama, etc.) en utilisant un langage commun.
+L'interface `LlmClientInterface` est le connecteur universel de Synapse Core. Elle permet de dialoguer avec n'importe quel fournisseur d'IA (OpenAI, Gemini, Mistral, Ollama, etc.) en utilisant un format unifié basé sur le standard OpenAI Chat Completions.
 
-## 🛠 Pourquoi l'utiliser ?
+## Namespace
 
-*   **Indépendance du fournisseur** : Changez de moteur d'IA en changeant une seule ligne de configuration sans toucher à votre code métier.
-*   **Support du Streaming** : Permet de recevoir des réponses en temps réel "mot par mot".
-*   **Standardisation** : Transforme les réponses disparates des API en objets `SynapseMessage` cohérents.
+```
+ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface
+```
+
+## Contrat complet
+
+```php
+interface LlmClientInterface
+{
+    public function getProviderName(): string;
+
+    public function streamGenerateContent(
+        array $contents,
+        array $tools = [],
+        ?string $model = null,
+        array &$debugOut = [],
+    ): \Generator;
+
+    public function generateContent(
+        array $contents,
+        array $tools = [],
+        ?string $model = null,
+        array $options = [],
+        array &$debugOut = [],
+    ): array;
+
+    public function getCredentialFields(): array;
+    public function validateCredentials(array $credentials): void;
+    public function getDefaultLabel(): string;
+    public function getIcon(): string;
+    public function getDefaultCurrency(): string;
+    public function getProviderOptionsSchema(): array;
+    public function validateProviderOptions(array $options, ModelCapabilities $caps): array;
+}
+```
+
+## Méthodes
+
+### `getProviderName(): string`
+
+Identifiant interne du fournisseur, en minuscule sans espace (ex : `'gemini'`, `'openai'`, `'my_provider'`). Utilisé dans la configuration YAML et en base de données.
+
+### `streamGenerateContent(array $contents, array $tools, ?string $model, array &$debugOut): \Generator`
+
+Génère du contenu en mode streaming (Server-Sent Events). Chaque yield produit un chunk normalisé.
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `$contents` | `array` | Historique complet au format OpenAI canonical |
+| `$tools` | `array` | Déclarations des outils disponibles (JSON Schema) |
+| `$model` | `?string` | Identifiant du modèle à utiliser |
+| `$debugOut` | `array&` | Sortie de debug (passage par référence) |
+
+### `generateContent(array $contents, array $tools, ?string $model, array $options, array &$debugOut): array`
+
+Génère du contenu en mode synchrone (bloquant). Retourne le dernier chunk normalisé.
+
+### `getCredentialFields(): array`
+
+Retourne la définition des champs de configuration pour l'administration. Permet de générer dynamiquement le formulaire de saisie des credentials.
+
+```php
+// Exemple de retour
+return [
+    'api_key' => [
+        'label' => 'Clé API',
+        'type' => 'password',
+        'required' => true,
+    ],
+    'project_id' => [
+        'label' => 'ID du projet',
+        'type' => 'text',
+        'required' => false,
+        'help' => 'Disponible dans la console Google Cloud',
+    ],
+];
+```
+
+### `validateCredentials(array $credentials): void`
+
+Valide l'intégrité des credentials fournis. Lève une exception si les formats sont incorrects.
+
+### `getDefaultLabel(): string`
+
+Nom d'affichage lisible du fournisseur dans l'interface admin (ex : `'Google Gemini'`).
+
+### `getIcon(): string`
+
+Icône Lucide du provider pour l'interface admin (ex : `'zap'`, `'cloud'`, `'server'`).
+
+### `getDefaultCurrency(): string`
+
+Devise par défaut des tarifs de ce provider (code ISO 4217, ex : `'USD'`, `'EUR'`).
+
+### `getProviderOptionsSchema(): array`
+
+Schéma des options spécifiques au provider pour le formulaire de preset admin.
+
+### `validateProviderOptions(array $options, ModelCapabilities $caps): array`
+
+Valide et nettoie les options spécifiques au provider d'un preset. Retourne les options nettoyées.
 
 ---
 
-## 📋 Résumé du Contrat
+## Format OpenAI Canonical
 
-| Méthode | Entrée | Sortie | Rôle |
-| :--- | :--- | :--- | :--- |
-| `supports(string $provider)` | Nom du provider | `bool` | Détermine si ce client peut gérer la demande. |
-| `generateResponse(...)` | Messages + Options | `SynapseMessage` | Appel synchrone classique. |
-| `generateStream(...)` | Messages + Options | `iterable` | Appel asynchrone pour streaming. |
-| `getCredentialFields()` | - | `array` | Liste les clés API nécessaires (ex: `api_key`). |
+L'argument `$contents` suit le format standard OpenAI Chat Completions :
+
+```php
+$contents = [
+    ['role' => 'system',    'content' => 'Instructions du système...'],
+    ['role' => 'user',      'content' => 'Question utilisateur'],
+    ['role' => 'assistant', 'content' => 'Réponse...', 'tool_calls' => [...]],
+    ['role' => 'tool',      'tool_call_id' => '...', 'content' => 'Résultat outil'],
+];
+```
+
+Chaque `LlmClient` est responsable de traduire ce format vers le format natif de son API (ex : `GeminiClient` adapte OpenAI → Gemini, `OvhAiClient` passe directement).
 
 ---
 
-## 🚀 Exemple : Un client factice pour vos tests
+## Format du chunk normalisé
 
-=== "FakeLlmClient.php"
+La méthode `generateContent()` et les yield de `streamGenerateContent()` retournent des chunks au format normalisé :
 
-    ```php
-    namespace App\Synapse\Client;
+```php
+[
+    'text'           => '...',         // Contenu texte généré (ou null)
+    'thinking'       => '...',         // Contenu de réflexion si supporté (ou null)
+    'function_calls' => [...],         // Appels d'outils demandés
+    'usage'          => [
+        'prompt_tokens'     => 10,
+        'completion_tokens' => 20,
+        'total_tokens'      => 30,
+    ],
+    'safety_ratings' => [...],         // Évaluations de sécurité du provider
+    'blocked'        => false,         // true si la génération a été bloquée
+    'blocked_reason' => null,          // ex: 'discours haineux', 'harcèlement'
+]
+```
 
-    use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
-    use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
-    use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
+!!! note "NormalizedChunk Value Object"
+    Le chunk peut aussi être représenté par le Value Object `NormalizedChunk` dans les traitements internes de `ChunkProcessor`.
 
-    class FakeLlmClient implements LlmClientInterface
+---
+
+## Exemple : Implémenter un client personnalisé
+
+```php
+namespace App\Llm;
+
+use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
+
+class MyCustomClient implements LlmClientInterface
+{
+    public function getProviderName(): string
     {
-        public function supports(string $provider): bool
-        {
-            return $provider === 'fake';
+        return 'my_provider';
+    }
+
+    public function getDefaultLabel(): string
+    {
+        return 'Mon Provider IA';
+    }
+
+    public function getIcon(): string
+    {
+        return 'zap';
+    }
+
+    public function getDefaultCurrency(): string
+    {
+        return 'EUR';
+    }
+
+    public function streamGenerateContent(
+        array $contents,
+        array $tools = [],
+        ?string $model = null,
+        array &$debugOut = [],
+    ): \Generator {
+        // 1. Extraire le message système si présent
+        $system = '';
+        if (!empty($contents[0]) && $contents[0]['role'] === 'system') {
+            $system = $contents[0]['content'];
+            $contents = array_slice($contents, 1);
         }
 
-        public function generateResponse(array $messages, array $options = []): SynapseMessage
-        {
-            $response = new SynapseMessage();
-            $response->setRole(MessageRole::MODEL);
-            $response->setContent("Ceci est une réponse simulée.");
-            
-            return $response;
-        }
+        // 2. Traduire vers votre format API
+        // 3. Appeler votre API en streaming
+        // 4. Yield des chunks normalisés
+        yield [
+            'text'    => 'Réponse simulée',
+            'usage'   => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
+            'blocked' => false,
+        ];
+    }
 
-        public function generateStream(array $messages, array $options = []): iterable
-        {
-            yield "Ceci ";
-            yield "est ";
-            yield "un ";
-            yield "flux.";
-        }
+    public function generateContent(
+        array $contents,
+        array $tools = [],
+        ?string $model = null,
+        array $options = [],
+        array &$debugOut = [],
+    ): array {
+        // Implémentation synchrone
+        return [
+            'text'    => 'Réponse simulée',
+            'usage'   => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
+            'blocked' => false,
+        ];
+    }
 
-        public function getCredentialFields(): array
-        {
-            return ['api_key'];
+    public function getCredentialFields(): array
+    {
+        return [
+            'api_key' => ['label' => 'Clé API', 'type' => 'password', 'required' => true],
+        ];
+    }
+
+    public function validateCredentials(array $credentials): void
+    {
+        if (empty($credentials['api_key'])) {
+            throw new \InvalidArgumentException('La clé API est requise.');
         }
     }
-    ```
+
+    public function getProviderOptionsSchema(): array
+    {
+        return ['fields' => []];
+    }
+
+    public function validateProviderOptions(array $options, ModelCapabilities $caps): array
+    {
+        return $options;
+    }
+}
+```
 
 ---
 
-## 💡 Conseils d'implémentation
+## Voir aussi
 
-> [!IMPORTANT]
-> **Format OpenAI Canonical** : L'argument `$messages` reçu par ces méthodes est au format canonique OpenAI (`role` et `content`). Cela garantit une compatibilité maximale.
-
-*   **Options LLM** : Le tableau `$options` contient les paramètres techniques tels que `temperature`, `max_output_tokens` et les outils (`tools`). Veillez à les traduire fidèlement pour votre API cible.
-*   **Credential Fields** : Les champs retournés par `getCredentialFields` apparaîtront automatiquement dans l'interface d'administration de Synapse Core.
-
----
-
-
+- [Guide d'implémentation](../implementation-guide.md) — guide complet pour créer un provider
+- [ModelCapabilityRegistry](../../explanation/architecture.md) — vérification des capacités avant envoi

@@ -29,15 +29,19 @@ class SynapseMessageAttachment
     #[ORM\Column(type: 'string', length: 500)]
     private string $filePath;
 
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $originalName = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
-    public function __construct(string $id, string $messageId, string $mimeType, string $filePath)
+    public function __construct(string $id, string $messageId, string $mimeType, string $filePath, ?string $originalName = null)
     {
         $this->id = $id;
         $this->messageId = $messageId;
         $this->mimeType = $mimeType;
         $this->filePath = $filePath;
+        $this->originalName = $originalName;
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -59,6 +63,26 @@ class SynapseMessageAttachment
     public function getFilePath(): string
     {
         return $this->filePath;
+    }
+
+    public function getOriginalName(): ?string
+    {
+        return $this->originalName;
+    }
+
+    /**
+     * Retourne le nom d'affichage : nom original si disponible, sinon label dérivé du MIME type.
+     */
+    public function getDisplayName(): string
+    {
+        if (null !== $this->originalName && '' !== $this->originalName) {
+            return $this->originalName;
+        }
+
+        // Fallback : extension en majuscule (ex: "PDF", "PNG")
+        $ext = pathinfo($this->filePath, PATHINFO_EXTENSION);
+
+        return '' !== $ext ? strtoupper($ext) : strtoupper(explode('/', $this->mimeType)[1] ?? 'FILE');
     }
 
     public function getCreatedAt(): \DateTimeImmutable

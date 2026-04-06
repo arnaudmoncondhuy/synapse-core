@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\DependencyInjection;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\AiToolInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\ContextProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
@@ -51,6 +52,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                 ],
                 'routing' => [
                     'ArnaudMoncondhuy\SynapseCore\Message\TestPresetMessage' => 'synapse_async',
+                    'ArnaudMoncondhuy\SynapseCore\Message\ExecuteWorkflowMessage' => 'synapse_async',
                 ],
             ];
         }
@@ -120,13 +122,23 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.persistence.message_class', $config['persistence']['message_class']);
 
         // ── Encryption ────────────────────────────────────────────────────────
-        $container->setParameter('synapse.encryption.enabled', $config['encryption']['enabled'] ?? false);
+        $encryptionEnabled = $config['encryption']['enabled'] ?? false;
+        $container->setParameter('synapse.encryption.enabled', $encryptionEnabled);
         $container->setParameter('synapse.encryption.key', $config['encryption']['key'] ?? null);
+
+        if (!$encryptionEnabled) {
+            @trigger_error('Synapse: encryption is disabled — LLM credentials and conversations are stored in plaintext. Set synapse.encryption.enabled to true for production.', \E_USER_NOTICE);
+        }
 
         // ── Security ──────────────────────────────────────────────────────────
         $container->setParameter('synapse.security.admin_role', $config['security']['admin_role'] ?? 'ROLE_ADMIN');
         $container->setParameter('synapse.security.chat_role', $config['security']['chat_role'] ?? 'ROLE_USER');
-        $container->setParameter('synapse.security.api_csrf_enabled', $config['security']['api_csrf_enabled'] ?? true);
+        $apiCsrfEnabled = $config['security']['api_csrf_enabled'] ?? true;
+        $container->setParameter('synapse.security.api_csrf_enabled', $apiCsrfEnabled);
+
+        if (!$apiCsrfEnabled) {
+            @trigger_error('Synapse: CSRF protection is disabled on API endpoints. This exposes chat endpoints to cross-site request forgery attacks.', \E_USER_WARNING);
+        }
 
         // ── Context ───────────────────────────────────────────────────────────
         $container->setParameter('synapse.context.language', $config['context']['language'] ?? 'fr');
@@ -188,6 +200,9 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         // ── Auto-configuration (Tags automatiques) ────────────────────────────
         $container->registerForAutoconfiguration(AiToolInterface::class)
             ->addTag('synapse.tool');
+
+        $container->registerForAutoconfiguration(AgentInterface::class)
+            ->addTag('synapse.agent');
 
         $container->registerForAutoconfiguration(ContextProviderInterface::class)
             ->addTag('synapse.context_provider');

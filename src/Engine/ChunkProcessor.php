@@ -36,7 +36,7 @@ class ChunkProcessor
         $usage = TokenUsage::empty();
         $safetyRatings = [];
         $providerRawParts = [];
-        $generatedImages = [];
+        $generatedAttachments = [];
 
         foreach ($chunks as $chunkMixed) {
             if (!is_array($chunkMixed)) {
@@ -55,9 +55,11 @@ class ChunkProcessor
                 $this->dispatcher->dispatch(new SynapseTokenStreamedEvent($chunkText, $turn));
             }
 
-            // Accumulate usage
+            // Usage: keep the LAST chunk's usage (not accumulated).
+            // Gemini sends cumulative usageMetadata in every chunk; OpenAI sends
+            // usage only in the final chunk. In both cases the last value is the total.
             if (!empty($chunk['usage']) && is_array($chunk['usage'])) {
-                $usage = $usage->add(TokenUsage::fromArray($chunk['usage']));
+                $usage = TokenUsage::fromArray($chunk['usage']);
             }
 
             if (!empty($chunk['safety_ratings']) && is_array($chunk['safety_ratings'])) {
@@ -71,11 +73,11 @@ class ChunkProcessor
                 }
             }
 
-            // Accumulate generated images (inline image generation)
-            if (!empty($chunk['images']) && is_array($chunk['images'])) {
-                foreach ($chunk['images'] as $img) {
-                    if (is_array($img) && isset($img['mime_type'], $img['data'])) {
-                        $generatedImages[] = $img;
+            // Accumulate generated attachments (inline image/file generation)
+            if (!empty($chunk['attachments']) && is_array($chunk['attachments'])) {
+                foreach ($chunk['attachments'] as $att) {
+                    if (is_array($att) && isset($att['mime_type'], $att['data'])) {
+                        $generatedAttachments[] = $att;
                     }
                 }
             }
@@ -122,6 +124,6 @@ class ChunkProcessor
             }
         }
 
-        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $providerRawParts, $generatedImages);
+        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $providerRawParts, $generatedAttachments);
     }
 }

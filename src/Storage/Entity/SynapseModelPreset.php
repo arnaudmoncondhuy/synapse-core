@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Storage\Entity;
 
+use ArnaudMoncondhuy\SynapseCore\Storage\Entity\Trait\TimestampableEntityTrait;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -20,6 +21,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class SynapseModelPreset
 {
+    use TimestampableEntityTrait;
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(type: Types::INTEGER)]
@@ -106,18 +108,18 @@ class SynapseModelPreset
     private bool $streamingEnabled = true;
 
     /**
+     * Preset temporaire créé via MCP pour des tests autonomes (sandbox).
+     */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isSandbox = false;
+
+    /**
      * Date de dernière mise à jour.
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
     public function __construct()
-    {
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    #[ORM\PreUpdate]
-    public function updateTimestamp(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -281,6 +283,18 @@ class SynapseModelPreset
     public function setStreamingEnabled(bool $streamingEnabled): self
     {
         $this->streamingEnabled = $streamingEnabled;
+
+        return $this;
+    }
+
+    public function isSandbox(): bool
+    {
+        return $this->isSandbox;
+    }
+
+    public function setIsSandbox(bool $isSandbox): self
+    {
+        $this->isSandbox = $isSandbox;
 
         return $this;
     }

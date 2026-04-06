@@ -33,15 +33,20 @@ class ChunkProcessorTest extends TestCase
         $this->assertSame('Hello world', $result->modelText);
     }
 
+    /**
+     * Streaming providers (Gemini, OpenAI) send CUMULATIVE usage in each chunk.
+     * The processor must keep the LAST usage, not accumulate.
+     */
     public function testAccumulatesUsageAcrossChunks(): void
     {
         $chunks = [
             ['text' => 'a', 'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2, 'total_tokens' => 7]],
-            ['text' => 'b', 'usage' => ['prompt_tokens' => 0, 'completion_tokens' => 1, 'total_tokens' => 1]],
+            ['text' => 'b', 'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3, 'total_tokens' => 8]],
         ];
 
         $result = $this->processor->process($chunks, 0);
 
+        // Last chunk wins (cumulative usage from streaming providers)
         $this->assertSame(5, $result->usage->promptTokens);
         $this->assertSame(3, $result->usage->completionTokens);
     }

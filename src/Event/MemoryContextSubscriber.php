@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Event;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptEnrichEvent;
 use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
+use ArnaudMoncondhuy\SynapseCore\Shared\Util\PromptUtil;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -43,6 +44,13 @@ class MemoryContextSubscriber implements EventSubscriberInterface
     public function onPrePrompt(PromptEnrichEvent $event): void
     {
         $options = $event->getOptions();
+
+        // Skip memory enrichment for stateless/internal calls (e.g. title_generation)
+        // where injecting user memories is wasteful and unnecessary.
+        if (!empty($options['stateless'])) {
+            return;
+        }
+
         $userIdMixed = $options['user_id'] ?? $this->getCurrentUserId();
         $userId = is_string($userIdMixed) ? $userIdMixed : null;
 
@@ -155,30 +163,7 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         $contentsRaw = $prompt['contents'] ?? [];
         $messages = is_array($contentsRaw) ? $contentsRaw : [];
 
-        // Chercher le premier message 'system' pour y concaténer la mémoire
-        $systemFound = false;
-        foreach ($messages as $i => $entry) {
-            if (is_array($entry) && isset($entry['role']) && 'system' === $entry['role']) {
-                /** @var array{role: string, content?: mixed} $entry */
-                $oldContent = is_string($entry['content'] ?? null) ? (string) $entry['content'] : '';
-                $messages[$i] = [
-                    'role' => 'system',
-                    'content' => $oldContent.$memoryString,
-                ];
-                $systemFound = true;
-                break;
-            }
-        }
-
-        // Cas de fallback (anormal mais géré) où aucun message système n'existerait
-        if (!$systemFound) {
-            array_unshift($messages, [
-                'role' => 'system',
-                'content' => ltrim($memoryString),
-            ]);
-        }
-
-        $prompt['contents'] = $messages;
+        $prompt['contents'] = PromptUtil::appendToSystemMessage($messages, $memoryString);
         $event->setPrompt($prompt);
     }
 

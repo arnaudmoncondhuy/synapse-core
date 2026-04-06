@@ -38,23 +38,23 @@ class SynapsePrePromptEvent extends Event
     private ?SynapseRuntimeConfig $config;
 
     /** @var list<array{mime_type: string, data: string}> */
-    private array $images = [];
+    private array $attachments = [];
 
     /**
      * @param array<string, mixed> $options
      * @param array<string, mixed> $prompt
-     * @param list<array{mime_type: string, data: string}> $images
+     * @param list<array{mime_type: string, data: string}> $attachments
      */
     public function __construct(
         private string $message,
         private array $options,
         array $prompt = [],
         ?SynapseRuntimeConfig $config = null,
-        array $images = [],
+        array $attachments = [],
     ) {
         $this->prompt = $prompt;
         $this->config = $config;
-        $this->images = $images;
+        $this->attachments = $attachments;
     }
 
     public function getMessage(): string
@@ -103,17 +103,17 @@ class SynapsePrePromptEvent extends Event
     /**
      * @return list<array{mime_type: string, data: string}>
      */
-    public function getImages(): array
+    public function getAttachments(): array
     {
-        return $this->images;
+        return $this->attachments;
     }
 
     /**
-     * @param list<array{mime_type: string, data: string}> $images
+     * @param list<array{mime_type: string, data: string}> $attachments
      */
-    public function setImages(array $images): self
+    public function setAttachments(array $attachments): self
     {
-        $this->images = $images;
+        $this->attachments = $attachments;
 
         return $this;
     }

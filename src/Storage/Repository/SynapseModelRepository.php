@@ -49,9 +49,12 @@ class SynapseModelRepository extends ServiceEntityRepository
     }
 
     /**
-     * Retourne une map [model_id => ['input' => x, 'output' => y, 'currency' => z]] des tarifs.
+     * Retourne une map [model_id => ['input' => x, 'output' => y, 'output_image' => z|null, 'currency' => c]] des tarifs.
      *
-     * @return array<string, array{input: float, output: float, currency: string}>
+     * `output_image` est null si le modèle n'a pas de tarif image dédié — dans ce cas
+     * les tokens image sont facturés au tarif `output` (fallback).
+     *
+     * @return array<string, array{input: float, output: float, output_image: float|null, currency: string}>
      */
     public function findAllPricingMap(): array
     {
@@ -59,10 +62,11 @@ class SynapseModelRepository extends ServiceEntityRepository
         $map = [];
 
         foreach ($models as $model) {
-            if (null !== $model->getPricingInput() || null !== $model->getPricingOutput()) {
+            if (null !== $model->getPricingInput() || null !== $model->getPricingOutput() || null !== $model->getPricingOutputImage()) {
                 $map[$model->getModelId()] = [
                     'input' => $model->getPricingInput() ?? 0.0,
                     'output' => $model->getPricingOutput() ?? 0.0,
+                    'output_image' => $model->getPricingOutputImage(),
                     'currency' => $model->getCurrency(),
                 ];
             }

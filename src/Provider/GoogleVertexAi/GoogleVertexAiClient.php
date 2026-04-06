@@ -83,7 +83,9 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         $url = $this->buildVertexUrl(self::VERTEX_URL, $effectiveModel);
         /** @var array<string, mixed>|null $thinkingOverride */
         $thinkingOverride = is_array($options['thinking'] ?? null) ? $options['thinking'] : null;
-        $payload = $this->buildPayload($contents, $tools, $effectiveModel, $thinkingOverride);
+        /** @var array<string, mixed>|null $responseFormat */
+        $responseFormat = is_array($options['response_format'] ?? null) ? $options['response_format'] : null;
+        $payload = $this->buildPayload($contents, $tools, $effectiveModel, $thinkingOverride, $responseFormat);
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
@@ -213,13 +215,18 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         array $contents,
         array $tools = [],
         ?string $model = null,
+        array $options = [],
         array &$debugOut = [],
     ): \Generator {
         $this->applyDynamicConfig();
 
         $effectiveModel = $model ?? $this->model;
         $url = $this->buildVertexUrl(self::VERTEX_STREAM_URL, $effectiveModel);
-        $payload = $this->buildPayload($contents, $tools, $effectiveModel, null);
+        /** @var array<string, mixed>|null $thinkingOverride */
+        $thinkingOverride = is_array($options['thinking'] ?? null) ? $options['thinking'] : null;
+        /** @var array<string, mixed>|null $responseFormat */
+        $responseFormat = is_array($options['response_format'] ?? null) ? $options['response_format'] : null;
+        $payload = $this->buildPayload($contents, $tools, $effectiveModel, $thinkingOverride, $responseFormat);
 
         // Capture les paramètres réellement envoyés (après filtrage par ModelCapabilityRegistry)
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
@@ -328,11 +335,38 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         if (isset($rawChunk['usageMetadata'])) {
             /** @var array<string, mixed> $u */
             $u = is_array($rawChunk['usageMetadata']) ? $rawChunk['usageMetadata'] : [];
+
+            // Somme des tokens par modalité IMAGE (modèles mixtes Gemini type gemini-2.5-flash-image)
+            $imageCompletionTokens = 0;
+            if (is_array($u['candidatesTokensDetails'] ?? null)) {
+                foreach ($u['candidatesTokensDetails'] as $detail) {
+                    if (is_array($detail)
+                        && 'IMAGE' === ($detail['modality'] ?? null)
+                        && is_numeric($detail['tokenCount'] ?? null)
+                    ) {
+                        $imageCompletionTokens += (int) $detail['tokenCount'];
+                    }
+                }
+            }
+            $imagePromptTokens = 0;
+            if (is_array($u['promptTokensDetails'] ?? null)) {
+                foreach ($u['promptTokensDetails'] as $detail) {
+                    if (is_array($detail)
+                        && 'IMAGE' === ($detail['modality'] ?? null)
+                        && is_numeric($detail['tokenCount'] ?? null)
+                    ) {
+                        $imagePromptTokens += (int) $detail['tokenCount'];
+                    }
+                }
+            }
+
             $normalized['usage'] = [
                 'prompt_tokens' => is_numeric($u['promptTokenCount'] ?? null) ? (int) $u['promptTokenCount'] : 0,
                 'completion_tokens' => is_numeric($u['candidatesTokenCount'] ?? null) ? (int) $u['candidatesTokenCount'] : 0,
                 'thinking_tokens' => is_numeric($u['thoughtsTokenCount'] ?? null) ? (int) $u['thoughtsTokenCount'] : 0,
                 'total_tokens' => is_numeric($u['totalTokenCount'] ?? null) ? (int) $u['totalTokenCount'] : 0,
+                'image_completion_tokens' => $imageCompletionTokens,
+                'image_prompt_tokens' => $imagePromptTokens,
             ];
         }
 
@@ -388,11 +422,11 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
                     // Preserve the raw thinking part (contains thoughtSignature required for multi-turn)
                     $rawPartsForHistory[] = $part;
                 } elseif (isset($part['inlineData']) && is_array($part['inlineData'])) {
-                    // Image générée par le modèle (ex: Gemini 2.5 Flash image generation)
+                    // Fichier généré par le modèle (ex: Gemini image generation)
                     $mimeType = is_string($part['inlineData']['mimeType'] ?? null) ? (string) $part['inlineData']['mimeType'] : 'image/png';
-                    $imageData = is_string($part['inlineData']['data'] ?? null) ? (string) $part['inlineData']['data'] : '';
-                    if ('' !== $imageData) {
-                        $normalized['images'][] = ['mime_type' => $mimeType, 'data' => $imageData];
+                    $inlineData = is_string($part['inlineData']['data'] ?? null) ? (string) $part['inlineData']['data'] : '';
+                    if ('' !== $inlineData) {
+                        $normalized['attachments'][] = ['mime_type' => $mimeType, 'data' => $inlineData];
                     }
                 } else {
                     $textPart = $part['text'] ?? null;
@@ -775,6 +809,9 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
      * @param array<int, array<string, mixed>> $contents
      * @param array<int, array<string, mixed>> $tools
      * @param array<string, mixed>|null $thinkingConfigOverride
+     * @param array<string, mixed>|null $responseFormat Forme canonique
+     *                                                  (voir {@see \ArnaudMoncondhuy\SynapseCore\Engine\ResponseFormatNormalizer}).
+     *                                                  Convertie via {@see toGeminiSchema()} avant injection dans `generationConfig.responseSchema`.
      *
      * @return array<string, mixed>
      */
@@ -784,6 +821,7 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         string $effectiveModel,
         /* @var array<string, mixed>|null $thinkingConfigOverrideVar */
         ?array $thinkingConfigOverride,
+        ?array $responseFormat = null,
     ): array {
         $caps = $this->capabilityRegistry->getCapabilities($effectiveModel);
 
@@ -809,6 +847,16 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         ];
 
         $generationConfig = $this->buildGenerationConfig($effectiveModel, $thinkingConfigOverride);
+
+        // Structured outputs (Gemini responseSchema).
+        // Le normaliseur côté ChatService garantit la forme canonique.
+        if (null !== $responseFormat && isset($responseFormat['json_schema']['schema']) && is_array($responseFormat['json_schema']['schema'])) {
+            /** @var array<string, mixed> $schema */
+            $schema = $responseFormat['json_schema']['schema'];
+            $generationConfig['responseMimeType'] = 'application/json';
+            $generationConfig['responseSchema'] = $this->toGeminiSchema($schema);
+        }
+
         if (!empty($generationConfig)) {
             $payload['generationConfig'] = $generationConfig;
         }
@@ -836,6 +884,55 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         }
 
         return $payload;
+    }
+
+    /**
+     * Convertit un schéma JSON Schema standard (format OpenAI / bundle) au format attendu
+     * par Gemini (`generationConfig.responseSchema`).
+     *
+     * Différences principales :
+     * - Les types doivent être en MAJUSCULES (`OBJECT`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, `ARRAY`).
+     * - Les clés `additionalProperties`, `$schema`, `strict`, `name` sont rejetées par l'API (400 Bad Request).
+     * - La conversion est récursive : descend dans `properties.*` et `items`.
+     *
+     * @param array<string, mixed> $schema
+     *
+     * @return array<string, mixed>
+     */
+    private function toGeminiSchema(array $schema): array
+    {
+        // Clés qui font planter l'API Gemini si elles sont présentes.
+        unset(
+            $schema['additionalProperties'],
+            $schema['$schema'],
+            $schema['strict'],
+            $schema['name'],
+        );
+
+        if (isset($schema['type']) && is_string($schema['type'])) {
+            $schema['type'] = strtoupper($schema['type']);
+        }
+
+        if (isset($schema['properties']) && is_array($schema['properties'])) {
+            $converted = [];
+            foreach ($schema['properties'] as $propName => $propSchema) {
+                if (is_array($propSchema)) {
+                    /* @var array<string, mixed> $propSchema */
+                    $converted[$propName] = $this->toGeminiSchema($propSchema);
+                } else {
+                    $converted[$propName] = $propSchema;
+                }
+            }
+            $schema['properties'] = $converted;
+        }
+
+        if (isset($schema['items']) && is_array($schema['items'])) {
+            /** @var array<string, mixed> $itemsSchema */
+            $itemsSchema = $schema['items'];
+            $schema['items'] = $this->toGeminiSchema($itemsSchema);
+        }
+
+        return $schema;
     }
 
     /**

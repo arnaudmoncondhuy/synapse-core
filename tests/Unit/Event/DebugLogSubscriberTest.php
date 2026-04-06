@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\AgentContext;
 use ArnaudMoncondhuy\SynapseCore\Contract\SynapseDebugLoggerInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\DebugLogSubscriber;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptCaptureEvent;
@@ -92,5 +93,53 @@ class DebugLogSubscriberTest extends TestCase
         $this->subscriber->onExchangeCompleted(new SynapseExchangeCompletedEvent(
             'dbg_test', 'test', 'test', new TokenUsage(10, 5), [], true, [], []
         ));
+    }
+
+    public function testPropagatesWorkflowRunIdFromAgentContextToMetadata(): void
+    {
+        // Phase 7 : vérifier que AgentContext::$workflowRunId est bien copié dans
+        // $metadata passé au logger, pour atterrir dans synapse_debug_log.workflow_run_id.
+        $config = SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test']);
+        $this->subscriber->onPrePrompt(new PromptCaptureEvent('msg', [], ['contents' => []], $config));
+
+        $context = AgentContext::root(userId: 'user-42', origin: 'workflow')
+            ->withWorkflowRunId('wf-run-abc-123');
+
+        $capturedMetadata = null;
+        $this->debugLogger->expects($this->once())
+            ->method('logExchange')
+            ->willReturnCallback(function ($id, $metadata, $payload) use (&$capturedMetadata): void {
+                $capturedMetadata = $metadata;
+            });
+
+        $this->subscriber->onExchangeCompleted(new SynapseExchangeCompletedEvent(
+            'dbg_test', 'test', 'test', new TokenUsage(5, 3), [], true, [], [], $context
+        ));
+
+        $this->assertIsArray($capturedMetadata);
+        $this->assertArrayHasKey('workflow_run_id', $capturedMetadata);
+        $this->assertSame('wf-run-abc-123', $capturedMetadata['workflow_run_id']);
+    }
+
+    public function testWorkflowRunIdAbsentWhenAgentContextIsNull(): void
+    {
+        // Sanity check : si aucun agent context, la clé workflow_run_id ne doit pas
+        // être posée (pas de fuite, pas de valeur fantôme).
+        $config = SynapseRuntimeConfig::fromArray(['model' => 'test', 'provider' => 'test']);
+        $this->subscriber->onPrePrompt(new PromptCaptureEvent('msg', [], ['contents' => []], $config));
+
+        $capturedMetadata = null;
+        $this->debugLogger->expects($this->once())
+            ->method('logExchange')
+            ->willReturnCallback(function ($id, $metadata, $payload) use (&$capturedMetadata): void {
+                $capturedMetadata = $metadata;
+            });
+
+        $this->subscriber->onExchangeCompleted(new SynapseExchangeCompletedEvent(
+            'dbg_test', 'test', 'test', new TokenUsage(5, 3), [], true, [], [], null
+        ));
+
+        $this->assertIsArray($capturedMetadata);
+        $this->assertArrayNotHasKey('workflow_run_id', $capturedMetadata);
     }
 }

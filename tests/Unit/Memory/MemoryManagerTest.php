@@ -124,7 +124,11 @@ class MemoryManagerTest extends TestCase
             )
             ->willReturn([]);
 
-        $this->buildManager(vectorStore: $vectorStore)->recall('query', 'user-1', 'conv-2', 5);
+        // Repository must report memories exist for the user, otherwise recall() short-circuits
+        $repository = $this->createStub(SynapseVectorMemoryRepository::class);
+        $repository->method('count')->willReturn(1);
+
+        $this->buildManager(vectorStore: $vectorStore, repository: $repository)->recall('query', 'user-1', 'conv-2', 5);
     }
 
     public function testRecallWithoutFiltersPassesEmptyFilters(): void
@@ -229,11 +233,12 @@ class MemoryManagerTest extends TestCase
         ?EmbeddingService $embeddingService = null,
         ?VectorStoreInterface $vectorStore = null,
         ?EntityManagerInterface $em = null,
+        ?SynapseVectorMemoryRepository $repository = null,
     ): MemoryManager {
         return new MemoryManager(
             embeddingService: $embeddingService ?? $this->embeddingService,
             vectorStore: $vectorStore ?? $this->vectorStore,
-            repository: $this->repository,
+            repository: $repository ?? $this->repository,
             em: $em ?? $this->em,
         );
     }

@@ -37,10 +37,10 @@ class LibsodiumEncryptionService implements EncryptionServiceInterface
             $key = base64_decode(substr($key, 7));
         }
 
-        // Si la clé n'a pas la bonne longueur, on la hash en SHA-256 (32 bytes)
+        // Si la clé n'a pas la bonne longueur, dériver via HKDF (RFC 5869)
         $this->key = self::KEY_LENGTH === mb_strlen($key, '8bit')
             ? $key
-            : hash('sha256', $key, true);
+            : hash_hkdf('sha256', $key, self::KEY_LENGTH, 'synapse-encryption');
     }
 
     public function encrypt(string $plaintext): string
