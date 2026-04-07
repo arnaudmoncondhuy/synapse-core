@@ -45,11 +45,14 @@ class OvhImageGenerationClient implements ImageGenerationClientInterface
     }
 
     /**
+     * Génère une image via OVH Stable Diffusion XL.
+     *
+     * Note : l'API OVH ne supporte pas de paramètre de taille (size/width/height) —
+     * la résolution est fixe côté serveur. Seuls prompt, model et negative_prompt
+     * sont pris en compte (cf. openapi.json de l'endpoint OVH).
+     *
      * @param array{
      *     model?: string,
-     *     width?: int,
-     *     height?: int,
-     *     n?: int,
      *     negative_prompt?: string
      * } $options
      *
@@ -66,10 +69,6 @@ class OvhImageGenerationClient implements ImageGenerationClientInterface
             'prompt' => $prompt,
             'response_format' => 'b64_json',
         ];
-
-        if (isset($options['width'], $options['height'])) {
-            $payload['size'] = $options['width'].'x'.$options['height'];
-        }
 
         if (!empty($options['negative_prompt'])) {
             $payload['negative_prompt'] = $options['negative_prompt'];
