@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Engine;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallRequestedEvent;
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseToolCallStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Timing\SynapseProfiler;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -49,6 +50,15 @@ class ToolExecutor
 
         foreach ($modelToolCalls as $tc) {
             $toolName = (string) $tc['function']['name'];
+            $decodedArgs = json_decode(is_string($tc['function']['arguments']) ? $tc['function']['arguments'] : '', true);
+            $toolLabel = $this->toolRegistry?->getLabel($toolName) ?? $toolName;
+            $this->dispatcher->dispatch(new SynapseToolCallStartedEvent(
+                $toolName,
+                $toolLabel,
+                is_array($decodedArgs) ? $decodedArgs : [],
+                (string) $tc['id'],
+                $turn,
+            ));
             $this->profiler->start('Tool', 'Tool Execution: '.$toolName, "Exécution locale d'une fonction (outil) demandée par le LLM.");
 
             $toolResult = $toolResults[$toolName] ?? null;

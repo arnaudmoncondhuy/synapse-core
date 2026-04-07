@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseMultiTurnIterationEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\StructuredOutputParseException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
@@ -130,6 +131,20 @@ class MultiTurnExecutor
             // ── PROCESS TOOL CALLS ──
             if (!empty($modelToolCalls)) {
                 $this->toolExecutor->execute($prompt, $modelToolCalls, $turn);
+
+                // Dispatch iteration event for transparency sidebar
+                $toolSummary = array_map(fn (array $tc) => [
+                    'name' => (string) $tc['function']['name'],
+                    'args_summary' => mb_substr((string) json_encode(json_decode(is_string($tc['function']['arguments'] ?? null) ? $tc['function']['arguments'] : '{}', true)), 0, 100),
+                ], $modelToolCalls);
+                $this->dispatcher->dispatch(new SynapseMultiTurnIterationEvent(
+                    $turn,
+                    $maxTurns,
+                    $toolSummary,
+                    $chunkResult->usage->toArray(),
+                    true,
+                ));
+
                 // Continuer la boucle : le LLM reçoit les résultats et peut enchaîner
                 continue;
             }

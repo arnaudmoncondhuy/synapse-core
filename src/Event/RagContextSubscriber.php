@@ -116,6 +116,20 @@ class RagContextSubscriber implements EventSubscriberInterface
         ];
         $prompt['metadata'] = $metadata;
 
+        // Dispatch transparency event for sidebar
+        if (!empty($results) && null !== $this->dispatcher) {
+            $ragTransparencyResults = array_values(array_map(fn ($r) => [
+                'source' => $r['sourceSlug'],
+                'score' => $r['score'],
+                'content_preview' => mb_substr($r['content'], 0, 80),
+            ], $results));
+            $this->dispatcher->dispatch(new SynapseRagResultsEvent(
+                $ragTransparencyResults,
+                \count($results),
+                (int) (mb_strlen(implode('', array_column($results, 'content'))) / 4),
+            ));
+        }
+
         if (empty($results)) {
             $event->setPrompt($prompt);
 

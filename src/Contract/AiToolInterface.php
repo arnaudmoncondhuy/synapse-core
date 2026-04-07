@@ -43,6 +43,17 @@ interface AiToolInterface
     public function getName(): string;
 
     /**
+     * Retourne un libellé lisible pour l'interface utilisateur.
+     *
+     * Implémentez cette méthode pour fournir un nom plus compréhensible
+     * (ex: "Proposer un souvenir" au lieu de "propose_to_remember").
+     * Si non implémenté, getName() est utilisé comme fallback.
+     *
+     * @return string le libellé affiché dans l'UI (admin, panneau de transparence…)
+     */
+    public function getLabel(): string;
+
+    /**
      * Retourne une description de la fonction de l'outil.
      *
      * Cette description est **CRITIQUE** : elle aide le modèle à décider QUAND utiliser cet outil.

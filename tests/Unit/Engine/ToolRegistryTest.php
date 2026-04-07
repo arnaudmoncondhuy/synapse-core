@@ -14,11 +14,13 @@ class ToolRegistryTest extends TestCase
     {
         $tool1 = $this->createMock(AiToolInterface::class);
         $tool1->method('getName')->willReturn('calc');
+        $tool1->method('getLabel')->willReturn('Calculatrice');
         $tool1->method('getDescription')->willReturn('Calculator');
         $tool1->method('getInputSchema')->willReturn(['type' => 'object']);
 
         $tool2 = $this->createMock(AiToolInterface::class);
         $tool2->method('getName')->willReturn('search');
+        $tool2->method('getLabel')->willReturn('search');
 
         $registry = new ToolRegistry([$tool1, $tool2]);
 
@@ -28,6 +30,11 @@ class ToolRegistryTest extends TestCase
 
         $this->assertSame($tool1, $registry->get('calc'));
         $this->assertCount(2, $registry->getTools());
+
+        // Test getLabel
+        $this->assertSame('Calculatrice', $registry->getLabel('calc'));
+        $this->assertSame('search', $registry->getLabel('search'));
+        $this->assertSame('unknown', $registry->getLabel('unknown'));
 
         $definitions = $registry->getDefinitions(['calc']);
         $this->assertCount(1, $definitions);

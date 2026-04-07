@@ -135,6 +135,18 @@ class MemoryContextSubscriber implements EventSubscriberInterface
         ];
         $prompt['metadata'] = $metadata;
 
+        // Dispatch transparency event for sidebar
+        if (!empty($relevant) && null !== $this->dispatcher) {
+            $memoryTransparencyResults = array_map(fn ($m) => [
+                'score' => $m['score'],
+                'content_preview' => mb_substr($m['content'], 0, 80),
+            ], array_values($relevant));
+            $this->dispatcher->dispatch(new SynapseMemoryResultsEvent(
+                $memoryTransparencyResults,
+                \count($relevant),
+            ));
+        }
+
         if (empty($relevant)) {
             $event->setPrompt($prompt);
 

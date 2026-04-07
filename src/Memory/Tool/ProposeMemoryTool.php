@@ -21,6 +21,11 @@ class ProposeMemoryTool implements AiToolInterface
         return 'propose_to_remember';
     }
 
+    public function getLabel(): string
+    {
+        return 'Proposer un souvenir';
+    }
+
     public function getDescription(): string
     {
         return "Propose de mémoriser un fait important pour l'utilisateur. ".

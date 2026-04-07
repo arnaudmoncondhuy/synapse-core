@@ -54,6 +54,17 @@ class ToolRegistry
     }
 
     /**
+     * Retourne le libellé lisible d'un outil (pour l'UI).
+     * Utilise getLabel() si disponible, sinon getName() en fallback.
+     */
+    public function getLabel(string $name): string
+    {
+        $tool = $this->tools[$name] ?? null;
+
+        return $tool?->getLabel() ?? $name;
+    }
+
+    /**
      * Retourne les définitions des outils au format standard (OpenAI-like).
      * Prêt à être envoyé au LLM via ChatService.
      *
