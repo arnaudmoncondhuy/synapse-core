@@ -131,6 +131,18 @@ abstract class AbstractAgent implements AgentInterface
     }
 
     /**
+     * Indique si la Directive Fondamentale (master prompt) doit être injectée.
+     *
+     * Par défaut `false` pour les agents code : l'agent est autonome, son
+     * system prompt est complet. Surchargez à `true` si votre agent est
+     * conversationnel et doit hériter des règles de sécurité de l'app hôte.
+     */
+    public function useMasterPrompt(): bool
+    {
+        return false;
+    }
+
+    /**
      * Emoji affiché dans l'admin et les debug logs.
      */
     public function getEmoji(): string

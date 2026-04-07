@@ -43,9 +43,10 @@ class MasterPromptSubscriber implements EventSubscriberInterface
 
         $options = $event->getOptions();
 
-        // Un agent avec son propre system prompt n'est pas soumis à la directive fondamentale :
-        // ses instructions sont autonomes et complètes (ex: générateur d'images).
-        if (!empty($options['_agent_has_custom_prompt'])) {
+        // Les agents code ne reçoivent pas la directive fondamentale par défaut.
+        // Ils peuvent opt-in via useMasterPrompt() = true.
+        // Les agents DB la reçoivent toujours.
+        if (!empty($options['_skip_master_prompt'])) {
             return;
         }
 

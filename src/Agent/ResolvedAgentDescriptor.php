@@ -38,6 +38,7 @@ final class ResolvedAgentDescriptor
         public readonly ?string $toneKey,
         public readonly string $emoji,
         public readonly string $source,
+        public readonly bool $useMasterPrompt = true,
     ) {
     }
 
@@ -55,6 +56,7 @@ final class ResolvedAgentDescriptor
             toneKey: $entity->getTone()?->getKey(),
             emoji: $entity->getEmoji(),
             source: 'db',
+            useMasterPrompt: true,
         );
     }
 
@@ -78,6 +80,7 @@ final class ResolvedAgentDescriptor
                 toneKey: $agent->getToneKey(),
                 emoji: $agent->getEmoji(),
                 source: 'code',
+                useMasterPrompt: $agent->useMasterPrompt(),
             );
         }
 
@@ -91,6 +94,7 @@ final class ResolvedAgentDescriptor
             toneKey: null,
             emoji: "\u{1F916}",
             source: 'code',
+            useMasterPrompt: false,
         );
     }
 }
