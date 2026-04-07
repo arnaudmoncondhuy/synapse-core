@@ -107,6 +107,11 @@ final class AgentTestRunnerTest extends TestCase
                 return 'throwing_agent';
             }
 
+            public function getLabel(): string
+            {
+                return 'throwing_agent';
+            }
+
             public function getDescription(): string
             {
                 return 'test double that throws';
@@ -193,6 +198,11 @@ final class AgentTestRunnerTest extends TestCase
             }
 
             public function getName(): string
+            {
+                return 'agent_double';
+            }
+
+            public function getLabel(): string
             {
                 return 'agent_double';
             }

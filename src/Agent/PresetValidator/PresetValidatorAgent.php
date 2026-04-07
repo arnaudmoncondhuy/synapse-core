@@ -38,6 +38,11 @@ class PresetValidatorAgent implements AgentInterface
         return 'preset_validator';
     }
 
+    public function getLabel(): string
+    {
+        return 'Validateur de preset LLM';
+    }
+
     public function getDescription(): string
     {
         return 'Teste un preset LLM et produit un rapport d\'analyse de conformité.';

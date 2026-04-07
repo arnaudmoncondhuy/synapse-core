@@ -48,6 +48,19 @@ interface AgentInterface
     public function getName(): string;
 
     /**
+     * Libellé court lisible par un humain (titre de la card admin, etc.).
+     *
+     * Différent de `getName()` (clé technique snake_case) : ce champ est affiché
+     * dans l'interface d'administration et peut contenir des espaces, majuscules,
+     * caractères accentués, etc.
+     *
+     * {@see \ArnaudMoncondhuy\SynapseCore\Agent\AbstractAgent} fournit une implémentation
+     * par défaut qui convertit le nom snake_case en Title Case.
+     * Surchargez cette méthode pour un libellé plus précis (ex : "Validateur de preset LLM").
+     */
+    public function getLabel(): string;
+
+    /**
      * Description en langage naturel de l'agent.
      *
      * Utilisée pour l'affichage dans l'administration et pour aider à l'auto-documentation

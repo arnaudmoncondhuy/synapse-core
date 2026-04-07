@@ -72,6 +72,11 @@ final class CodeAgentRegistryTest extends TestCase
                 return $this->name;
             }
 
+            public function getLabel(): string
+            {
+                return $this->name;
+            }
+
             public function getDescription(): string
             {
                 return 'test agent';

@@ -64,6 +64,11 @@ class ArchitectAgent implements AgentInterface
         return 'architect';
     }
 
+    public function getLabel(): string
+    {
+        return 'Architecte IA';
+    }
+
     public function getDescription(): string
     {
         return 'Génère des définitions d\'agents ou de workflows à partir d\'une description en langage naturel.';

@@ -34,6 +34,11 @@ final class WorkflowDelegatingAgent implements AgentInterface
         return $this->agent->getKey();
     }
 
+    public function getLabel(): string
+    {
+        return $this->agent->getName();
+    }
+
     public function getDescription(): string
     {
         return $this->agent->getDescription();

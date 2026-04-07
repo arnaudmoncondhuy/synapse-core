@@ -153,6 +153,11 @@ final class WorkflowRunnerTest extends TestCase
                 return $this->name;
             }
 
+            public function getLabel(): string
+            {
+                return $this->name;
+            }
+
             public function getDescription(): string
             {
                 return 'spy agent';

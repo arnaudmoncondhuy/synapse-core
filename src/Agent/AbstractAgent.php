@@ -75,6 +75,19 @@ abstract class AbstractAgent implements AgentInterface
     }
 
     /**
+     * Libellé lisible par un humain — conversion snake_case → Title Case par défaut.
+     *
+     * Surchargez pour un libellé plus précis :
+     * ```php
+     * public function getLabel(): string { return 'Générateur d\'images Flash Info'; }
+     * ```
+     */
+    public function getLabel(): string
+    {
+        return ucwords(str_replace('_', ' ', $this->getName()));
+    }
+
+    /**
      * Logique métier de l'agent — à implémenter dans chaque sous-classe.
      *
      * Le contexte est garanti non-null ici. Utilisez-le pour :

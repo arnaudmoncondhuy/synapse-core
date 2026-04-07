@@ -33,6 +33,11 @@ final class ConfiguredAgent implements AgentInterface
         return $this->entity->getKey();
     }
 
+    public function getLabel(): string
+    {
+        return $this->entity->getName();
+    }
+
     public function getDescription(): string
     {
         return $this->entity->getDescription();

@@ -69,6 +69,11 @@ final class MultiAgent implements AgentInterface
         return 'workflow:'.$this->workflow->getWorkflowKey();
     }
 
+    public function getLabel(): string
+    {
+        return $this->workflow->getName();
+    }
+
     public function getDescription(): string
     {
         return $this->workflow->getDescription() ?? $this->workflow->getName();
