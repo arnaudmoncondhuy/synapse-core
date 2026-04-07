@@ -6,20 +6,19 @@ namespace ArnaudMoncondhuy\SynapseCore\Service;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ImageGenerationClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\GeneratedImage;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
- * Service de génération d'image standalone.
+ * Service interne d'orchestration des clients image dédiés (API non-LLM).
  *
- * Orchestre la sélection du client image et la génération.
- * Utilisable par l'app hôte indépendamment du chat.
- *
- * Usage :
- *   $images = $imageGenerationService->generate('Un chien sur la lune', 'my_provider');
- *   foreach ($images as $image) {
- *       file_put_contents('output.png', base64_decode($image->data));
- *   }
+ * @internal Ce service est utilisé en interne par {@see \ArnaudMoncondhuy\SynapseCore\Engine\ChatService}
+ *           pour router les modèles image-only (ex: Stable Diffusion via OVH) vers le bon client.
+ *           Les agents de l'app hôte ne doivent PAS l'utiliser directement — ils doivent passer
+ *           par {@see \ArnaudMoncondhuy\SynapseCore\Engine\ChatService::ask()} qui gère
+ *           automatiquement le routing vers le bon provider (LLM ou image dédié).
  */
+#[Autoconfigure(public: false)]
 class ImageGenerationService
 {
     /** @var array<string, ImageGenerationClientInterface> */
