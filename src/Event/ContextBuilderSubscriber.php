@@ -85,8 +85,11 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
                     }
                 }
 
-                // Surcharge le prompt système par celui de l'agent (si non vide)
+                // Surcharge le prompt système par celui de l'agent (si non vide).
+                // Le flag _agent_has_custom_prompt empêche le MasterPromptSubscriber
+                // d'écraser le prompt de l'agent avec la directive fondamentale.
                 if ('' !== $descriptor->systemPrompt) {
+                    $options['_agent_has_custom_prompt'] = true;
                     $systemContent = $descriptor->systemPrompt;
 
                     // Fusionner le tone effectif s'il existe (Chat > Agent)

@@ -41,9 +41,16 @@ class MasterPromptSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $options = $event->getOptions();
+
+        // Un agent avec son propre system prompt n'est pas soumis à la directive fondamentale :
+        // ses instructions sont autonomes et complètes (ex: générateur d'images).
+        if (!empty($options['_agent_has_custom_prompt'])) {
+            return;
+        }
+
         // Respecter la règle stateless
         $masterPromptStateless = $config->masterPromptStateless;
-        $options = $event->getOptions();
         $isStateless = isset($options['stateless']) && true === $options['stateless'];
 
         if ($isStateless && false === $masterPromptStateless) {
