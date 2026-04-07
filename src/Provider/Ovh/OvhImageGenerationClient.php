@@ -60,17 +60,16 @@ class OvhImageGenerationClient implements ImageGenerationClientInterface
         [$apiKey, $endpoint] = $this->loadCredentials();
 
         $model = $options['model'] ?? self::DEFAULT_MODEL;
-        $width = $options['width'] ?? 1024;
-        $height = $options['height'] ?? 1024;
-
-        $size = "{$width}x{$height}";
 
         $payload = [
             'model' => $model,
             'prompt' => $prompt,
-            'size' => $size,
             'response_format' => 'b64_json',
         ];
+
+        if (isset($options['width'], $options['height'])) {
+            $payload['size'] = $options['width'].'x'.$options['height'];
+        }
 
         if (!empty($options['negative_prompt'])) {
             $payload['negative_prompt'] = $options['negative_prompt'];
