@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\CodeAgentRegistry;
+use ArnaudMoncondhuy\SynapseCore\Agent\ResolvedAgentDescriptor;
 use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
@@ -31,6 +33,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
         private AgentRegistry $agentRegistry,
+        private CodeAgentRegistry $codeAgentRegistry,
         private SynapseModelPresetRepository $modelPresetRepository,
         private ToneRegistry $toneRegistry,
         private SynapseProfiler $profiler,
@@ -68,44 +71,56 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // ── 2. METIER (Agent) ──
+        // Résolution unifiée : DB d'abord (admin a priorité), puis agents code en fallback.
         $effectiveToneKey = $toneKey;
         if (isset($options['agent']) && is_string($options['agent'])) {
-            $agent = $this->agentRegistry->get($options['agent']);
-            if (null !== $agent && $agent->isActive()) {
-                // Si pas de ton spécifié dans le chat (null ou vide), on utilise celui de l'agent
-                if (empty($effectiveToneKey) && null !== $agent->getTone() && $agent->getTone()->isActive()) {
-                    $effectiveToneKey = $agent->getTone()->getKey();
-                }
+            $descriptor = $this->resolveAgentDescriptor($options['agent']);
 
-                // Surcharge le prompt système par celui de l'agent
-                $systemContent = $agent->getSystemPrompt();
-
-                // Fusionner le tone effectif s'il existe (Chat > Agent)
-                if (null !== $effectiveToneKey) {
-                    $tonePrompt = $this->toneRegistry->getSystemPrompt($effectiveToneKey);
+            if (null !== $descriptor) {
+                // Ton de l'agent (sauf si déjà spécifié par le chat)
+                if (empty($effectiveToneKey) && null !== $descriptor->toneKey) {
+                    $tonePrompt = $this->toneRegistry->getSystemPrompt($descriptor->toneKey);
                     if (!empty($tonePrompt)) {
-                        $systemContent .= "\n\n---\n\n### 🎭 TONE INSTRUCTIONS\n";
-                        $systemContent .= "IMPORTANT : Les instructions suivantes s'appliquent UNIQUEMENT à ton TON et ton STYLE d'expression.\n";
-                        $systemContent .= "Elles n'affectent PAS tes capacités de raisonnement, ta logique ou le respect strict des contraintes techniques.\n\n";
-                        $systemContent .= $tonePrompt;
+                        $effectiveToneKey = $descriptor->toneKey;
                     }
                 }
-                $systemMessage = ['role' => 'system', 'content' => $systemContent];
 
-                // Surcharge la config technique par le PresetModel de l'agent (s'il y en a un)
-                if (null !== $agent->getModelPreset()) {
-                    $config = $this->configProvider->getConfigForPreset($agent->getModelPreset());
-                    // On s'assure de ré-injecter le ton actif dans la nouvelle config
-                    if (null !== $effectiveToneKey && '' !== $effectiveToneKey) {
-                        $config = $config->withActiveTone($effectiveToneKey);
+                // Surcharge le prompt système par celui de l'agent (si non vide)
+                if ('' !== $descriptor->systemPrompt) {
+                    $systemContent = $descriptor->systemPrompt;
+
+                    // Fusionner le tone effectif s'il existe (Chat > Agent)
+                    if (null !== $effectiveToneKey) {
+                        $tonePrompt = $this->toneRegistry->getSystemPrompt($effectiveToneKey);
+                        if (!empty($tonePrompt)) {
+                            $systemContent .= "\n\n---\n\n### 🎭 TONE INSTRUCTIONS\n";
+                            $systemContent .= "IMPORTANT : Les instructions suivantes s'appliquent UNIQUEMENT à ton TON et ton STYLE d'expression.\n";
+                            $systemContent .= "Elles n'affectent PAS tes capacités de raisonnement, ta logique ou le respect strict des contraintes techniques.\n\n";
+                            $systemContent .= $tonePrompt;
+                        }
+                    }
+                    $systemMessage = ['role' => 'system', 'content' => $systemContent];
+                }
+
+                // Surcharge la config technique par le preset de l'agent (s'il y en a un)
+                if (null !== $descriptor->presetKey) {
+                    $preset = ('db' === $descriptor->source)
+                        ? $this->agentRegistry->get($descriptor->name)?->getModelPreset()
+                        : $this->modelPresetRepository->findByKey($descriptor->presetKey);
+
+                    if (null !== $preset) {
+                        $config = $this->configProvider->getConfigForPreset($preset);
+                        if (null !== $effectiveToneKey && '' !== $effectiveToneKey) {
+                            $config = $config->withActiveTone($effectiveToneKey);
+                        }
                     }
                 }
-                $config = $config->withAgentInfo($agent->getId(), $agent->getName(), $agent->getEmoji());
+                $config = $config->withAgentInfo($descriptor->id, $descriptor->name, $descriptor->emoji);
 
                 // Injecter les outils autorisés de l'agent
                 // (sauf si le développeur a déjà défini tools_override)
-                if (!isset($options['tools_override'])) {
-                    $options['tools_override'] = $agent->getAllowedToolNames();
+                if (!isset($options['tools_override']) && [] !== $descriptor->allowedToolNames) {
+                    $options['tools_override'] = $descriptor->allowedToolNames;
                 }
             }
         }
@@ -125,8 +140,8 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             if (null !== $overridePreset) {
                 $config = $this->configProvider->getConfigForPreset($overridePreset);
                 // Conserver l'ID de l'agent pour le tracking si on avait un agent
-                if (isset($options['agent']) && isset($agent)) {
-                    $config = $config->withAgentInfo($agent->getId(), $agent->getName(), $agent->getEmoji());
+                if (isset($options['agent']) && isset($descriptor)) {
+                    $config = $config->withAgentInfo($descriptor->id, $descriptor->name, $descriptor->emoji);
                 }
             }
         }
@@ -193,6 +208,28 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         $event->setPrompt($prompt);
         $event->setConfig($config);
         $this->profiler->stop('Context', 'Context Builder CPU', 0);
+    }
+
+    /**
+     * Résout un agent par sa clé : DB d'abord (admin override), puis code agent en fallback.
+     *
+     * Retourne null si l'agent n'existe dans aucun registre.
+     */
+    private function resolveAgentDescriptor(string $agentKey): ?ResolvedAgentDescriptor
+    {
+        // 1. DB agent (admin a priorité — peut overrider un agent code)
+        $dbAgent = $this->agentRegistry->get($agentKey);
+        if (null !== $dbAgent && $dbAgent->isActive()) {
+            return ResolvedAgentDescriptor::fromEntity($dbAgent);
+        }
+
+        // 2. Code agent (fallback)
+        $codeAgent = $this->codeAgentRegistry->get($agentKey);
+        if (null !== $codeAgent) {
+            return ResolvedAgentDescriptor::fromCodeAgent($codeAgent);
+        }
+
+        return null;
     }
 
     /**

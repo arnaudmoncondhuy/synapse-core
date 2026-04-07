@@ -11,44 +11,43 @@ use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
  *
  * ## Pourquoi étendre cette classe plutôt qu'implémenter AgentInterface directement ?
  *
- * `AgentInterface::call()` accepte `$options['context']` de façon optionnelle pour
- * rester compatible avec `symfony/ai`. En pratique, un agent sans `AgentContext` perd :
- * - La traçabilité (requestId, userId, debug logs)
- * - La protection contre les boucles infinies (profondeur max)
- * - Le suivi de budget tokens
+ * 1. **Contexte obligatoire** : `call()` est `final` et exige un {@see AgentContext}.
+ * 2. **Pipeline-aware** : les méthodes `getSystemPrompt()`, `getAllowedToolNames()`,
+ *    `getPresetKey()`, `getToneKey()`, `getEmoji()` sont lues par le pipeline
+ *    ({@see \ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber}) pour injecter
+ *    automatiquement le prompt, les outils et le preset — même traitement qu'un agent DB.
+ * 3. **Helper `buildAskOptions()`** : construit les options à passer à `ChatService::ask()`
+ *    avec l'identification de l'agent (traçabilité, coûts, debug).
  *
- * Cette classe rend le contexte **obligatoire** via un `call()` final qui délègue
- * à la méthode `execute()` que l'implémentation doit définir.
- *
- * ## Usage correct (app hôte)
+ * ## Usage (app hôte)
  *
  * ```php
  * final class MonAgent extends AbstractAgent
  * {
  *     public function getName(): string { return 'mon_agent'; }
- *     public function getDescription(): string { return '...'; }
+ *     public function getDescription(): string { return 'Mon agent.'; }
+ *
+ *     public function getSystemPrompt(): string
+ *     {
+ *         return 'Tu es un assistant spécialisé dans...';
+ *     }
  *
  *     protected function execute(Input $input, AgentContext $context): Output
  *     {
- *         // Logique métier ici
+ *         $result = $this->chatService->ask(
+ *             $input->getMessage(),
+ *             $this->buildAskOptions(['stateless' => true]),
+ *         );
+ *         return Output::fromChatServiceResult($result);
  *     }
  * }
  * ```
  *
- * ## Invocation correcte (toujours via AgentResolver)
+ * ## Mode orchestrateur
  *
- * ```php
- * $ctx   = $this->agentResolver->createRootContext(userId: $user->getUserIdentifier());
- * $agent = $this->agentResolver->resolve('mon_agent', $ctx);
- * $out   = $agent->call(Input::ofMessage('…'), ['context' => $ctx]);
- * ```
- *
- * ## Ce que cette classe ne peut PAS bloquer
- *
- * L'injection directe du service PHP reste possible côté Symfony. Cette classe
- * ne peut donc que lever une exception à l'exécution si `call()` est appelé sans
- * contexte. La protection à la compilation nécessiterait un analyseur statique
- * (PHPStan custom rule).
+ * Un agent qui gère son propre prompt (ex: {@see PresetValidator\PresetValidatorAgent})
+ * laisse `getSystemPrompt()` retourner `''` — le pipeline ne touche pas au prompt.
+ * L'agent reste tracé (coûts, debug) mais contrôle entièrement ce qu'il envoie au LLM.
  */
 abstract class AbstractAgent implements AgentInterface
 {
@@ -74,25 +73,111 @@ abstract class AbstractAgent implements AgentInterface
         return $this->execute($input, $context);
     }
 
+    // ─── Pipeline-aware : propriétés lues par ContextBuilderSubscriber ─────
+
+    /**
+     * Prompt système injecté par le pipeline quand cet agent est invoqué.
+     *
+     * Retourne `''` par défaut (mode orchestrateur : le pipeline ne touche pas au prompt).
+     * Surchargez pour définir le comportement de l'agent :
+     *
+     * ```php
+     * public function getSystemPrompt(): string
+     * {
+     *     return 'Tu es un agent expert en analyse de documents...';
+     * }
+     * ```
+     */
+    public function getSystemPrompt(): string
+    {
+        return '';
+    }
+
+    /**
+     * Noms des outils (function calling) autorisés pour cet agent.
+     *
+     * Retourne `[]` par défaut = tous les outils disponibles.
+     * Surchargez pour restreindre :
+     *
+     * ```php
+     * public function getAllowedToolNames(): array { return ['web_search', 'calculator']; }
+     * ```
+     *
+     * @return list<string>
+     */
+    public function getAllowedToolNames(): array
+    {
+        return [];
+    }
+
+    /**
+     * Clé du preset LLM à utiliser (configuré dans l'admin Synapse).
+     *
+     * Retourne `null` par défaut = utilise le preset actif global.
+     */
+    public function getPresetKey(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Clé du ton de réponse à appliquer.
+     *
+     * Retourne `null` par défaut = pas de ton spécifique.
+     */
+    public function getToneKey(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Emoji affiché dans l'admin et les debug logs.
+     */
+    public function getEmoji(): string
+    {
+        return "\u{1F916}";
+    }
+
     /**
      * Libellé lisible par un humain — conversion snake_case → Title Case par défaut.
-     *
-     * Surchargez pour un libellé plus précis :
-     * ```php
-     * public function getLabel(): string { return 'Générateur d\'images Flash Info'; }
-     * ```
      */
     public function getLabel(): string
     {
         return ucwords(str_replace('_', ' ', $this->getName()));
     }
 
+    // ─── Helper pour les appels ChatService ───────────────────────────────
+
+    /**
+     * Construit les options à passer à `ChatService::ask()` avec l'identification
+     * de l'agent. Garantit que chaque appel LLM est tracé, débogable et comptabilisé.
+     *
+     * ```php
+     * $result = $this->chatService->ask($prompt, $this->buildAskOptions([
+     *     'stateless' => true,
+     * ]));
+     * ```
+     *
+     * @param array<string, mixed> $overrides Options supplémentaires (stateless, tools, etc.)
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildAskOptions(array $overrides = []): array
+    {
+        return array_merge([
+            'agent' => $this->getName(),
+            'module' => 'agent',
+            'action' => 'agent_call',
+        ], $overrides);
+    }
+
+    // ─── Logique métier (à implémenter) ───────────────────────────────────
+
     /**
      * Logique métier de l'agent — à implémenter dans chaque sous-classe.
      *
-     * Le contexte est garanti non-null ici. Utilisez-le pour :
-     * - Passer aux appels ChatService (`['agent_run_id' => $context->getRequestId()]`)
-     * - Créer un contexte enfant si cet agent en appelle un autre (`$context->createChild(...)`)
+     * Le contexte est garanti non-null ici. Utilisez `$this->buildAskOptions()`
+     * pour construire les options de chaque appel `ChatService::ask()`.
      */
     abstract protected function execute(Input $input, AgentContext $context): Output;
 }

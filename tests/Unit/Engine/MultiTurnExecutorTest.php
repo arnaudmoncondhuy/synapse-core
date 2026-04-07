@@ -92,9 +92,15 @@ class MultiTurnExecutorTest extends TestCase
     public function testStopsAfterMaxTurns(): void
     {
         $toolCall = [['id' => 'c1', 'name' => 'tool', 'args' => []]];
-        // Always returns tool calls → would loop forever without maxTurns
+        // Always returns tool calls → would loop forever without maxTurns.
+        // After exhausting maxTurns, a final synthesis call (without tools) is made.
         $this->chunkProcessor->method('process')
-            ->willReturn($this->buildChunkResult('x', $toolCall));
+            ->willReturnOnConsecutiveCalls(
+                $this->buildChunkResult('x', $toolCall),
+                $this->buildChunkResult('x', $toolCall),
+                $this->buildChunkResult('x', $toolCall),
+                $this->buildChunkResult(' (synthèse)'),  // safety-net call
+            );
 
         $this->toolExecutor->method('execute')->willReturnCallback(
             function (array &$prompt) {
@@ -105,8 +111,8 @@ class MultiTurnExecutorTest extends TestCase
         $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
         $result = $this->executor->execute($prompt, $this->buildClient(), true, 3);
 
-        // 3 turns max, each adds 'x' → 'xxx'
-        $this->assertSame('xxx', $result->fullText);
+        // 3 turns of tool calls ('x' each) + 1 synthesis call
+        $this->assertSame('xxx (synthèse)', $result->fullText);
     }
 
     public function testUsageAccumulatedAcrossTurns(): void

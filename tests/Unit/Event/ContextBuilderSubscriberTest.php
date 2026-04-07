@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Event;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\CodeAgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
@@ -23,6 +24,7 @@ class ContextBuilderSubscriberTest extends TestCase
     private ConfigProviderInterface $configProvider;
     private ToolRegistry $toolRegistry;
     private AgentRegistry $agentRegistry;
+    private CodeAgentRegistry $codeAgentRegistry;
     private SynapseModelPresetRepository $presetRepo;
     private ToneRegistry $toneRegistry;
     private SynapseProfiler $profiler;
@@ -45,6 +47,8 @@ class ContextBuilderSubscriberTest extends TestCase
 
         $this->agentRegistry = $this->createStub(AgentRegistry::class);
         $this->agentRegistry->method('get')->willReturn(null);
+
+        $this->codeAgentRegistry = new CodeAgentRegistry([]);
 
         $this->presetRepo = $this->createStub(SynapseModelPresetRepository::class);
         $this->presetRepo->method('findByKey')->willReturn(null);
@@ -266,6 +270,7 @@ class ContextBuilderSubscriberTest extends TestCase
             configProvider: $configProvider ?? $this->configProvider,
             toolRegistry: $toolRegistry ?? $this->toolRegistry,
             agentRegistry: $this->agentRegistry,
+            codeAgentRegistry: $this->codeAgentRegistry,
             modelPresetRepository: $this->presetRepo,
             toneRegistry: $this->toneRegistry,
             profiler: $this->profiler,

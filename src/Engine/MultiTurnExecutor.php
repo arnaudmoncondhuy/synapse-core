@@ -153,6 +153,56 @@ class MultiTurnExecutor
             break;
         }
 
+        // ── SAFETY NET : si la boucle a épuisé ses tours sur des tool calls,
+        //    faire un dernier appel LLM SANS outils pour forcer une réponse texte.
+        //    Sans cela, l'utilisateur voit les outils s'exécuter puis… rien.
+        if ($turn >= $maxTurns && !empty($modelToolCalls)) {
+            $this->dispatcher->dispatch(new SynapseStatusChangedEvent(
+                'Synthèse des résultats…',
+                'thinking',
+                $turn,
+            ));
+
+            $debugOut = [];
+            $this->profiler->start('LLM', 'LLM Network Call & Streaming', 'Appel final de synthèse après épuisement des tours.');
+
+            /** @var array<int, array<string, mixed>> $contents */
+            $contents = $prompt['contents'];
+
+            if ($streamingEnabled) {
+                $chunks = $activeClient->streamGenerateContent($contents, [], null, $llmOptions, $debugOut);
+            } else {
+                $response = $activeClient->generateContent($contents, [], null, $llmOptions, $debugOut);
+                $chunks = [$response];
+            }
+
+            $chunkResult = $this->chunkProcessor->process($chunks, $turn);
+            $this->profiler->stop('LLM', 'LLM Network Call & Streaming', $turn);
+
+            if (!empty($debugOut['raw_api_chunks']) && is_array($debugOut['raw_api_chunks'])) {
+                $allTurnsRawData['raw_api_chunks'] = array_merge(
+                    $allTurnsRawData['raw_api_chunks'] ?? [],
+                    $debugOut['raw_api_chunks']
+                );
+            }
+
+            $cumulativeUsage = $cumulativeUsage->add($chunkResult->usage);
+            if (!empty($chunkResult->safetyRatings)) {
+                $finalSafetyRatings = $chunkResult->safetyRatings;
+            }
+            if (!empty($chunkResult->generatedAttachments)) {
+                foreach ($chunkResult->generatedAttachments as $att) {
+                    $allGeneratedAttachments[] = $att;
+                }
+            }
+
+            $fullTextAccumulator .= $chunkResult->modelText;
+
+            if ('' !== $chunkResult->modelText) {
+                $prompt['contents'][] = ['role' => 'assistant', 'content' => $chunkResult->modelText];
+            }
+        }
+
         // Parse structured output if requested (response_format activé).
         // Le parsing intervient sur le texte accumulé du dernier tour (donc après résolution
         // éventuelle de toutes les tool calls). Un JSON invalide lève une exception dédiée

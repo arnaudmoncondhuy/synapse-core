@@ -176,8 +176,8 @@ class PresetValidatorAgent implements AgentInterface
             $result = $this->chatService->ask(
                 'Dis-moi bonjour en une phrase courte.',
                 [
+                    'agent' => $this->getName(),
                     'preset' => $preset,
-                    'debug' => true,
                     'stateless' => true,
                     'tools' => [],
                     // Pas de 'streaming' forcé : on respecte le réglage réel du preset
@@ -357,8 +357,8 @@ class PresetValidatorAgent implements AgentInterface
         $analysisResult = [];
         try {
             $analysisResult = $this->chatService->ask($analysisPrompt, [
+                'agent' => $this->getName(),
                 'stateless' => true,
-                'debug' => false,
                 'tools' => [],
                 // Pas de 'preset' : utilise le preset actif pour l'analyse
             ]);

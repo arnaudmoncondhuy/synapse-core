@@ -126,11 +126,11 @@ class ArchitectAgent implements AgentInterface
             $result = $this->chatService->ask(
                 message: $prompt,
                 options: [
+                    'agent' => $this->getName(),
                     'preset' => $preset,
                     'stateless' => true,
                     'module' => 'governance',
                     'action' => 'architect_'.$action,
-                    'debug' => true,
                     'response_format' => $schema,
                 ],
             );
