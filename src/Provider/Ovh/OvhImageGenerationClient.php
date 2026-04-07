@@ -20,7 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Client de génération d'image via OVH AI Endpoints (Stable Diffusion XL et autres).
  *
  * Compatible avec l'API OpenAI Images (POST /v1/images/generations).
- * Les credentials sont lus depuis le provider 'ovh_image' en base de données.
+ * Les credentials sont lus depuis le provider 'ovh' en base de données.
  *
  * Endpoint : {endpoint}/images/generations
  * Auth     : Bearer {api_key}
