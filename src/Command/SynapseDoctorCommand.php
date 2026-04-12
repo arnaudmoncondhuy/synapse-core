@@ -65,6 +65,7 @@ class SynapseDoctorCommand extends Command
         $checks['PHP version (8.2+)'] = $this->checkPhpVersion($io);
         $checks['Intl extension'] = $this->checkIntl($io);
         $checks['Sodium extension'] = $this->checkSodium($io);
+        $checks['Encryption key'] = $this->checkEncryptionKey($io);
         $checks['Bundle registration'] = $this->checkBundleRegistration($projectDir, $fix, $io);
         $checks['Core config (synapse.yaml)'] = $this->checkCoreConfig($projectDir, $fix, $io);
         $checks['Routes'] = $this->checkRoutes($projectDir, $fix, $io);
@@ -148,6 +149,37 @@ class SynapseDoctorCommand extends Command
         return true;
     }
 
+    private function checkEncryptionKey(SymfonyStyle $io): bool
+    {
+        if (!$this->parameterBag->has('synapse.encryption.key')) {
+            $io->error('[Encryption] Parameter synapse.encryption.key is not set. Add encryption.key to synapse.yaml.');
+
+            return false;
+        }
+
+        $key = $this->parameterBag->get('synapse.encryption.key');
+
+        if (!is_string($key) || '' === $key) {
+            $io->error('[Encryption] Encryption key is empty. Set SYNAPSE_ENCRYPTION_KEY in .env.local');
+            $io->writeln('         Generate with: php -r "echo base64_encode(sodium_crypto_secretbox_keygen());"');
+
+            return false;
+        }
+
+        // Validate the key is valid base64 and correct length (32 bytes decoded)
+        $decoded = base64_decode($key, true);
+        if (false === $decoded || \SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== \strlen($decoded)) {
+            $io->error(sprintf('[Encryption] Key must be %d bytes base64-encoded. Current decoded length: %d', \SODIUM_CRYPTO_SECRETBOX_KEYBYTES, false === $decoded ? 0 : \strlen($decoded)));
+            $io->writeln('         Generate with: php -r "echo base64_encode(sodium_crypto_secretbox_keygen());"');
+
+            return false;
+        }
+
+        $io->writeln('  <info>[OK]</info> Encryption key');
+
+        return true;
+    }
+
     private function checkBundleRegistration(string $projectDir, bool $fix, SymfonyStyle $io): bool
     {
         $bundlesFile = $projectDir.'/config/bundles.php';
@@ -206,6 +238,8 @@ class SynapseDoctorCommand extends Command
             if ($fix) {
                 $this->filesystem->dumpFile($configPath, $this->getDefaultCoreConfig());
                 $io->writeln('  -> synapse.yaml created.');
+
+                return true;
             }
 
             return false;
@@ -260,6 +294,8 @@ class SynapseDoctorCommand extends Command
             $io->writeln('               type: synapse');
             if ($fix) {
                 $this->addSynapseRouteEntry($projectDir, $io);
+
+                return true;
             }
 
             return false;
@@ -356,19 +392,34 @@ class SynapseDoctorCommand extends Command
 
         $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
         $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
+        $apiPrefix = $this->parameterBag->has('synapse.chat_api_prefix') ? $this->parameterBag->get('synapse.chat_api_prefix') : '/synapse/api';
 
         $adminPrefixStr = is_string($adminPrefix) ? $adminPrefix : '/synapse/admin';
         $adminRoleStr = is_string($adminRole) ? $adminRole : 'ROLE_ADMIN';
         $chatPrefixStr = is_string($chatPrefix) ? $chatPrefix : '/synapse/chat';
         $chatRoleStr = is_string($chatRole) ? $chatRole : 'ROLE_USER';
+        $apiPrefixStr = is_string($apiPrefix) ? $apiPrefix : '/synapse/api';
 
         $hasAdminControl = str_contains($content, $adminPrefixStr);
         $hasChatControl = str_contains($content, $chatPrefixStr);
+        $hasApiControl = str_contains($content, $apiPrefixStr);
 
+        $warnings = [];
         if ($this->hasAdmin && !$hasAdminControl) {
-            $io->writeln(sprintf('  <comment>[WARN]</comment> No access_control for %s in security.yaml', $adminPrefixStr));
-            $io->writeln(sprintf('         Add: - { path: ^%s, roles: %s }', $adminPrefixStr, $adminRoleStr));
-            $io->writeln(sprintf('              - { path: ^%s, roles: %s }', $chatPrefixStr, $chatRoleStr));
+            $warnings[] = sprintf('- { path: ^%s, roles: %s }', $adminPrefixStr, $adminRoleStr);
+        }
+        if ($this->hasChat && !$hasChatControl) {
+            $warnings[] = sprintf('- { path: ^%s, roles: %s }', $chatPrefixStr, $chatRoleStr);
+        }
+        if ($this->hasChat && !$hasApiControl) {
+            $warnings[] = sprintf('- { path: ^%s, roles: %s }', $apiPrefixStr, $chatRoleStr);
+        }
+
+        if (!empty($warnings)) {
+            $io->writeln('  <comment>[WARN]</comment> Missing access_control entries in security.yaml:');
+            foreach ($warnings as $entry) {
+                $io->writeln('         '.$entry);
+            }
         } else {
             $io->writeln(sprintf('  <info>[OK]</info> Security (admin: %s, chat: %s)', $adminRoleStr, $chatRoleStr));
         }
@@ -387,15 +438,6 @@ class SynapseDoctorCommand extends Command
 
         $content = (string) file_get_contents($importmapFile);
         $hasError = false;
-        if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
-            $io->writeln('  <comment>[INFO]</comment> Legacy synapse_chat_controller missing from importmap.php (Optional if using V2)');
-        }
-
-        if (!str_contains($content, 'synapse-chat/controllers/synapse_sidebar_controller.js')) {
-            $io->writeln('  <comment>[INFO]</comment> Legacy synapse_sidebar_controller missing from importmap.php (Optional if using V2)');
-        }
-
-        // --- NEW V2 ASSETS ---
 
         if (!str_contains($content, 'synapse-chat/controllers/synapse_chat_controller.js')) {
             $io->error('[Importmap] Consolidated controller (synapse_chat_controller.js) missing from importmap.php.');
@@ -533,7 +575,16 @@ class SynapseDoctorCommand extends Command
 
     private function checkDatabaseTables(SymfonyStyle $io): bool
     {
-        $expected = ['synapse_conversation', 'synapse_message', 'synapse_model_preset', 'synapse_provider', 'synapse_model', 'synapse_config', 'synapse_rag_source', 'synapse_rag_document', 'synapse_agent', 'synapse_tone', 'synapse_debug_log', 'synapse_workflow', 'synapse_workflow_run', 'synapse_agent_prompt_version', 'synapse_agent_test_case'];
+        $expected = [
+            'synapse_conversation', 'synapse_message', 'synapse_message_attachment',
+            'synapse_model_preset', 'synapse_provider', 'synapse_model', 'synapse_config',
+            'synapse_rag_source', 'synapse_rag_document', 'synapse_vector_memory',
+            'synapse_agent', 'synapse_agent_prompt_version', 'synapse_agent_test_case',
+            'synapse_tone', 'synapse_tool_config', 'synapse_debug_log',
+            'synapse_workflow', 'synapse_workflow_run',
+            'synapse_llm_call', 'synapse_code_execution',
+            'synapse_spending_limit', 'synapse_spending_limit_log',
+        ];
         try {
             $connection = $this->kernel->getContainer()->get('doctrine.dbal.default_connection');
             if (!$connection instanceof \Doctrine\DBAL\Connection) {
@@ -710,6 +761,9 @@ class SynapseDoctorCommand extends Command
             $io->writeln('  -> Created config/packages/synapse.yaml');
         }
 
+        // .env.local — generate SYNAPSE_ENCRYPTION_KEY if missing
+        $this->ensureEncryptionKeyInEnv($projectDir, $io);
+
         // Routes
         $this->addSynapseRouteEntry($projectDir, $io);
 
@@ -742,10 +796,34 @@ class SynapseDoctorCommand extends Command
         $io->writeln('  <info>Next steps:</info>');
         $io->writeln('  1. bin/console doctrine:migrations:diff');
         $io->writeln('  2. bin/console doctrine:migrations:migrate');
-        $io->writeln('  3. Visit /admin to configure your LLM provider');
+        $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
+        $io->writeln(sprintf('  3. Visit %s to configure your LLM provider', is_string($adminPrefix) ? $adminPrefix : '/synapse/admin'));
     }
 
     // ── Fixes ─────────────────────────────────────────────────────────────────
+
+    private function ensureEncryptionKeyInEnv(string $projectDir, SymfonyStyle $io): void
+    {
+        if (!\function_exists('sodium_crypto_secretbox_keygen')) {
+            $io->writeln('  <comment>[WARN]</comment> sodium extension missing — cannot generate SYNAPSE_ENCRYPTION_KEY automatically');
+
+            return;
+        }
+
+        $envLocal = $projectDir.'/.env.local';
+        $current = $this->filesystem->exists($envLocal) ? (string) file_get_contents($envLocal) : '';
+
+        if (preg_match('/^SYNAPSE_ENCRYPTION_KEY\s*=\s*\S+/m', $current)) {
+            return;
+        }
+
+        $key = base64_encode(sodium_crypto_secretbox_keygen());
+        $append = ('' !== $current && !str_ends_with($current, "\n") ? "\n" : '')
+            ."SYNAPSE_ENCRYPTION_KEY={$key}\n";
+        $this->filesystem->dumpFile($envLocal, $current.$append);
+
+        $io->writeln('  -> Generated SYNAPSE_ENCRYPTION_KEY in .env.local');
+    }
 
     private function addSynapseRouteEntry(string $projectDir, SymfonyStyle $io): void
     {
@@ -783,11 +861,13 @@ class SynapseDoctorCommand extends Command
 
         $adminPrefix = $this->parameterBag->has('synapse.admin_prefix') ? $this->parameterBag->get('synapse.admin_prefix') : '/synapse/admin';
         $chatPrefix = $this->parameterBag->has('synapse.chat_ui_prefix') ? $this->parameterBag->get('synapse.chat_ui_prefix') : '/synapse/chat';
+        $apiPrefix = $this->parameterBag->has('synapse.chat_api_prefix') ? $this->parameterBag->get('synapse.chat_api_prefix') : '/synapse/api';
 
         $adminPrefixStr = is_string($adminPrefix) ? $adminPrefix : '/synapse/admin';
         $adminRoleStr = is_string($adminRole) ? $adminRole : 'ROLE_ADMIN';
         $chatPrefixStr = is_string($chatPrefix) ? $chatPrefix : '/synapse/chat';
         $chatRoleStr = is_string($chatRole) ? $chatRole : 'ROLE_USER';
+        $apiPrefixStr = is_string($apiPrefix) ? $apiPrefix : '/synapse/api';
 
         $template = <<<YAML
 security:
@@ -818,6 +898,7 @@ security:
     access_control:
         - { path: ^{$adminPrefixStr}, roles: {$adminRoleStr} }
         - { path: ^{$chatPrefixStr}, roles: {$chatRoleStr} }
+        - { path: ^{$apiPrefixStr}, roles: {$chatRoleStr} }
 YAML;
 
         $this->filesystem->dumpFile(
@@ -969,8 +1050,48 @@ PHP);
 
     private function getDefaultCoreConfig(): string
     {
-        $path = __DIR__.'/../../../config/synapse.yaml';
+        // Try external template first (bundled reference), fall back to inline default.
+        $path = __DIR__.'/../../config/synapse.yaml';
+        if (is_file($path)) {
+            $contents = (string) file_get_contents($path);
+            if ('' !== trim($contents)) {
+                return $contents;
+            }
+        }
 
-        return is_file($path) ? (string) file_get_contents($path) : '';
+        return <<<'YAML'
+synapse:
+    # Required: 32-byte key base64-encoded. Never commit — keep it in .env.local
+    # Generate: php -r "echo base64_encode(sodium_crypto_secretbox_keygen());"
+    encryption:
+        key: '%env(SYNAPSE_ENCRYPTION_KEY)%'
+
+    persistence:
+        conversation_class: 'App\Entity\SynapseConversation'
+        message_class: 'App\Entity\SynapseMessage'
+
+    security:
+        admin_role: ROLE_ADMIN
+        chat_role: ROLE_USER
+        api_csrf_enabled: true
+        mcp_trusted: false
+
+    context:
+        language: fr
+
+    routing:
+        admin_prefix: /synapse/admin
+        chat_ui_prefix: /synapse/chat
+        chat_api_prefix: /synapse/api
+
+    token_tracking:
+        enabled: false
+        reference_currency: EUR
+        sliding_day_hours: 4
+
+    code_executor:
+        enabled: false
+        sandbox_url: 'http://synapse-sandbox:8000'
+YAML;
     }
 }

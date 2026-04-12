@@ -74,41 +74,15 @@ class DoctrineMappingValidator
             if (!$entityNamespaceFound) {
                 $io->error('[Doctrine] src/Entity directory not mapped in doctrine.yaml');
                 if ($fix) {
-                    $this->addEntityMapping($doctrineFile, is_array($config['doctrine']) ? $config['doctrine'] : [], $io);
+                    $this->addEntityMapping($doctrineFile, $config['doctrine'], $io);
                 } else {
                     $isValid = false;
                 }
             }
         }
 
-        // Check Synapse entity mappings
-        $synapseNamespaces = [
-            'ArnaudMoncondhuy\\SynapseCore' => '%kernel.project_dir%/vendor/arnaudmoncondhuy/synapse-bundle/packages/core/src/Storage/Entity',
-            'ArnaudMoncondhuy\\SynapseAdmin' => '%kernel.project_dir%/vendor/arnaudmoncondhuy/synapse-bundle/packages/admin/src/Storage/Entity',
-            'ArnaudMoncondhuy\\SynapseChat' => '%kernel.project_dir%/vendor/arnaudmoncondhuy/synapse-bundle/packages/chat/src/Storage/Entity',
-        ];
-
-        foreach ($synapseNamespaces as $ns => $expectedPath) {
-            try {
-                $testClass = $ns.'\\SynapseConversation';
-                if (class_exists($testClass)) {
-                    // Bundle is installed, check if mapped
-                    $found = false;
-                    foreach ($mappings as $mapping) {
-                        if (is_array($mapping) && (($mapping['dir'] ?? null) === $expectedPath || ($mapping['path'] ?? null) === $expectedPath)) {
-                            $found = true;
-                            break;
-                        }
-                    }
-
-                    if (!$found) {
-                        $io->writeln(sprintf('  <comment>[WARN]</comment> %s bundle installed but not explicitly mapped', $ns));
-                    }
-                }
-            } catch (\Throwable) {
-                // Bundle not installed, skip
-            }
-        }
+        // Note: Synapse bundles auto-register their Doctrine mappings via prepend().
+        // No need to verify them in user's doctrine.yaml — would produce false positives.
 
         return $isValid;
     }
