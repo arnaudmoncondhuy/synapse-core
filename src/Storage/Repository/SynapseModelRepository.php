@@ -49,6 +49,27 @@ class SynapseModelRepository extends ServiceEntityRepository
     }
 
     /**
+     * Retourne la liste des model_ids explicitement désactivés.
+     *
+     * Utilisé pour filtrer les dropdowns (presets, agents, workflows) : un modèle
+     * désactivé ne doit plus pouvoir être sélectionné. Les modèles absents de la
+     * table sont considérés comme activés par défaut (valeur par défaut de la
+     * colonne `is_enabled`).
+     *
+     * @return string[]
+     */
+    public function findDisabledModelIds(): array
+    {
+        $rows = $this->createQueryBuilder('m')
+            ->select('m.modelId')
+            ->where('m.isEnabled = false')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn (array $r): string => (string) $r['modelId'], $rows);
+    }
+
+    /**
      * Retourne une map [model_id => ['input' => x, 'output' => y, 'output_image' => z|null, 'currency' => c]] des tarifs.
      *
      * `output_image` est null si le modèle n'a pas de tarif image dédié — dans ce cas

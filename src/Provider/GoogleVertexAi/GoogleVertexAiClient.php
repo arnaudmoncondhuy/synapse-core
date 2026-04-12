@@ -51,8 +51,8 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
         private readonly GoogleVertexAiAuthService $googleVertexAiAuthService,
         ConfigProviderInterface $configProvider,
         ModelCapabilityRegistry $capabilityRegistry,
+        private readonly EncryptionServiceInterface $encryptionService,
         private readonly ?SynapseProviderRepository $providerRepository = null,
-        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
         parent::__construct($httpClient, $configProvider, $capabilityRegistry);
     }
@@ -376,13 +376,40 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
             $candidate = [];
         }
 
-        // Detect blocked by finishReason (IMAGE_SAFETY, SAFETY, etc.)
+        // Detect blocked or failed by finishReason
         $finishReason = is_string($candidate['finishReason'] ?? null) ? (string) $candidate['finishReason'] : '';
         if (in_array($finishReason, ['IMAGE_SAFETY', 'SAFETY', 'BLOCKLIST', 'PROHIBITED_CONTENT'], true)) {
             $normalized['blocked'] = true;
             $normalized['blocked_reason'] = is_string($candidate['finishMessage'] ?? null)
                 ? (string) $candidate['finishMessage']
                 : 'Contenu bloqué par le fournisseur ('.$finishReason.')';
+        }
+        // MALFORMED_FUNCTION_CALL: Gemini a produit du code brut au lieu d'un functionCall structuré.
+        // On extrait le code depuis finishMessage et on synthétise un vrai function_call code_execute.
+        // Le MultiTurnExecutor limite les recoveries pour éviter les boucles infinies.
+        if ('MALFORMED_FUNCTION_CALL' === $finishReason) {
+            $finishMsg = is_string($candidate['finishMessage'] ?? null) ? (string) $candidate['finishMessage'] : '';
+            $extractedCode = $this->extractCodeFromMalformedCall($finishMsg);
+            if (null !== $extractedCode) {
+                $normalized['function_calls'] = [[
+                    'name' => 'code_execute',
+                    'id' => 'call_recovered_'.bin2hex(random_bytes(4)),
+                    'args' => ['code' => $extractedCode, 'language' => 'python'],
+                ]];
+                $normalized['_malformed_recovery'] = true;
+            } else {
+                $normalized['blocked'] = true;
+                $normalized['blocked_reason'] = 'Le modèle a généré un appel d\'outil invalide';
+            }
+        }
+        // Non-retryable error finish reasons
+        if (in_array($finishReason, ['MAX_TOKENS', 'RECITATION'], true)) {
+            $reasonLabels = [
+                'MAX_TOKENS' => 'Limite de tokens atteinte avant la fin de la réponse',
+                'RECITATION' => 'Réponse bloquée (récitation de contenu protégé)',
+            ];
+            $normalized['blocked'] = true;
+            $normalized['blocked_reason'] = $reasonLabels[$finishReason];
         }
 
         if (isset($candidate['safetyRatings']) && is_array($candidate['safetyRatings'])) {
@@ -477,6 +504,67 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
     }
 
     /**
+     * Extrait le code Python depuis le finishMessage d'un MALFORMED_FUNCTION_CALL Gemini.
+     *
+     * Gemini produit parfois du code brut au lieu d'un functionCall structuré.
+     * Le finishMessage a la forme : "Malformed function call: import csv\n..."
+     * On extrait le code et on le nettoie pour pouvoir le passer à code_execute.
+     */
+    private function extractCodeFromMalformedCall(string $finishMessage): ?string
+    {
+        // Retirer le préfixe "Malformed function call: " si présent
+        $code = $finishMessage;
+        if (str_starts_with($code, 'Malformed function call: ')) {
+            $code = substr($code, \strlen('Malformed function call: '));
+        } elseif (str_starts_with($code, 'Malformed function call:')) {
+            $code = substr($code, \strlen('Malformed function call:'));
+        }
+
+        $code = trim($code);
+        if ('' === $code) {
+            return null;
+        }
+
+        // Vérifier que ça ressemble à du code Python (heuristique simple)
+        $pythonIndicators = ['import ', 'def ', 'print(', 'open(', 'for ', 'with ', 'csv.', 'pandas', '= ', 'result'];
+        $hasIndicator = false;
+        foreach ($pythonIndicators as $indicator) {
+            if (str_contains($code, $indicator)) {
+                $hasIndicator = true;
+                break;
+            }
+        }
+
+        if (!$hasIndicator) {
+            return null;
+        }
+
+        // Sécurité : si le code contient des données inline recopiées (CSV > 500 chars),
+        // les remplacer par un open() du fichier — on capture le nom de variable original
+        // pour que le reste du script continue de fonctionner.
+        $code = preg_replace_callback(
+            '/(\w+)\s*=\s*(?:"""[\s\S]{500,}?"""|\'\'\'[\s\S]{500,}?\'\'\'|"[^"]{500,}")/u',
+            function (array $m): string {
+                $varName = $m[1];
+
+                return "import glob\n"
+                    ."{$varName} = open(glob.glob('*.csv')[0]).read() if glob.glob('*.csv') else ''";
+            },
+            $code
+        ) ?? $code;
+
+        // Supprimer aussi les io.StringIO wrapping devenus inutiles après remplacement :
+        // le contenu est déjà une string, pas besoin de StringIO
+        $code = preg_replace(
+            '/(\w+)\s*=\s*io\.StringIO\(\w+\)/',
+            '$1 = open(glob.glob("*.csv")[0]) if glob.glob("*.csv") else __import__("io").StringIO("")',
+            $code
+        ) ?? $code;
+
+        return $code;
+    }
+
+    /**
      * Convertit une catégorie Gemini HARM_CATEGORY_* en string lisible.
      *
      * @param string $category Catégorie Gemini (ex: 'HARM_CATEGORY_HATE_SPEECH')
@@ -526,12 +614,10 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
                 throw new \RuntimeException('Gemini provider has no credentials configured. Please add credentials in the admin panel.');
             }
             // Decrypt if encrypted
-            if (null !== $this->encryptionService) {
-                foreach (['service_account_json', 'private_key'] as $key) {
-                    $val = $rawCreds[$key] ?? null;
-                    if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
-                        $rawCreds[$key] = $this->encryptionService->decrypt($val);
-                    }
+            foreach (['service_account_json', 'private_key'] as $key) {
+                $val = $rawCreds[$key] ?? null;
+                if (is_string($val) && $this->encryptionService->isEncrypted($val)) {
+                    $rawCreds[$key] = $this->encryptionService->decrypt($val);
                 }
             }
             $creds = $rawCreds;
@@ -881,6 +967,16 @@ class GoogleVertexAiClient extends AbstractLlmClient implements EmbeddingClientI
             } else {
                 $payload['tools'] = $tools;
             }
+
+            // Forcer le mode AUTO explicitement pour éviter les MALFORMED_FUNCTION_CALL.
+            // Sans ce paramètre, Gemini peut halluciner du code brut au lieu de structurer
+            // un function call JSON valide (bug connu Vertex AI).
+            // Ref: https://discuss.ai.google.dev/t/malformed-function-call-finish-reason-happens-too-frequently-with-vertex-ai/93630
+            $payload['toolConfig'] = [
+                'functionCallingConfig' => [
+                    'mode' => 'AUTO',
+                ],
+            ];
         }
 
         return $payload;

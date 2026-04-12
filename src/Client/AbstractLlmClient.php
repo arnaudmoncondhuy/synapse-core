@@ -82,15 +82,27 @@ abstract class AbstractLlmClient implements LlmClientInterface
             }
         }
 
-        $fullMsg = $this->getProviderLabel().' API Error: '.$message;
+        $this->throwClassifiedException($statusCode, $message, $e);
+    }
 
-        throw match ($statusCode) {
-            401, 403 => new LlmAuthenticationException($fullMsg, 0, $e),
-            429 => new LlmRateLimitException($fullMsg, 0, $e),
-            500, 503 => new LlmServiceUnavailableException($fullMsg, 0, $e),
-            default => str_contains(strtolower($message), 'quota')
-                ? new LlmQuotaException($fullMsg, 0, $e)
-                : new LlmException($fullMsg, 0, $e),
+    /**
+     * Classifie un status code + message en exception Synapse typée.
+     *
+     * Utilisable depuis handleException() (via Throwable) et directement
+     * depuis les clients (pré-vérification du status code avant streaming).
+     */
+    protected function throwClassifiedException(?int $statusCode, string $message, ?\Throwable $previous = null): never
+    {
+        $fullMsg = $this->getProviderLabel().' API Error: '.$message;
+        $lowerMsg = strtolower($message);
+        $isQuota = str_contains($lowerMsg, 'quota') || str_contains($lowerMsg, 'credit balance');
+
+        throw match (true) {
+            401 === $statusCode || 403 === $statusCode => new LlmAuthenticationException($fullMsg, 0, $previous),
+            429 === $statusCode => new LlmRateLimitException($fullMsg, 0, $previous),
+            500 === $statusCode || 503 === $statusCode => new LlmServiceUnavailableException($fullMsg, 0, $previous),
+            $isQuota => new LlmQuotaException($fullMsg, 0, $previous),
+            default => new LlmException($fullMsg, 0, $previous),
         };
     }
 

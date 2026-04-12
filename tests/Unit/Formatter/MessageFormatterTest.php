@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Formatter;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Formatter\MessageFormatter;
 use ArnaudMoncondhuy\SynapseCore\Shared\Enum\MessageRole;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseMessage;
@@ -11,9 +12,19 @@ use PHPUnit\Framework\TestCase;
 
 class MessageFormatterTest extends TestCase
 {
+    private function buildFormatter(): MessageFormatter
+    {
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
+        return new MessageFormatter($encryption);
+    }
+
     public function testEntitiesToApiFormat(): void
     {
-        $formatter = new MessageFormatter();
+        $formatter = $this->buildFormatter();
 
         $msg1 = $this->createMock(SynapseMessage::class);
         $msg1->method('getRole')->willReturn(MessageRole::USER);
@@ -34,7 +45,7 @@ class MessageFormatterTest extends TestCase
 
     public function testEntitiesToApiFormatWithRawArray(): void
     {
-        $formatter = new MessageFormatter();
+        $formatter = $this->buildFormatter();
         $entities = [
             ['role' => 'user', 'content' => 'Raw message'],
         ];

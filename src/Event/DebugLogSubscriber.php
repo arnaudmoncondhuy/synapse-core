@@ -215,6 +215,12 @@ class DebugLogSubscriber implements EventSubscriberInterface
             if (!empty($rawData['generated_images']) && is_array($rawData['generated_images'])) {
                 $this->debugAccumulator['generated_images'] = $rawData['generated_images'];
             }
+            // Persister les infos d'erreur pour les debug logs dbg_err_
+            if (!empty($rawData['error'])) {
+                $this->debugAccumulator['error'] = $rawData['error'];
+                $this->debugAccumulator['error_class'] = $rawData['error_class'] ?? null;
+                $this->debugAccumulator['error_file'] = $rawData['error_file'] ?? null;
+            }
         }
 
         // Use captured tool executions

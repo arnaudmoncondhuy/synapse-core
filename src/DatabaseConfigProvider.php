@@ -41,8 +41,8 @@ class DatabaseConfigProvider implements ConfigProviderInterface
         private readonly SynapseConfigRepository $globalConfigRepo,
         private readonly SynapseProviderRepository $providerRepo,
         private readonly PresetValidator $presetValidator,
+        private readonly EncryptionServiceInterface $encryptionService,
         private readonly ?CacheInterface $cache = null,
-        private readonly ?EncryptionServiceInterface $encryptionService = null,
         private readonly ?LoggerInterface $logger = null,
         private readonly ?EventDispatcherInterface $dispatcher = null,
     ) {
@@ -104,10 +104,6 @@ class DatabaseConfigProvider implements ConfigProviderInterface
      */
     private function decryptCredentials(array $credentials): array
     {
-        if (null === $this->encryptionService) {
-            return $credentials;
-        }
-
         foreach (['api_key', 'service_account_json', 'private_key'] as $key) {
             $val = $credentials[$key] ?? null;
             if (is_string($val) && $this->encryptionService->isEncrypted($val)) {

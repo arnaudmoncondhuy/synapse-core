@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect;
 
 use ArnaudMoncondhuy\SynapseCore\Agent\Input;
 use ArnaudMoncondhuy\SynapseCore\Agent\Output;
@@ -27,7 +27,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * La proposition est retournée dans {@see Output::$data}. Le caller
  * (commande CLI `synapse:architect`, outil MCP, ou un autre agent) décide
- * ensuite de l'appliquer via {@see ArchitectProposalProcessor} — qui gère
+ * ensuite de l'appliquer via {@see AgentArchitectProcessor} — qui gère
  * la création en mode HITL (inactif / pending) et le scoring LLM-as-Judge.
  *
  * ## Sélection du modèle
@@ -41,10 +41,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  *
  * L'architecte ne persiste rien lui-même — il est « read-only » du point de vue
  * BDD. La persistance (et donc le HITL, le scoring, l'audit trail) est la
- * responsabilité du {@see ArchitectProposalProcessor}. Cette séparation rend
+ * responsabilité du {@see AgentArchitectProcessor}. Cette séparation rend
  * l'agent testable indépendamment de la couche persistence.
  */
-class ArchitectAgent implements AgentInterface
+class AgentArchitect implements AgentInterface
 {
     private readonly LoggerInterface $logger;
 
@@ -112,7 +112,7 @@ class ArchitectAgent implements AgentInterface
         }
 
         try {
-            $schema = ArchitectResponseSchema::forAction($action);
+            $schema = AgentArchitectSchema::forAction($action);
         } catch (\InvalidArgumentException $e) {
             return Output::ofData(['error' => $e->getMessage()]);
         }
@@ -135,7 +135,7 @@ class ArchitectAgent implements AgentInterface
                 ],
             );
         } catch (\Throwable $e) {
-            $this->logger->error('ArchitectAgent: LLM call failed — {message}', [
+            $this->logger->error('AgentArchitect: LLM call failed — {message}', [
                 'message' => $e->getMessage(),
                 'action' => $action,
                 'exception' => $e,
@@ -164,20 +164,23 @@ class ArchitectAgent implements AgentInterface
 
     private function resolvePreset(): ?SynapseModelPreset
     {
-        if ('' === $this->architectPresetKey) {
-            $this->logger->warning('ArchitectAgent: architect_preset_key is empty — agent disabled.');
+        // Si une clé de preset architecte est configurée, l'utiliser en priorité
+        if ('' !== $this->architectPresetKey) {
+            $preset = $this->presetRepository->findOneBy(['key' => $this->architectPresetKey]);
+            if ($preset instanceof SynapseModelPreset) {
+                return $preset;
+            }
+            $this->logger->warning('AgentArchitect: preset "{key}" not found, fallback to active preset.', ['key' => $this->architectPresetKey]);
+        }
+
+        // Fallback : utiliser le preset actif (même comportement que PresetArchitect)
+        try {
+            return $this->presetRepository->findActive();
+        } catch (\Throwable $e) {
+            $this->logger->warning('AgentArchitect: no active preset available.', ['error' => $e->getMessage()]);
 
             return null;
         }
-
-        $preset = $this->presetRepository->findOneBy(['key' => $this->architectPresetKey]);
-        if (!$preset instanceof SynapseModelPreset) {
-            $this->logger->warning('ArchitectAgent: preset "{key}" not found.', ['key' => $this->architectPresetKey]);
-
-            return null;
-        }
-
-        return $preset;
     }
 
     /**

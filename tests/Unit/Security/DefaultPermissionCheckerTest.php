@@ -176,6 +176,67 @@ class DefaultPermissionCheckerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // canAccessAdmin — MCP trusted bypass
+    // -------------------------------------------------------------------------
+
+    public function testMcpTrustedBypassGrantsAdminOnMcpRoute(): void
+    {
+        $requestStack = new \Symfony\Component\HttpFoundation\RequestStack();
+        $request = \Symfony\Component\HttpFoundation\Request::create('/_mcp', 'POST');
+        $requestStack->push($request);
+
+        $checker = new DefaultPermissionChecker(
+            mcpTrusted: true,
+            requestStack: $requestStack,
+        );
+
+        $this->assertTrue($checker->canAccessAdmin());
+    }
+
+    public function testMcpTrustedBypassDoesNotGrantAdminOnOtherRoutes(): void
+    {
+        $requestStack = new \Symfony\Component\HttpFoundation\RequestStack();
+        $request = \Symfony\Component\HttpFoundation\Request::create('/synapse/admin/dashboard', 'GET');
+        $requestStack->push($request);
+
+        // authChecker non fourni → le fallback retourne false
+        $checker = new DefaultPermissionChecker(
+            mcpTrusted: true,
+            requestStack: $requestStack,
+        );
+
+        $this->assertFalse($checker->canAccessAdmin());
+    }
+
+    public function testMcpTrustedFalseStillChecksNormalAuth(): void
+    {
+        $requestStack = new \Symfony\Component\HttpFoundation\RequestStack();
+        $request = \Symfony\Component\HttpFoundation\Request::create('/_mcp', 'POST');
+        $requestStack->push($request);
+
+        // Flag off → même sur /_mcp on retombe sur le check normal (pas d'auth = false)
+        $checker = new DefaultPermissionChecker(
+            mcpTrusted: false,
+            requestStack: $requestStack,
+        );
+
+        $this->assertFalse($checker->canAccessAdmin());
+    }
+
+    public function testMcpTrustedBypassFailsOutsideHttpContext(): void
+    {
+        // CLI / Messenger : pas de request courante → bypass inopérant
+        $requestStack = new \Symfony\Component\HttpFoundation\RequestStack();
+
+        $checker = new DefaultPermissionChecker(
+            mcpTrusted: true,
+            requestStack: $requestStack,
+        );
+
+        $this->assertFalse($checker->canAccessAdmin());
+    }
+
+    // -------------------------------------------------------------------------
     // canCreateConversation
     // -------------------------------------------------------------------------
 

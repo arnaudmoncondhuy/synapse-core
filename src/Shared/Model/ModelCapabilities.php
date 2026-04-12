@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Shared\Model;
 
+use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ModelRange;
+
 /**
  * Profil de capacités d'un modèle LLM.
  *
@@ -22,6 +24,9 @@ class ModelCapabilities
 
         /** Provider auquel appartient ce modèle */
         public readonly string $provider,
+
+        /** Positionnement dans la gamme du provider (flagship, balanced, fast, specialized) */
+        public readonly ModelRange $range = ModelRange::BALANCED,
 
         /** Dimensions proposées pour les embeddings */
         public readonly array $dimensions = [],
@@ -177,25 +182,32 @@ class ModelCapabilities
     }
 
     /**
+     * Types texte universels — tout modèle text-gen peut les lire (injectés comme contenu texte, pas vision).
+     */
+    private const TEXT_MIME_TYPES = ['text/plain', 'text/csv', 'text/markdown', 'application/json'];
+
+    /**
      * Retourne les types MIME acceptés en pièce jointe.
      *
-     * Si la liste explicite est vide, fallback sur les images classiques
-     * quand le modèle supporte la vision, sinon tableau vide (pas d'attachments).
+     * Les types texte universels (CSV, JSON, Markdown, plain) sont toujours inclus
+     * car tout modèle text-gen peut les lire (le contenu est injecté comme texte brut).
+     * Les types vision (images, PDF) dépendent des capacités déclarées du modèle.
      *
      * @return list<string>
      */
     public function getAcceptedMimeTypes(): array
     {
         if (!empty($this->acceptedMimeTypes)) {
-            return $this->acceptedMimeTypes;
+            return array_values(array_unique(array_merge($this->acceptedMimeTypes, self::TEXT_MIME_TYPES)));
         }
 
-        // Rétrocompat : les modèles vision sans liste explicite acceptent les images
+        // Rétrocompat : les modèles vision sans liste explicite acceptent les images + texte
         if ($this->supportsVision) {
-            return ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            return array_merge(['image/jpeg', 'image/png', 'image/webp', 'image/gif'], self::TEXT_MIME_TYPES);
         }
 
-        return [];
+        // Même sans vision, tout modèle text-gen peut lire du texte
+        return self::TEXT_MIME_TYPES;
     }
 
     /**

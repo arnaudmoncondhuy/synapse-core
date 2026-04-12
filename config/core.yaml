@@ -13,7 +13,7 @@ parameters:
 
     # Clé du preset utilisé par l'agent architecte (Phase 11 — auto-création).
     # Vide par défaut : l'agent est désactivé. Doit pointer vers un preset
-    # supportant les structured outputs (response_schema). Voir ArchitectAgent.
+    # supportant les structured outputs (response_schema). Voir AgentArchitect.
     synapse.governance.architect_preset_key: ''
 
 services:
@@ -50,8 +50,8 @@ services:
             - '../src/Agent/MultiAgent/Exception/'
             # JsonPathLite : utilitaire statique, pas un service
             - '../src/Agent/MultiAgent/JsonPathLite.php'
-            # ArchitectResponseSchema : utilitaire statique, pas un service
-            - '../src/Governance/Architect/ArchitectResponseSchema.php'
+            # AgentArchitectSchema : utilitaire statique, pas un service
+            - '../src/Governance/AgentArchitect/AgentArchitectSchema.php'
 
     # UserAwareContextProvider : classe abstraite → $language injecté via YAML
     ArnaudMoncondhuy\SynapseCore\Context\UserAwareContextProvider:
@@ -73,3 +73,12 @@ services:
     # garantissant que le recorder fonctionne sans dépendance LLM.
     ArnaudMoncondhuy\SynapseCore\Contract\PromptJudgeInterface:
         alias: ArnaudMoncondhuy\SynapseCore\Governance\NullPromptJudge
+
+    # ── CodeExecutor (sandbox Python) ─────────────────────────────────────────
+    # Par défaut, l'alias pointe sur NullCodeExecutor qui refuse toute
+    # exécution et retourne BackendUnavailable. Si l'hôte active
+    # `synapse.code_executor.enabled: true`, SynapseCoreExtension bascule
+    # l'alias vers HttpCodeExecutor (container sidecar). Le tool `code_execute`
+    # reste toujours enregistré — visible dans l'admin même quand désactivé.
+    ArnaudMoncondhuy\SynapseCore\Contract\CodeExecutorInterface:
+        alias: ArnaudMoncondhuy\SynapseCore\CodeExecutor\NullCodeExecutor

@@ -1,0 +1,110 @@
+# Source: https://docs.anthropic.com/en/docs/about-claude/models
+# Tarifs : https://www.anthropic.com/pricing (par million de tokens)
+# Mis à jour : 2026-04-11
+# RGPD : société US (Cloud Act applicable). Données traitées aux USA.
+#         rgpd_risk: risk pour tous les modèles.
+models:
+
+  # ── Claude 4.6 (génération courante) ─────────────────────────────────────
+
+  claude-opus-4-6:
+    provider: anthropic
+    range: flagship
+    currency: USD
+    rgpd_risk: risk
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 200000
+    max_output_tokens: 32000
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf]
+    pricing_input: 15.00
+    pricing_output: 75.00
+
+  claude-sonnet-4-6:
+    provider: anthropic
+    range: balanced
+    currency: USD
+    rgpd_risk: risk
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 200000
+    max_output_tokens: 64000
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf]
+    pricing_input: 3.00
+    pricing_output: 15.00
+
+  claude-haiku-4-5:
+    provider: anthropic
+    range: fast
+    currency: USD
+    rgpd_risk: risk
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 200000
+    max_output_tokens: 16000
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf]
+    pricing_input: 1.00
+    pricing_output: 5.00
+
+  # ── Claude 4.5 (génération précédente, toujours disponible) ──────────────
+
+  claude-opus-4-5:
+    provider: anthropic
+    range: flagship
+    currency: USD
+    rgpd_risk: risk
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 200000
+    max_output_tokens: 32000
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf]
+    pricing_input: 15.00
+    pricing_output: 75.00
+
+  claude-sonnet-4-5:
+    provider: anthropic
+    range: balanced
+    currency: USD
+    rgpd_risk: risk
+    supports_thinking: true
+    supports_safety_settings: false
+    supports_top_k: false
+    supports_function_calling: true
+    supports_streaming: true
+    supports_system_prompt: true
+    max_input_tokens: 200000
+    max_output_tokens: 64000
+    supports_vision: true
+    supports_parallel_tool_calls: true
+    supports_response_schema: false
+    accepted_mime_types: [image/jpeg, image/png, image/webp, image/gif, application/pdf]
+    pricing_input: 3.00
+    pricing_output: 15.00

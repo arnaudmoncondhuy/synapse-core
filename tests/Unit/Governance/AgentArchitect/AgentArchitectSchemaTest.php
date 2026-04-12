@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\AgentArchitect;
 
-use ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectResponseSchema;
+use ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitectSchema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectResponseSchema
+ * @covers \ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitectSchema
  */
-final class ArchitectResponseSchemaTest extends TestCase
+final class AgentArchitectSchemaTest extends TestCase
 {
     public function testCreateAgentSchemaHasRequiredStructure(): void
     {
-        $schema = ArchitectResponseSchema::createAgent();
+        $schema = AgentArchitectSchema::createAgent();
 
         $this->assertSame('json_schema', $schema['type']);
         $this->assertSame('architect_create_agent', $schema['json_schema']['name']);
@@ -36,7 +36,7 @@ final class ArchitectResponseSchemaTest extends TestCase
 
     public function testImprovePromptSchemaHasRequiredStructure(): void
     {
-        $schema = ArchitectResponseSchema::improvePrompt();
+        $schema = AgentArchitectSchema::improvePrompt();
 
         $this->assertSame('json_schema', $schema['type']);
         $this->assertSame('architect_improve_prompt', $schema['json_schema']['name']);
@@ -53,7 +53,7 @@ final class ArchitectResponseSchemaTest extends TestCase
 
     public function testCreateWorkflowSchemaHasRequiredStructure(): void
     {
-        $schema = ArchitectResponseSchema::createWorkflow();
+        $schema = AgentArchitectSchema::createWorkflow();
 
         $this->assertSame('json_schema', $schema['type']);
         $this->assertSame('architect_create_workflow', $schema['json_schema']['name']);
@@ -76,16 +76,16 @@ final class ArchitectResponseSchemaTest extends TestCase
     public function testForActionReturnsCorrectSchema(): void
     {
         $this->assertSame(
-            ArchitectResponseSchema::createAgent(),
-            ArchitectResponseSchema::forAction('create_agent'),
+            AgentArchitectSchema::createAgent(),
+            AgentArchitectSchema::forAction('create_agent'),
         );
         $this->assertSame(
-            ArchitectResponseSchema::improvePrompt(),
-            ArchitectResponseSchema::forAction('improve_prompt'),
+            AgentArchitectSchema::improvePrompt(),
+            AgentArchitectSchema::forAction('improve_prompt'),
         );
         $this->assertSame(
-            ArchitectResponseSchema::createWorkflow(),
-            ArchitectResponseSchema::forAction('create_workflow'),
+            AgentArchitectSchema::createWorkflow(),
+            AgentArchitectSchema::forAction('create_workflow'),
         );
     }
 
@@ -94,13 +94,13 @@ final class ArchitectResponseSchemaTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/inconnue/');
 
-        ArchitectResponseSchema::forAction('invalid_action');
+        AgentArchitectSchema::forAction('invalid_action');
     }
 
     #[DataProvider('provideAllSchemas')]
     public function testAllSchemasAreValidJsonSchemaFormat(string $action): void
     {
-        $schema = ArchitectResponseSchema::forAction($action);
+        $schema = AgentArchitectSchema::forAction($action);
 
         // Structure OpenAI response_format canonique
         $this->assertArrayHasKey('type', $schema);

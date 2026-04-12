@@ -18,6 +18,7 @@ defaults_reference:
 
   # ── Identité ──────────────────────────────────────────────────────────────
   provider: "unknown"          # Requis. Slug du provider (ex: 'my_provider')
+  range: "balanced"            # Gamme du modèle : flagship | balanced | fast | specialized
   currency: "USD"              # Devise des tarifs (code ISO 4217). Défaut: USD
 
   # ── Contexte ──────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ defaults_reference:
 # models:
 #   mon-modele-chat:
 #     provider: mon_provider
+#     range: balanced
 #     max_input_tokens: 131072
 #     max_output_tokens: 16384
 #     supports_function_calling: true
@@ -100,6 +102,7 @@ defaults_reference:
 # models:
 #   mon-modele-embedding:
 #     provider: mon_provider
+#     range: specialized
 #     dimensions: [1024, 512]
 #     max_input_tokens: 8192
 #     max_output_tokens: 0
@@ -125,6 +128,7 @@ defaults_reference:
 # models:
 #   mon-modele-image:
 #     provider: mon_provider
+#     range: specialized
 #     max_input_tokens: 0
 #     max_output_tokens: 0
 #     supports_text_generation: false

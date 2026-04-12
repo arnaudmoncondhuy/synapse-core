@@ -2,12 +2,17 @@
 #   Modèles : https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models?hl=fr
 #   Tarifs   : https://cloud.google.com/vertex-ai/generative-ai/pricing?hl=fr
 #   Mis à jour : 2026-04-01
+# RGPD : société US (Cloud Act applicable). Régions UE disponibles + DPA possible.
+#         rgpd_risk: tolerated (mieux qu'Anthropic grâce aux régions UE dédiées,
+#         mais Cloud Act reste un risque juridique pour les données sensibles).
 models:
 
   # ── Gemini 3 — Preview ────────────────────────────────────────────────────
 
   gemini-3.1-pro-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: flagship
     currency: USD
     provider_regions: [global]
     supports_thinking: true
@@ -27,6 +32,8 @@ models:
 
   gemini-3-flash-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: balanced
     currency: USD
     provider_regions: [global]
     supports_thinking: true
@@ -46,6 +53,8 @@ models:
 
   gemini-3.1-flash-lite-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: fast
     currency: USD
     provider_regions: [global]
     supports_thinking: true
@@ -66,6 +75,8 @@ models:
   # Génération d'images — supporte le thinking contrairement au 2.5-flash-image
   gemini-3.1-flash-image-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: specialized
     currency: USD
     provider_regions: [global]
     supports_image_generation: true
@@ -87,6 +98,8 @@ models:
 
   gemini-3-pro-image-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: specialized
     currency: USD
     provider_regions: [global]
     supports_image_generation: true
@@ -110,6 +123,8 @@ models:
 
   gemini-2.5-pro:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: flagship
     currency: USD
     provider_regions:
       - us-central1
@@ -145,6 +160,8 @@ models:
 
   gemini-2.5-flash:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: balanced
     currency: USD
     provider_regions:
       - us-central1
@@ -185,6 +202,8 @@ models:
 
   gemini-2.5-flash-lite:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: fast
     currency: USD
     provider_regions:
       - global
@@ -219,6 +238,8 @@ models:
 
   gemini-2.5-flash-image:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: specialized
     currency: USD
     provider_regions:
       - us-central1
@@ -255,6 +276,8 @@ models:
 
   gemini-embedding-2-preview:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: specialized
     currency: USD
     provider_regions: [us-central1]
     dimensions: [3072]
@@ -276,6 +299,8 @@ models:
 
   gemini-embedding-001:
     provider: google_vertex_ai
+    rgpd_risk: tolerated
+    range: specialized
     currency: USD
     dimensions: [3072, 1536, 768] # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini
     supports_text_generation: false

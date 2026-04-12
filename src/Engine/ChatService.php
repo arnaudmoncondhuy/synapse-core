@@ -12,6 +12,7 @@ use ArnaudMoncondhuy\SynapseCore\Event\SynapseExchangeCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseGenerationCompletedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseGenerationStartedEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
+use ArnaudMoncondhuy\SynapseCore\Service\ConversationContextHolder;
 use ArnaudMoncondhuy\SynapseCore\Service\ImageGenerationService;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\ResponseSchemaNotSupportedException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\SynapseRuntimeConfig;
@@ -44,6 +45,7 @@ class ChatService
         private readonly ?\ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager $conversationManager = null,
         private readonly ?\ArnaudMoncondhuy\SynapseCore\Accounting\SpendingLimitChecker $spendingLimitChecker = null,
         private readonly ?TokenAccountingService $tokenAccountingService = null,
+        private readonly ?ConversationContextHolder $conversationContextHolder = null,
     ) {
     }
 
@@ -118,6 +120,17 @@ class ChatService
         // IDs utilisés par le token accounting (ChatService est devenu le point unique de logUsage).
         $userId = isset($askOptions['user_id']) && is_string($askOptions['user_id']) ? $askOptions['user_id'] : null;
         $conversationId = isset($askOptions['conversation_id']) && is_string($askOptions['conversation_id']) ? $askOptions['conversation_id'] : null;
+
+        // Propager le contexte conversation pour que les tools (ex: CodeExecuteTool) puissent accéder aux fichiers.
+        // Les attachments sont stockés ici car ils ne sont persistés en base qu'APRÈS ask().
+        if (null !== $this->conversationContextHolder) {
+            if (null !== $conversationId && '' !== $conversationId) {
+                $this->conversationContextHolder->set($conversationId);
+            }
+            if (!empty($attachments)) {
+                $this->conversationContextHolder->setAttachments($attachments);
+            }
+        }
 
         // ── AGENT CONTEXT PROPAGATION ──
         // Si l'appel vient d'un agent (via AgentResolver + call()), un AgentContext est
@@ -213,6 +226,10 @@ class ChatService
             );
 
             // ── FINALIZE ──
+            // Merger les artefacts générés par les tools (code_execute, etc.) avec ceux du LLM
+            $toolArtifacts = $this->conversationContextHolder?->getGeneratedArtifacts() ?? [];
+            $allGeneratedAttachments = array_merge($loopResult->generatedAttachments, $toolArtifacts);
+
             return $this->finalizeAndDispatch(
                 $loopResult->fullText,
                 $loopResult->usage,
@@ -221,7 +238,7 @@ class ChatService
                 $config,
                 $activeClient,
                 $debugMode,
-                $loopResult->generatedAttachments,
+                $allGeneratedAttachments,
                 $agentContext,
                 $loopResult->structuredData,
                 $module,
@@ -411,6 +428,9 @@ class ChatService
         if (null !== $structuredData) {
             $result['structured_output'] = $structuredData;
         }
+
+        // Nettoyer le contexte conversation (request-scoped)
+        $this->conversationContextHolder?->clear();
 
         return $result;
     }

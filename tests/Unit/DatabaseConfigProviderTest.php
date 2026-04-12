@@ -14,6 +14,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseConfigRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -45,12 +46,22 @@ class DatabaseConfigProviderTest extends TestCase
         $provider->setCredentials(['api_key' => 'key']);
         $validatorProviderRepo->method('findOneBy')->willReturn($provider);
 
+        $validatorModelRepo = $this->createStub(SynapseModelRepository::class);
+        $validatorModelRepo->method('findOneBy')->willReturn(null); // modèle non tracé → activé par défaut
+
         $capabilityRegistry = $this->createStub(ModelCapabilityRegistry::class);
         $capabilityRegistry->method('isKnownModel')->willReturn(true);
+        $capabilityRegistry->method('getCapabilities')->willReturn(
+            new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+                model: 'test-model',
+                provider: 'test',
+                supportsTextGeneration: true,
+            )
+        );
 
         $em = $this->createStub(EntityManagerInterface::class);
 
-        return new PresetValidator($validatorProviderRepo, $capabilityRegistry, $em);
+        return new PresetValidator($validatorProviderRepo, $validatorModelRepo, $capabilityRegistry, $em);
     }
 
     /**
@@ -61,13 +72,16 @@ class DatabaseConfigProviderTest extends TestCase
         $validatorProviderRepo = $this->createStub(SynapseProviderRepository::class);
         $validatorProviderRepo->method('findOneBy')->willReturn(null); // provider introuvable
 
+        $validatorModelRepo = $this->createStub(SynapseModelRepository::class);
+        $validatorModelRepo->method('findOneBy')->willReturn(null);
+
         $capabilityRegistry = $this->createStub(ModelCapabilityRegistry::class);
         $capabilityRegistry->method('isKnownModel')->willReturn(false);
 
         $em = $this->createStub(EntityManagerInterface::class);
         $em->method('getRepository')->willReturn($this->createStub(\Doctrine\ORM\EntityRepository::class));
 
-        return new PresetValidator($validatorProviderRepo, $capabilityRegistry, $em);
+        return new PresetValidator($validatorProviderRepo, $validatorModelRepo, $capabilityRegistry, $em);
     }
 
     // -------------------------------------------------------------------------
@@ -146,11 +160,18 @@ class DatabaseConfigProviderTest extends TestCase
         $globalConfigRepo = $this->createStub(SynapseConfigRepository::class);
         $globalConfigRepo->method('getGlobalConfig')->willReturn($globalConfig);
 
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
         $provider = new DatabaseConfigProvider(
             presetRepo: $this->presetRepo,
             globalConfigRepo: $globalConfigRepo,
             providerRepo: $this->providerRepo,
             presetValidator: $this->buildPassingValidator(),
+            cache: null,
+            encryptionService: $encryption,
         );
 
         $config = $provider->getConfigForPreset($this->buildPreset());
@@ -222,14 +243,19 @@ class DatabaseConfigProviderTest extends TestCase
         $this->assertSame('plain-key', $config->providerCredentials['api_key']);
     }
 
-    public function testPassesThroughCredentialsWithoutEncryptionService(): void
+    public function testPassesThroughCredentialsWhenNotEncrypted(): void
     {
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
         $synapseProvider = new SynapseProvider();
         $synapseProvider->setLabel('Gemini');
         $synapseProvider->setIsEnabled(true);
         $synapseProvider->setCredentials(['api_key' => 'plain-key']);
 
-        $config = $this->buildProvider($this->buildPassingValidator(), null, $synapseProvider)
+        $config = $this->buildProvider($this->buildPassingValidator(), $encryption, $synapseProvider)
             ->getConfigForPreset($this->buildPreset());
 
         $this->assertSame('plain-key', $config->providerCredentials['api_key']);
@@ -244,6 +270,13 @@ class DatabaseConfigProviderTest extends TestCase
         ?EncryptionServiceInterface $encryption = null,
         ?SynapseProvider $providerForRepo = null,
     ): DatabaseConfigProvider {
+        if (null === $encryption) {
+            $encryption = $this->createMock(EncryptionServiceInterface::class);
+            $encryption->method('isEncrypted')->willReturn(false);
+            $encryption->method('encrypt')->willReturnArgument(0);
+            $encryption->method('decrypt')->willReturnArgument(0);
+        }
+
         $providerRepo = $this->providerRepo;
         if (null !== $providerForRepo) {
             $providerRepo = $this->createStub(SynapseProviderRepository::class);

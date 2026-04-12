@@ -84,6 +84,7 @@ class SynapseDoctorCommand extends Command
 
         $checks['Database connection'] = $this->checkDatabase($io);
         $checks['Database tables'] = $this->checkDatabaseTables($io);
+        $checks['Code executor sandbox'] = $this->checkCodeExecutor($io);
 
         if ($this->hasChat) {
             $checks['Conversation owner (User entity)'] = $this->checkConversationOwner($io);
@@ -562,6 +563,55 @@ class SynapseDoctorCommand extends Command
             $io->writeln('  <comment>[WARN]</comment> Could not verify tables: '.$e->getMessage());
 
             return false;
+        }
+    }
+
+    /**
+     * Vérifie l'état du backend d'exécution de code Python (Chantier E).
+     *
+     * - Si `synapse.code_executor.enabled = false` → le tool `code_execute`
+     *   reste visible mais dégradé (NullCodeExecutor → BackendUnavailable).
+     *   C'est une info, pas une erreur.
+     * - Si enabled = true → on teste la reachability du sandbox via GET /health.
+     *   Si le sandbox est injoignable, on WARN (le tool continuera à répondre
+     *   BackendUnavailable à chaque appel), mais c'est pas une erreur bloquante
+     *   de la doctor run — la config est valide, c'est l'infra qui ne suit pas.
+     */
+    private function checkCodeExecutor(SymfonyStyle $io): bool
+    {
+        $enabled = (bool) $this->parameterBag->get('synapse.code_executor.enabled');
+        $sandboxUrlRaw = $this->parameterBag->get('synapse.code_executor.sandbox_url');
+        $sandboxUrl = is_string($sandboxUrlRaw) ? $sandboxUrlRaw : 'http://synapse-sandbox:8000';
+
+        if (!$enabled) {
+            $io->writeln('  <comment>[INFO]</comment> Code executor disabled (NullCodeExecutor). Tool `code_execute` listé mais retournera BackendUnavailable. Activer via synapse.code_executor.enabled: true.');
+
+            return true;
+        }
+
+        // Enabled → tester /health
+        try {
+            $httpClient = \Symfony\Component\HttpClient\HttpClient::create(['timeout' => 2]);
+            $response = $httpClient->request('GET', rtrim($sandboxUrl, '/').'/health', ['timeout' => 2]);
+            $status = $response->getStatusCode();
+
+            if (200 === $status) {
+                $io->writeln(sprintf('  <info>[OK]</info> Code executor sandbox reachable at %s', $sandboxUrl));
+
+                return true;
+            }
+
+            $io->writeln(sprintf('  <comment>[WARN]</comment> Code executor sandbox returned HTTP %d at %s. Container may be misconfigured.', $status, $sandboxUrl));
+
+            return true; // non bloquant
+        } catch (\Throwable $e) {
+            $io->writeln(sprintf(
+                '  <comment>[WARN]</comment> Code executor enabled but sandbox unreachable at %s (%s). Vérifier que le container sidecar `synapse-sandbox` tourne et est sur le même réseau Docker.',
+                $sandboxUrl,
+                $e->getMessage(),
+            ));
+
+            return true; // non bloquant — la config est valide, c'est l'infra qui manque
         }
     }
 

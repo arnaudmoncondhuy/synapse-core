@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect;
 
 use ArnaudMoncondhuy\SynapseCore\Governance\PromptVersionRecorder;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
@@ -11,7 +11,7 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Applique les propositions structurées de l'{@see ArchitectAgent} — Phase 11.
+ * Applique les propositions structurées de l'{@see AgentArchitect} — Phase 11.
  *
  * Ce service est le pont entre la sortie JSON de l'architecte et les entités
  * Doctrine. Chaque proposition passe par le pipeline HITL existant :
@@ -33,7 +33,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Toutes les entités créées utilisent la convention `changedBy` = `agent:architect`
  * pour tracer l'origine dans l'historique.
  */
-class ArchitectProposalProcessor
+class AgentArchitectProcessor
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -45,7 +45,7 @@ class ArchitectProposalProcessor
     /**
      * Dispatche une proposition vers le handler approprié selon `_action`.
      *
-     * @param array<string, mixed> $proposal sortie structurée de l'ArchitectAgent
+     * @param array<string, mixed> $proposal sortie structurée de l'AgentArchitect
      *
      * @throws \InvalidArgumentException si la proposition est invalide
      *

@@ -27,8 +27,8 @@ class DoctrineVectorStore implements VectorStoreInterface
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly SynapseVectorMemoryRepository $repository,
+        private readonly EncryptionServiceInterface $encryptionService,
         private readonly ?LoggerInterface $logger = null,
-        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
         $connection = $this->em->getConnection();
         $platform = $connection->getDatabasePlatform()::class;
@@ -53,10 +53,7 @@ class DoctrineVectorStore implements VectorStoreInterface
 
         // Remplir les colonnes dénormalisées pour le filtrage et l'affichage
         if (isset($payload['content']) && is_string($payload['content'])) {
-            $content = $payload['content'];
-            if (null !== $this->encryptionService) {
-                $content = $this->encryptionService->encrypt($content);
-            }
+            $content = $this->encryptionService->encrypt($payload['content']);
             $memory->setContent($content);
         }
         if (isset($payload['user_id']) && is_string($payload['user_id'])) {

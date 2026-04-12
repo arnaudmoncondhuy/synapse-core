@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Provider\GoogleVertexAi;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Provider\GoogleVertexAi\GoogleVertexAiAuthService;
 use ArnaudMoncondhuy\SynapseCore\Provider\GoogleVertexAi\GoogleVertexAiClient;
@@ -114,11 +115,18 @@ final class GoogleVertexAiSchemaConversionTest extends TestCase
 
     private function makeClient(): GoogleVertexAiClient
     {
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
         return new GoogleVertexAiClient(
             $this->createMock(HttpClientInterface::class),
             $this->createMock(GoogleVertexAiAuthService::class),
             $this->createMock(ConfigProviderInterface::class),
             $this->createMock(ModelCapabilityRegistry::class),
+            $encryption,
+            null,
         );
     }
 

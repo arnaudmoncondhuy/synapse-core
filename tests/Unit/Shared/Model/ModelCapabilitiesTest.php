@@ -169,25 +169,49 @@ class ModelCapabilitiesTest extends TestCase
 
     // ── getAcceptedMimeTypes() ──────────────────────────────────────────
 
-    public function testGetAcceptedMimeTypesWithExplicitList(): void
+    public function testGetAcceptedMimeTypesWithExplicitListIncludesTextTypes(): void
     {
         $caps = new ModelCapabilities(model: 'm', provider: 'p', acceptedMimeTypes: ['application/pdf']);
-        $this->assertSame(['application/pdf'], $caps->getAcceptedMimeTypes());
+        $types = $caps->getAcceptedMimeTypes();
+
+        $this->assertContains('application/pdf', $types);
+        // Text types are always merged in
+        $this->assertContains('text/plain', $types);
+        $this->assertContains('text/csv', $types);
+        $this->assertContains('text/markdown', $types);
+        $this->assertContains('application/json', $types);
     }
 
-    public function testGetAcceptedMimeTypesFallbackForVision(): void
+    public function testGetAcceptedMimeTypesFallbackForVisionIncludesTextTypes(): void
     {
         $caps = new ModelCapabilities(model: 'm', provider: 'p', supportsVision: true);
         $types = $caps->getAcceptedMimeTypes();
 
         $this->assertContains('image/jpeg', $types);
         $this->assertContains('image/png', $types);
-        $this->assertCount(4, $types);
+        $this->assertContains('text/csv', $types);
+        $this->assertContains('application/json', $types);
     }
 
-    public function testGetAcceptedMimeTypesEmptyWhenNoVision(): void
+    public function testNoVisionModelStillAcceptsTextTypes(): void
     {
         $caps = new ModelCapabilities(model: 'm', provider: 'p');
-        $this->assertSame([], $caps->getAcceptedMimeTypes());
+        $types = $caps->getAcceptedMimeTypes();
+
+        $this->assertContains('text/plain', $types);
+        $this->assertContains('text/csv', $types);
+        $this->assertContains('text/markdown', $types);
+        $this->assertContains('application/json', $types);
+        // Images should NOT be present without vision
+        $this->assertNotContains('image/jpeg', $types);
+    }
+
+    public function testExplicitListDoesNotDuplicateTextTypes(): void
+    {
+        $caps = new ModelCapabilities(model: 'm', provider: 'p', acceptedMimeTypes: ['text/plain', 'image/png']);
+        $types = $caps->getAcceptedMimeTypes();
+
+        // text/plain should appear only once
+        $this->assertCount(1, array_keys($types, 'text/plain', true));
     }
 }

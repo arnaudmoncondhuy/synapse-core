@@ -8,6 +8,7 @@ use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\PresetValidator;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseProvider;
+use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelRepository;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseProviderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -15,14 +16,20 @@ use PHPUnit\Framework\TestCase;
 class PresetValidatorTest extends TestCase
 {
     private SynapseProviderRepository $providerRepo;
+    private SynapseModelRepository $modelRepo;
     private ModelCapabilityRegistry $capabilityRegistry;
     private EntityManagerInterface $em;
 
     protected function setUp(): void
     {
         $this->providerRepo = $this->createStub(SynapseProviderRepository::class);
+        $this->modelRepo = $this->createStub(SynapseModelRepository::class);
         $this->capabilityRegistry = $this->createStub(ModelCapabilityRegistry::class);
         $this->em = $this->createStub(EntityManagerInterface::class);
+
+        // Par défaut : le modèle n'est pas présent dans la table SynapseModel
+        // ce qui équivaut à « activé par défaut » pour la validation.
+        $this->modelRepo->method('findOneBy')->willReturn(null);
     }
 
     // -------------------------------------------------------------------------
@@ -80,6 +87,37 @@ class PresetValidatorTest extends TestCase
         $this->assertFalse($this->buildValidator()->isValid($preset));
     }
 
+    public function testIsInvalidWhenModelDisabledInDatabase(): void
+    {
+        $provider = $this->buildProvider(configured: true);
+        $this->providerRepo->method('findOneBy')->willReturn($provider);
+        $this->capabilityRegistry->method('isKnownModel')->willReturn(true);
+
+        // Override du stub par défaut : le modèle est présent en DB et désactivé.
+        $disabledModel = new \ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModel();
+        $disabledModel->setModelId('gemini-flash')
+            ->setProviderName('gemini')
+            ->setLabel('Gemini Flash')
+            ->setIsEnabled(false);
+
+        $modelRepo = $this->createStub(SynapseModelRepository::class);
+        $modelRepo->method('findOneBy')->willReturn($disabledModel);
+
+        $validator = new PresetValidator(
+            $this->providerRepo,
+            $modelRepo,
+            $this->capabilityRegistry,
+            $this->em,
+        );
+
+        $preset = $this->buildPreset(providerName: 'gemini', model: 'gemini-flash', key: 'default');
+
+        $this->assertFalse($validator->isValid($preset));
+        $reason = $validator->getInvalidReason($preset);
+        $this->assertNotNull($reason);
+        $this->assertStringContainsString('désactivé', $reason);
+    }
+
     // -------------------------------------------------------------------------
     // isValid() — cas valide
     // -------------------------------------------------------------------------
@@ -93,6 +131,91 @@ class PresetValidatorTest extends TestCase
         $preset = $this->buildPreset(providerName: 'gemini', model: 'gemini-flash', key: 'default');
 
         $this->assertTrue($this->buildValidator()->isValid($preset));
+    }
+
+    public function testIsValidForImageOnlyModel(): void
+    {
+        $provider = $this->buildProvider(configured: true);
+        $this->providerRepo->method('findOneBy')->willReturn($provider);
+        $this->capabilityRegistry->method('isKnownModel')->willReturn(true);
+
+        $preset = $this->buildPreset(providerName: 'ovh', model: 'stable-diffusion', key: 'ovh_image');
+
+        // Un preset image-only est valide (utilisable par un agent)
+        $this->assertTrue($this->buildValidator()->isValid($preset));
+    }
+
+    // -------------------------------------------------------------------------
+    // canBeActivated() — séparation validité / activation
+    // -------------------------------------------------------------------------
+
+    public function testCanBeActivatedWhenTextGenerationSupported(): void
+    {
+        $provider = $this->buildProvider(configured: true);
+        $this->providerRepo->method('findOneBy')->willReturn($provider);
+        $this->capabilityRegistry->method('isKnownModel')->willReturn(true);
+        $this->capabilityRegistry->method('getCapabilities')->willReturn(
+            new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+                model: 'gemini-flash',
+                provider: 'gemini',
+                supportsTextGeneration: true,
+            )
+        );
+
+        $preset = $this->buildPreset(providerName: 'gemini', model: 'gemini-flash', key: 'default');
+
+        $this->assertTrue($this->buildValidator()->canBeActivated($preset));
+    }
+
+    public function testCannotBeActivatedWhenTextGenerationNotSupported(): void
+    {
+        $provider = $this->buildProvider(configured: true);
+        $this->providerRepo->method('findOneBy')->willReturn($provider);
+        $this->capabilityRegistry->method('isKnownModel')->willReturn(true);
+        $this->capabilityRegistry->method('getCapabilities')->willReturn(
+            new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+                model: 'bge-m3',
+                provider: 'ovh',
+                supportsTextGeneration: false,
+                supportsEmbedding: true,
+            )
+        );
+
+        $preset = $this->buildPreset(providerName: 'ovh', model: 'bge-m3', key: 'embedding');
+
+        $this->assertFalse($this->buildValidator()->canBeActivated($preset));
+    }
+
+    public function testCannotBeActivatedWhenPresetInvalid(): void
+    {
+        // Provider non trouvé = preset invalide = non activable
+        $this->providerRepo->method('findOneBy')->willReturn(null);
+
+        $preset = $this->buildPreset(providerName: 'unknown', model: 'model', key: 'key');
+
+        $this->assertFalse($this->buildValidator()->canBeActivated($preset));
+    }
+
+    public function testGetCannotActivateReasonForEmbeddingModel(): void
+    {
+        $provider = $this->buildProvider(configured: true);
+        $this->providerRepo->method('findOneBy')->willReturn($provider);
+        $this->capabilityRegistry->method('isKnownModel')->willReturn(true);
+        $this->capabilityRegistry->method('getCapabilities')->willReturn(
+            new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+                model: 'bge-m3',
+                provider: 'ovh',
+                supportsTextGeneration: false,
+                supportsEmbedding: true,
+            )
+        );
+
+        $preset = $this->buildPreset(providerName: 'ovh', model: 'bge-m3', key: 'embedding');
+
+        $reason = $this->buildValidator()->getCannotActivateReason($preset);
+
+        $this->assertNotNull($reason);
+        $this->assertStringContainsString('génération de texte', $reason);
     }
 
     // -------------------------------------------------------------------------
@@ -175,7 +298,7 @@ class PresetValidatorTest extends TestCase
 
     private function buildValidator(): PresetValidator
     {
-        return new PresetValidator($this->providerRepo, $this->capabilityRegistry, $this->em);
+        return new PresetValidator($this->providerRepo, $this->modelRepo, $this->capabilityRegistry, $this->em);
     }
 
     private function buildPreset(string $providerName, string $model, string $key): SynapseModelPreset

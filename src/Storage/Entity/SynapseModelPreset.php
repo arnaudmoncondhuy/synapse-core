@@ -18,6 +18,11 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'synapse_model_preset')]
+#[ORM\UniqueConstraint(
+    name: 'uniq_preset_active',
+    columns: ['is_active'],
+    options: ['where' => '(is_active = true)']
+)]
 #[ORM\HasLifecycleCallbacks]
 class SynapseModelPreset
 {

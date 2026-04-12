@@ -14,6 +14,7 @@ final readonly class ChunkProcessorResult
      * @param array<int, array<string, mixed>> $safetyRatings
      * @param list<array<string, mixed>> $providerRawParts Raw provider parts (thinking+functionCall) for multi-turn history
      * @param list<array{mime_type: string, data: string}> $generatedAttachments Fichiers générés par le LLM dans ce tour
+     * @param bool $malformedRecovery true si ce tour contient un function_call synthétisé (recovery MALFORMED_FUNCTION_CALL)
      */
     public function __construct(
         public string $modelText,
@@ -22,6 +23,7 @@ final readonly class ChunkProcessorResult
         public array $safetyRatings,
         public array $providerRawParts = [],
         public array $generatedAttachments = [],
+        public bool $malformedRecovery = false,
     ) {
     }
 }

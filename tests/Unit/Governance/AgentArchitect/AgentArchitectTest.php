@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\AgentArchitect;
 
 use ArnaudMoncondhuy\SynapseCore\Agent\Input;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
-use ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectAgent;
+use ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitect;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseModelPreset;
 use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseAgentRepository;
@@ -14,9 +14,9 @@ use ArnaudMoncondhuy\SynapseCore\Storage\Repository\SynapseModelPresetRepository
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectAgent
+ * @covers \ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitect
  */
-final class ArchitectAgentTest extends TestCase
+final class AgentArchitectTest extends TestCase
 {
     public function testGetNameReturnsArchitect(): void
     {
@@ -52,9 +52,16 @@ final class ArchitectAgentTest extends TestCase
         $this->assertStringContainsString('Description', $data['error']);
     }
 
-    public function testCallReturnsErrorWhenPresetKeyEmpty(): void
+    public function testCallReturnsErrorWhenNoPresetAvailable(): void
     {
-        $agent = $this->createAgent(architectPresetKey: '');
+        $presetRepo = $this->createStub(SynapseModelPresetRepository::class);
+        $presetRepo->method('findOneBy')->willReturn(null);
+        $presetRepo->method('findActive')->willThrowException(new \Exception('Aucun preset'));
+
+        $agent = $this->createAgent(
+            architectPresetKey: '',
+            presetRepo: $presetRepo,
+        );
 
         $output = $agent->call(Input::ofStructured([
             'action' => 'create_agent',
@@ -66,14 +73,22 @@ final class ArchitectAgentTest extends TestCase
         $this->assertStringContainsString('Preset', $data['error']);
     }
 
-    public function testCallReturnsErrorWhenPresetNotFound(): void
+    public function testCallFallsBackToActivePresetWhenKeyEmpty(): void
     {
+        $preset = new SynapseModelPreset();
+        $preset->setName('Active');
+        $preset->setKey('active');
+
         $presetRepo = $this->createStub(SynapseModelPresetRepository::class);
-        $presetRepo->method('findOneBy')->willReturn(null);
+        $presetRepo->method('findActive')->willReturn($preset);
+
+        $chatService = $this->createStub(ChatService::class);
+        $chatService->method('ask')->willReturn(['structured_output' => null, 'answer' => 'test']);
 
         $agent = $this->createAgent(
-            architectPresetKey: 'missing_preset',
+            architectPresetKey: '',
             presetRepo: $presetRepo,
+            chatService: $chatService,
         );
 
         $output = $agent->call(Input::ofStructured([
@@ -82,8 +97,9 @@ final class ArchitectAgentTest extends TestCase
         ]));
         $data = $output->getData();
 
+        // Le LLM est appelé (avec le preset actif) — l'erreur vient du structured output manquant, pas du preset
         $this->assertArrayHasKey('error', $data);
-        $this->assertStringContainsString('missing_preset', $data['error']);
+        $this->assertStringNotContainsString('Preset', $data['error']);
     }
 
     public function testCallReturnsErrorOnInvalidAction(): void
@@ -235,9 +251,10 @@ final class ArchitectAgentTest extends TestCase
     private function createAgent(
         string $architectPresetKey = '',
         ?SynapseModelPresetRepository $presetRepo = null,
-    ): ArchitectAgent {
-        return new ArchitectAgent(
-            chatService: $this->createStub(ChatService::class),
+        ?ChatService $chatService = null,
+    ): AgentArchitect {
+        return new AgentArchitect(
+            chatService: $chatService ?? $this->createStub(ChatService::class),
             presetRepository: $presetRepo ?? $this->createStub(SynapseModelPresetRepository::class),
             agentRepository: $this->createStub(SynapseAgentRepository::class),
             architectPresetKey: $architectPresetKey,
@@ -247,13 +264,13 @@ final class ArchitectAgentTest extends TestCase
     private function createAgentWithPreset(
         ?ChatService $chatService = null,
         ?SynapseAgentRepository $agentRepo = null,
-    ): ArchitectAgent {
+    ): AgentArchitect {
         $preset = $this->createStub(SynapseModelPreset::class);
 
         $presetRepo = $this->createStub(SynapseModelPresetRepository::class);
         $presetRepo->method('findOneBy')->willReturn($preset);
 
-        return new ArchitectAgent(
+        return new AgentArchitect(
             chatService: $chatService ?? $this->createStub(ChatService::class),
             presetRepository: $presetRepo,
             agentRepository: $agentRepo ?? $this->createStub(SynapseAgentRepository::class),

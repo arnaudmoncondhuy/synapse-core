@@ -9,6 +9,7 @@ use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
+use ArnaudMoncondhuy\SynapseCore\Engine\ToolConfigService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\ContextBuilderSubscriber;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptBuildEvent;
@@ -23,6 +24,7 @@ class ContextBuilderSubscriberTest extends TestCase
     private PromptBuilder $promptBuilder;
     private ConfigProviderInterface $configProvider;
     private ToolRegistry $toolRegistry;
+    private ToolConfigService $toolConfigService;
     private AgentRegistry $agentRegistry;
     private CodeAgentRegistry $codeAgentRegistry;
     private SynapseModelPresetRepository $presetRepo;
@@ -44,6 +46,11 @@ class ContextBuilderSubscriberTest extends TestCase
 
         $this->toolRegistry = $this->createStub(ToolRegistry::class);
         $this->toolRegistry->method('getDefinitions')->willReturn([]);
+        $this->toolRegistry->method('getTools')->willReturn([]);
+
+        $this->toolConfigService = $this->createStub(ToolConfigService::class);
+        $this->toolConfigService->method('filterToolNames')->willReturnCallback(fn (array $names): array => $names);
+        $this->toolConfigService->method('getDefaultExposedToolNames')->willReturn([]);
 
         $this->agentRegistry = $this->createStub(AgentRegistry::class);
         $this->agentRegistry->method('get')->willReturn(null);
@@ -217,6 +224,96 @@ class ContextBuilderSubscriberTest extends TestCase
         $this->assertSame('image_url', $userMsg['content'][1]['type']);
     }
 
+    public function testCsvAttachmentInjectedAsText(): void
+    {
+        $csvContent = "nom,age\nAlice,30\nBob,25";
+        $attachments = [['mime_type' => 'text/csv', 'data' => base64_encode($csvContent), 'name' => 'eleves.csv']];
+
+        $visionCaps = new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+            model: 'gemini-flash', provider: 'gemini', supportsVision: true,
+        );
+        $capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($visionCaps);
+        $capabilityRegistry->method('supports')->willReturn(true);
+
+        $event = new PromptBuildEvent('Analyse', [], [], null, $attachments);
+        $this->buildSubscriber(capabilityRegistry: $capabilityRegistry)->onPrePrompt($event);
+
+        $contents = $event->getPrompt()['contents'];
+        $userMsg = end($contents);
+        $this->assertIsArray($userMsg['content']);
+        // Le CSV doit être injecté comme type 'text', pas 'image_url'
+        $csvPart = $userMsg['content'][1];
+        $this->assertSame('text', $csvPart['type']);
+        $this->assertStringContainsString('eleves.csv', $csvPart['text']);
+        $this->assertStringContainsString('Alice,30', $csvPart['text']);
+    }
+
+    public function testLargeTextFileTruncated(): void
+    {
+        // Contenu > 100 KB
+        $bigContent = str_repeat('x', 150 * 1024);
+        $attachments = [['mime_type' => 'text/plain', 'data' => base64_encode($bigContent), 'name' => 'big.txt']];
+
+        $event = new PromptBuildEvent('Lis ce fichier', [], [], null, $attachments);
+        $this->buildSubscriber()->onPrePrompt($event);
+
+        $contents = $event->getPrompt()['contents'];
+        $userMsg = end($contents);
+        $this->assertIsArray($userMsg['content']);
+        $textPart = $userMsg['content'][1];
+        $this->assertSame('text', $textPart['type']);
+        $this->assertStringContainsString('tronqué', $textPart['text']);
+    }
+
+    public function testTextAttachmentPassesWithoutVision(): void
+    {
+        $csvData = base64_encode("nom,age\nAlice,30");
+        $attachments = [['mime_type' => 'text/csv', 'data' => $csvData, 'name' => 'eleves.csv']];
+
+        // Modèle sans vision mais avec types texte (le comportement par défaut de ModelCapabilities)
+        $noVisionCaps = new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+            model: 'gpt-4',
+            provider: 'openai',
+            supportsVision: false,
+        );
+        $capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($noVisionCaps);
+        $capabilityRegistry->method('supports')->willReturn(true);
+
+        $event = new PromptBuildEvent('Analyse ce CSV', [], [], null, $attachments);
+        $this->buildSubscriber(capabilityRegistry: $capabilityRegistry)->onPrePrompt($event);
+
+        $contents = $event->getPrompt()['contents'];
+        $userMsg = end($contents);
+        // Le message user doit être multipart avec le CSV
+        $this->assertIsArray($userMsg['content']);
+        $this->assertSame('text', $userMsg['content'][0]['type']);
+    }
+
+    public function testImageAttachmentDroppedWithoutVision(): void
+    {
+        $imageData = base64_encode('fake-png');
+        $attachments = [['mime_type' => 'image/png', 'data' => $imageData, 'name' => 'photo.png']];
+
+        $noVisionCaps = new \ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities(
+            model: 'text-only-model',
+            provider: 'openai',
+            supportsVision: false,
+        );
+        $capabilityRegistry = $this->createMock(ModelCapabilityRegistry::class);
+        $capabilityRegistry->method('getCapabilities')->willReturn($noVisionCaps);
+        $capabilityRegistry->method('supports')->willReturn(true);
+
+        $event = new PromptBuildEvent('Décris cette image', [], [], null, $attachments);
+        $this->buildSubscriber(capabilityRegistry: $capabilityRegistry)->onPrePrompt($event);
+
+        $contents = $event->getPrompt()['contents'];
+        $userMsg = end($contents);
+        // Sans vision, image/png n'est pas dans acceptedMimes → message string simple, pas multipart
+        $this->assertIsString($userMsg['content']);
+    }
+
     // -------------------------------------------------------------------------
     // Outils désactivés par disabled_capabilities
     // -------------------------------------------------------------------------
@@ -263,12 +360,14 @@ class ContextBuilderSubscriberTest extends TestCase
         ?PromptBuilder $promptBuilder = null,
         ?ConfigProviderInterface $configProvider = null,
         ?ToolRegistry $toolRegistry = null,
+        ?ToolConfigService $toolConfigService = null,
         ?ModelCapabilityRegistry $capabilityRegistry = null,
     ): ContextBuilderSubscriber {
         return new ContextBuilderSubscriber(
             promptBuilder: $promptBuilder ?? $this->promptBuilder,
             configProvider: $configProvider ?? $this->configProvider,
             toolRegistry: $toolRegistry ?? $this->toolRegistry,
+            toolConfigService: $toolConfigService ?? $this->toolConfigService,
             agentRegistry: $this->agentRegistry,
             codeAgentRegistry: $this->codeAgentRegistry,
             modelPresetRepository: $this->presetRepo,

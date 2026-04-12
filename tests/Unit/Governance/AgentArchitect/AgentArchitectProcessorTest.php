@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Governance\AgentArchitect;
 
-use ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectProposalProcessor;
+use ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitectProcessor;
 use ArnaudMoncondhuy\SynapseCore\Governance\PromptVersionRecorder;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgent;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseAgentPromptVersion;
@@ -14,9 +14,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectProposalProcessor
+ * @covers \ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitectProcessor
  */
-final class ArchitectProposalProcessorTest extends TestCase
+final class AgentArchitectProcessorTest extends TestCase
 {
     // ── create_agent ──────────────────────────────────────────────────────
 
@@ -47,7 +47,7 @@ final class ArchitectProposalProcessorTest extends TestCase
             ));
         $em->expects($this->once())->method('flush');
 
-        $processor = new ArchitectProposalProcessor($em, $agentRepo, $recorder);
+        $processor = new AgentArchitectProcessor($em, $agentRepo, $recorder);
 
         $result = $processor->process([
             '_action' => 'create_agent',
@@ -72,7 +72,7 @@ final class ArchitectProposalProcessorTest extends TestCase
         $agentRepo = $this->createMock(SynapseAgentRepository::class);
         $agentRepo->method('findByKey')->with('support_tech')->willReturn($existing);
 
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $agentRepo,
             $this->createStub(PromptVersionRecorder::class),
@@ -91,7 +91,7 @@ final class ArchitectProposalProcessorTest extends TestCase
 
     public function testProcessCreateAgentThrowsOnMissingKey(): void
     {
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),
@@ -132,7 +132,7 @@ final class ArchitectProposalProcessorTest extends TestCase
             )
             ->willReturn($version);
 
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $agentRepo,
             $recorder,
@@ -153,7 +153,7 @@ final class ArchitectProposalProcessorTest extends TestCase
 
     public function testProcessImprovePromptThrowsOnMissingAgentKey(): void
     {
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),
@@ -173,7 +173,7 @@ final class ArchitectProposalProcessorTest extends TestCase
         $agentRepo = $this->createStub(SynapseAgentRepository::class);
         $agentRepo->method('findByKey')->willReturn(null);
 
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $agentRepo,
             $this->createStub(PromptVersionRecorder::class),
@@ -201,7 +201,7 @@ final class ArchitectProposalProcessorTest extends TestCase
         $recorder = $this->createStub(PromptVersionRecorder::class);
         $recorder->method('snapshot')->willReturn(null); // idempotence
 
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $agentRepo,
             $recorder,
@@ -230,7 +230,7 @@ final class ArchitectProposalProcessorTest extends TestCase
             ));
         $em->expects($this->once())->method('flush');
 
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $em,
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),
@@ -255,7 +255,7 @@ final class ArchitectProposalProcessorTest extends TestCase
 
     public function testProcessCreateWorkflowThrowsOnEmptySteps(): void
     {
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),
@@ -276,7 +276,7 @@ final class ArchitectProposalProcessorTest extends TestCase
 
     public function testProcessThrowsOnMissingAction(): void
     {
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),
@@ -290,7 +290,7 @@ final class ArchitectProposalProcessorTest extends TestCase
 
     public function testProcessThrowsOnUnknownAction(): void
     {
-        $processor = new ArchitectProposalProcessor(
+        $processor = new AgentArchitectProcessor(
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(SynapseAgentRepository::class),
             $this->createStub(PromptVersionRecorder::class),

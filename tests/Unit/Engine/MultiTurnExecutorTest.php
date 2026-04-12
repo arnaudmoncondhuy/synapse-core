@@ -192,6 +192,65 @@ class MultiTurnExecutorTest extends TestCase
         $this->assertNull($result->structuredData);
     }
 
+    public function testMalformedRecoveryUsesToolResultAsAnswer(): void
+    {
+        $toolCall = [['id' => 'call_recovered_1', 'type' => 'function', 'function' => ['name' => 'code_execute', 'arguments' => '{"code":"print(1)","language":"python"}']]];
+
+        // 1 seul tour : MALFORMED recovery → code_execute → break immédiat avec résultat
+        $this->chunkProcessor->method('process')
+            ->willReturn(new ChunkProcessorResult('', $toolCall, new TokenUsage(100, 0), [], [], [], true));
+
+        $this->toolExecutor->method('execute')->willReturnCallback(
+            function (array &$prompt) {
+                $prompt['contents'][] = [
+                    'role' => 'tool',
+                    'tool_call_id' => 'call_recovered_1',
+                    'content' => json_encode([
+                        'success' => true,
+                        'stdout' => '',
+                        'return_value' => "| Client | Total |\n|---|---|\n| ACME | 1000 |",
+                        'duration_ms' => 200,
+                    ]),
+                ];
+            }
+        );
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'trie les clients']]];
+        $result = $this->executor->execute($prompt, $this->buildClient(), true, 5);
+
+        // Le résultat doit contenir le return_value du code_execute (pas vide)
+        $this->assertStringContainsString('ACME', $result->fullText);
+        $this->assertStringContainsString('1000', $result->fullText);
+    }
+
+    public function testMalformedRecoveryFallsBackToStdout(): void
+    {
+        $toolCall = [['id' => 'call_recovered_1', 'type' => 'function', 'function' => ['name' => 'code_execute', 'arguments' => '{"code":"print(1)","language":"python"}']]];
+
+        $this->chunkProcessor->method('process')
+            ->willReturn(new ChunkProcessorResult('', $toolCall, new TokenUsage(100, 0), [], [], [], true));
+
+        $this->toolExecutor->method('execute')->willReturnCallback(
+            function (array &$prompt) {
+                $prompt['contents'][] = [
+                    'role' => 'tool',
+                    'tool_call_id' => 'call_x',
+                    'content' => json_encode([
+                        'success' => true,
+                        'stdout' => 'Résultat stdout ici',
+                        'return_value' => '',
+                        'duration_ms' => 100,
+                    ]),
+                ];
+            }
+        );
+
+        $prompt = ['contents' => [['role' => 'user', 'content' => 'q']]];
+        $result = $this->executor->execute($prompt, $this->buildClient(), true, 5);
+
+        $this->assertStringContainsString('Résultat stdout ici', $result->fullText);
+    }
+
     public function testThrowsStructuredOutputParseExceptionOnInvalidJson(): void
     {
         $this->chunkProcessor->method('process')

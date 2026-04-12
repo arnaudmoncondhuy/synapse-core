@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Command;
 
 use ArnaudMoncondhuy\SynapseCore\Agent\Input;
-use ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectAgent;
-use ArnaudMoncondhuy\SynapseCore\Governance\Architect\ArchitectProposalProcessor;
+use ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitect;
+use ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect\AgentArchitectProcessor;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -16,7 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Commande CLI pour l'{@see ArchitectAgent} — Phase 11.
+ * Commande CLI pour l'{@see AgentArchitect} — Phase 11.
  *
  * Usage :
  *   bin/console synapse:architect create-agent "Un agent de support technique pour les utilisateurs"
@@ -31,8 +31,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ArchitectCommand extends Command
 {
     public function __construct(
-        private readonly ArchitectAgent $architectAgent,
-        private readonly ArchitectProposalProcessor $proposalProcessor,
+        private readonly AgentArchitect $architectAgent,
+        private readonly AgentArchitectProcessor $proposalProcessor,
     ) {
         parent::__construct();
     }

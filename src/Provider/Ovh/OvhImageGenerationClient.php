@@ -34,8 +34,8 @@ class OvhImageGenerationClient implements ImageGenerationClientInterface
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
+        private readonly EncryptionServiceInterface $encryptionService,
         private readonly ?SynapseProviderRepository $providerRepository = null,
-        private readonly ?EncryptionServiceInterface $encryptionService = null,
     ) {
     }
 
@@ -161,7 +161,7 @@ class OvhImageGenerationClient implements ImageGenerationClientInterface
         $apiKey = is_string($creds['api_key'] ?? null) ? (string) $creds['api_key'] : '';
         $endpoint = is_string($creds['endpoint'] ?? null) ? (string) $creds['endpoint'] : self::DEFAULT_ENDPOINT;
 
-        if (null !== $this->encryptionService && $this->encryptionService->isEncrypted($apiKey)) {
+        if ($this->encryptionService->isEncrypted($apiKey)) {
             $apiKey = $this->encryptionService->decrypt($apiKey);
         }
 

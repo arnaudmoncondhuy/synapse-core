@@ -122,19 +122,23 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.persistence.message_class', $config['persistence']['message_class']);
 
         // ── Encryption ────────────────────────────────────────────────────────
-        $encryptionEnabled = $config['encryption']['enabled'] ?? false;
-        $container->setParameter('synapse.encryption.enabled', $encryptionEnabled);
-        $container->setParameter('synapse.encryption.key', $config['encryption']['key'] ?? null);
+        // Obligatoire depuis le chantier credentials-crypto. La clé DOIT être
+        // définie dans .env.local (jamais commitée).
+        $container->setParameter('synapse.encryption.key', $config['encryption']['key']);
 
-        if (!$encryptionEnabled) {
-            @trigger_error('Synapse: encryption is disabled — LLM credentials and conversations are stored in plaintext. Set synapse.encryption.enabled to true for production.', \E_USER_NOTICE);
-        }
+        // ── Code Executor (sandbox Python) ────────────────────────────────────
+        // Par défaut désactivé → alias sur NullCodeExecutor (dans core.yaml).
+        // Si activé, on override l'alias vers HttpCodeExecutor plus bas,
+        // après le load de core.yaml.
+        $container->setParameter('synapse.code_executor.enabled', (bool) ($config['code_executor']['enabled'] ?? false));
+        $container->setParameter('synapse.code_executor.sandbox_url', (string) ($config['code_executor']['sandbox_url'] ?? 'http://synapse-sandbox:8000'));
 
         // ── Security ──────────────────────────────────────────────────────────
         $container->setParameter('synapse.security.admin_role', $config['security']['admin_role'] ?? 'ROLE_ADMIN');
         $container->setParameter('synapse.security.chat_role', $config['security']['chat_role'] ?? 'ROLE_USER');
         $apiCsrfEnabled = $config['security']['api_csrf_enabled'] ?? true;
         $container->setParameter('synapse.security.api_csrf_enabled', $apiCsrfEnabled);
+        $container->setParameter('synapse.security.mcp_trusted', (bool) ($config['security']['mcp_trusted'] ?? false));
 
         if (!$apiCsrfEnabled) {
             @trigger_error('Synapse: CSRF protection is disabled on API endpoints. This exposes chat endpoints to cross-site request forgery attacks.', \E_USER_WARNING);
@@ -161,24 +165,36 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('synapse.version', $version);
 
         // ── Encryption Service ────────────────────────────────────────────────
-        if ($config['encryption']['enabled']) {
-            $container
-                ->register('synapse.encryption_service', LibsodiumEncryptionService::class)
-                ->setArguments([$config['encryption']['key']])
-                ->setAutowired(true)
-                ->setPublic(false);
+        // Toujours enregistré — le chiffrement est obligatoire.
+        $container
+            ->register('synapse.encryption_service', LibsodiumEncryptionService::class)
+            ->setArguments([$config['encryption']['key']])
+            ->setAutowired(true)
+            ->setPublic(false);
 
-            $container->setAlias(
-                EncryptionServiceInterface::class,
-                'synapse.encryption_service'
-            );
-        }
+        $container->setAlias(
+            EncryptionServiceInterface::class,
+            'synapse.encryption_service'
+        );
 
         // ── Chargement des services ───────────────────────────────────────────
         $loader = new YamlFileLoader($container, new FileLocator(\dirname(__DIR__, 1).'/../config'));
 
         // Load core services (always loaded)
         $loader->load('core.yaml');
+
+        // ── Code Executor alias override ─────────────────────────────────────
+        // core.yaml alias CodeExecutorInterface → NullCodeExecutor par défaut.
+        // Si l'hôte active `synapse.code_executor.enabled: true`, on bascule
+        // l'alias vers HttpCodeExecutor pour que tous les callers (dont
+        // CodeExecuteTool auto-tagué `synapse.tool`) reçoivent automatiquement
+        // le vrai backend sans changer leur code.
+        if ((bool) ($config['code_executor']['enabled'] ?? false)) {
+            $container->setAlias(
+                \ArnaudMoncondhuy\SynapseCore\Contract\CodeExecutorInterface::class,
+                \ArnaudMoncondhuy\SynapseCore\CodeExecutor\HttpCodeExecutor::class,
+            );
+        }
 
         // Note: Admin services are loaded by SynapseAdminExtension (separate bundle)
 
@@ -191,10 +207,7 @@ class SynapseCoreExtension extends Extension implements PrependExtensionInterfac
                 $managerDef->setArgument('$messageClass', $config['persistence']['message_class'] ?? null);
             }
 
-            // Explicitly set encryption service if enabled to avoid autowiring gaps for optional params
-            if ($config['encryption']['enabled']) {
-                $managerDef->setArgument('$encryptionService', new Reference(EncryptionServiceInterface::class));
-            }
+            $managerDef->setArgument('$encryptionService', new Reference(EncryptionServiceInterface::class));
         }
 
         // ── Auto-configuration (Tags automatiques) ────────────────────────────

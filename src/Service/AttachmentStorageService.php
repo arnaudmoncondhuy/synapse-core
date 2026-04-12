@@ -13,14 +13,29 @@ use Symfony\Component\Uid\Uuid;
 class AttachmentStorageService
 {
     private const ALLOWED_MIME_TYPES = [
+        // Images
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
         'image/gif' => 'gif',
         'image/webp' => 'webp',
         'image/heic' => 'heic',
         'image/heif' => 'heif',
+        'image/svg+xml' => 'svg',
+        // Documents
         'application/pdf' => 'pdf',
+        // Texte
         'text/plain' => 'txt',
+        'text/csv' => 'csv',
+        'text/markdown' => 'md',
+        'text/html' => 'html',
+        'application/json' => 'json',
+        // Tableurs
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.ms-excel' => 'xls',
+        // Archives
+        'application/zip' => 'zip',
+        // Catch-all pour les artefacts sandbox
+        'application/octet-stream' => 'bin',
     ];
 
     private string $storageDir;
@@ -37,10 +52,12 @@ class AttachmentStorageService
      * Store a base64-encoded attachment as a file and return the attachment entity.
      *
      * @param array{mime_type: string, data: string, name?: string} $attachment
+     * @param bool $skipContentValidation Passer true pour les fichiers générés par le sandbox (le MIME
+     *                                    détecté par finfo peut diverger de mimetypes.guess_type côté Python)
      *
      * @throws \InvalidArgumentException if MIME type is not allowed or content doesn't match
      */
-    public function store(array $attachment, string $messageId, string $conversationId): SynapseMessageAttachment
+    public function store(array $attachment, string $messageId, string $conversationId, bool $skipContentValidation = false): SynapseMessageAttachment
     {
         $declaredMime = $attachment['mime_type'];
         if (!isset(self::ALLOWED_MIME_TYPES[$declaredMime])) {
@@ -52,16 +69,26 @@ class AttachmentStorageService
             throw new \InvalidArgumentException('Invalid base64 data.');
         }
 
+        if ($skipContentValidation) {
+            // Fichiers sandbox : on fait confiance au MIME détecté par Python (mimetypes.guess_type)
+            goto storeFile;
+        }
+
         // Validate actual content matches declared MIME type
         $finfo = new \finfo(\FILEINFO_MIME_TYPE);
         $detectedMime = $finfo->buffer($decoded);
         if (false !== $detectedMime && $detectedMime !== $declaredMime) {
             // Allow application/octet-stream as finfo fallback for heic/heif
-            if ('application/octet-stream' !== $detectedMime) {
+            if ('application/octet-stream' === $detectedMime) {
+                // OK — finfo can't detect heic/heif
+            } elseif ('text/plain' === $detectedMime && (str_starts_with($declaredMime, 'text/') || 'application/json' === $declaredMime)) {
+                // OK — finfo ne distingue pas les sous-types texte (csv, markdown, json détectés comme text/plain)
+            } else {
                 throw new \InvalidArgumentException(sprintf('Content MIME type "%s" does not match declared "%s".', $detectedMime, $declaredMime));
             }
         }
 
+        storeFile:
         $uuid = $this->generateUuid();
         $ext = self::ALLOWED_MIME_TYPES[$declaredMime];
         $dir = $this->storageDir.'/'.$conversationId;

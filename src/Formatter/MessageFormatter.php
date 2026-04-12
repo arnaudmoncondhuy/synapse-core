@@ -26,7 +26,7 @@ class MessageFormatter implements MessageFormatterInterface
     private array $trailingGeneratedAttachments = [];
 
     public function __construct(
-        private ?EncryptionServiceInterface $encryptionService = null,
+        private EncryptionServiceInterface $encryptionService,
         private ?AttachmentStorageService $attachmentStorage = null,
         private ?EntityManagerInterface $em = null,
     ) {
@@ -50,13 +50,11 @@ class MessageFormatter implements MessageFormatterInterface
             if (is_array($entity)) {
                 if (isset($entity['role']) && (isset($entity['content']) || isset($entity['parts']))) {
                     $decrypted = $entity;
-                    if (null !== $this->encryptionService) {
-                        if (!empty($decrypted['content']) && is_string($decrypted['content']) && $this->encryptionService->isEncrypted($decrypted['content'])) {
-                            $decrypted['content'] = $this->encryptionService->decrypt($decrypted['content']);
-                        }
-                        if (isset($decrypted['parts'][0]['text']) && is_string($decrypted['parts'][0]['text']) && $this->encryptionService->isEncrypted($decrypted['parts'][0]['text'])) {
-                            $decrypted['parts'][0]['text'] = $this->encryptionService->decrypt($decrypted['parts'][0]['text']);
-                        }
+                    if (!empty($decrypted['content']) && is_string($decrypted['content']) && $this->encryptionService->isEncrypted($decrypted['content'])) {
+                        $decrypted['content'] = $this->encryptionService->decrypt($decrypted['content']);
+                    }
+                    if (isset($decrypted['parts'][0]['text']) && is_string($decrypted['parts'][0]['text']) && $this->encryptionService->isEncrypted($decrypted['parts'][0]['text'])) {
+                        $decrypted['parts'][0]['text'] = $this->encryptionService->decrypt($decrypted['parts'][0]['text']);
                     }
                     $messages[] = $decrypted;
                     continue;
@@ -119,7 +117,7 @@ class MessageFormatter implements MessageFormatterInterface
      * Retourne les pièces jointes générées du dernier message [image] non injectées dans un user suivant.
      * À appeler après entitiesToApiFormat() pour les injecter dans le message courant.
      *
-     * @return list<array{type: string, image_url: array{url: string}}>
+     * @return list<array{type: string, image_url?: array{url: string}, text?: string}>
      */
     public function getAndClearTrailingAttachments(): array
     {
@@ -191,7 +189,7 @@ class MessageFormatter implements MessageFormatterInterface
      *
      * @param SynapseMessageAttachment[] $attachments
      *
-     * @return list<array{type: string, image_url: array{url: string}}>
+     * @return list<array{type: string, image_url?: array{url: string}, text?: string}>
      */
     private function loadAttachmentParts(array $attachments): array
     {
@@ -201,10 +199,23 @@ class MessageFormatter implements MessageFormatterInterface
                 continue;
             }
             $path = $this->attachmentStorage->getAbsolutePath($att);
-            if (file_exists($path)) {
+            if (!file_exists($path)) {
+                continue;
+            }
+            $mime = $att->getMimeType();
+            if (str_starts_with($mime, 'text/') || 'application/json' === $mime) {
+                $textContent = (string) file_get_contents($path);
+                if (\strlen($textContent) > 102400) {
+                    $textContent = substr($textContent, 0, 102400)."\n...[tronqué]";
+                }
+                $parts[] = [
+                    'type' => 'text',
+                    'text' => "--- Fichier : {$att->getDisplayName()} ---\n{$textContent}\n--- Fin fichier ---",
+                ];
+            } else {
                 $parts[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => 'data:'.$att->getMimeType().';base64,'.base64_encode((string) file_get_contents($path))],
+                    'image_url' => ['url' => 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($path))],
                 ];
             }
         }

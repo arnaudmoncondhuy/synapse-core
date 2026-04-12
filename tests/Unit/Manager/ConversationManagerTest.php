@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Manager;
 
 use ArnaudMoncondhuy\SynapseCore\Contract\ConversationOwnerInterface;
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\PermissionCheckerInterface;
 use ArnaudMoncondhuy\SynapseCore\Manager\ConversationManager;
 use ArnaudMoncondhuy\SynapseCore\Storage\Entity\SynapseConversation;
@@ -181,9 +182,15 @@ class ConversationManagerTest extends TestCase
 
     private function buildManager(?PermissionCheckerInterface $permissionChecker = null): ConversationManager
     {
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
         return new ConversationManager(
             em: $this->em,
             conversationRepo: $this->repo,
+            encryptionService: $encryption,
             permissionChecker: $permissionChecker,
         );
     }

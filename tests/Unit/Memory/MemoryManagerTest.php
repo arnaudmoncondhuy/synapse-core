@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Tests\Unit\Memory;
 
+use ArnaudMoncondhuy\SynapseCore\Contract\EncryptionServiceInterface;
 use ArnaudMoncondhuy\SynapseCore\Contract\VectorStoreInterface;
 use ArnaudMoncondhuy\SynapseCore\Memory\MemoryManager;
 use ArnaudMoncondhuy\SynapseCore\Service\EmbeddingService;
@@ -235,11 +236,17 @@ class MemoryManagerTest extends TestCase
         ?EntityManagerInterface $em = null,
         ?SynapseVectorMemoryRepository $repository = null,
     ): MemoryManager {
+        $encryption = $this->createMock(EncryptionServiceInterface::class);
+        $encryption->method('isEncrypted')->willReturn(false);
+        $encryption->method('encrypt')->willReturnArgument(0);
+        $encryption->method('decrypt')->willReturnArgument(0);
+
         return new MemoryManager(
             embeddingService: $embeddingService ?? $this->embeddingService,
             vectorStore: $vectorStore ?? $this->vectorStore,
             repository: $repository ?? $this->repository,
             em: $em ?? $this->em,
+            encryptionService: $encryption,
         );
     }
 

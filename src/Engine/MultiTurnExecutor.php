@@ -7,6 +7,7 @@ namespace ArnaudMoncondhuy\SynapseCore\Engine;
 use ArnaudMoncondhuy\SynapseCore\Contract\LlmClientInterface;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseMultiTurnIterationEvent;
 use ArnaudMoncondhuy\SynapseCore\Event\SynapseStatusChangedEvent;
+use ArnaudMoncondhuy\SynapseCore\Event\SynapseTokenStreamedEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Exception\StructuredOutputParseException;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\MultiTurnResult;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\TokenUsage;
@@ -130,6 +131,8 @@ class MultiTurnExecutor
 
             // ── PROCESS TOOL CALLS ──
             if (!empty($modelToolCalls)) {
+                $isRecovery = $chunkResult->malformedRecovery;
+
                 $this->toolExecutor->execute($prompt, $modelToolCalls, $turn);
 
                 // Dispatch iteration event for transparency sidebar
@@ -144,6 +147,18 @@ class MultiTurnExecutor
                     $chunkResult->usage->toArray(),
                     true,
                 ));
+
+                // Recovery MALFORMED : le code a été exécuté avec succès, on prend
+                // directement le résultat comme réponse. Inutile de rappeler le LLM
+                // car Gemini reproduira systématiquement le même MALFORMED_FUNCTION_CALL.
+                if ($isRecovery) {
+                    $lastToolResult = $this->extractLastToolResult($prompt);
+                    if ('' !== $lastToolResult) {
+                        $fullTextAccumulator .= $lastToolResult;
+                        $this->dispatcher->dispatch(new SynapseTokenStreamedEvent($lastToolResult, $turn));
+                    }
+                    break;
+                }
 
                 // Continuer la boucle : le LLM reçoit les résultats et peut enchaîner
                 continue;
@@ -229,5 +244,44 @@ class MultiTurnExecutor
             $allGeneratedAttachments,
             $structuredData,
         );
+    }
+
+    /**
+     * Extrait un texte lisible du dernier résultat tool dans le prompt.
+     * Pour code_execute, le content est un JSON {success, stdout, return_value, ...}.
+     * On extrait stdout > return_value > content brut, dans cet ordre.
+     *
+     * @param array<string, mixed> $prompt
+     */
+    private function extractLastToolResult(array $prompt): string
+    {
+        $contents = $prompt['contents'] ?? [];
+        for ($i = \count($contents) - 1; $i >= 0; --$i) {
+            if (($contents[$i]['role'] ?? '') === 'tool') {
+                $content = $contents[$i]['content'] ?? '';
+                if (!\is_string($content)) {
+                    return '';
+                }
+
+                // Tenter de parser comme JSON (code_execute result)
+                $decoded = json_decode($content, true);
+                if (\is_array($decoded)) {
+                    // Priorité : return_value (souvent le résultat formaté) > stdout
+                    $rv = $decoded['return_value'] ?? null;
+                    if (\is_string($rv) && '' !== trim($rv)) {
+                        return $rv;
+                    }
+                    $stdout = $decoded['stdout'] ?? null;
+                    if (\is_string($stdout) && '' !== trim($stdout)) {
+                        return $stdout;
+                    }
+                }
+
+                // Fallback : contenu brut
+                return $content;
+            }
+        }
+
+        return '';
     }
 }

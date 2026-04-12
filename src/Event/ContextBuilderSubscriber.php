@@ -10,6 +10,7 @@ use ArnaudMoncondhuy\SynapseCore\AgentRegistry;
 use ArnaudMoncondhuy\SynapseCore\Contract\ConfigProviderInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ModelCapabilityRegistry;
 use ArnaudMoncondhuy\SynapseCore\Engine\PromptBuilder;
+use ArnaudMoncondhuy\SynapseCore\Engine\ToolConfigService;
 use ArnaudMoncondhuy\SynapseCore\Engine\ToolRegistry;
 use ArnaudMoncondhuy\SynapseCore\Event\Prompt\PromptBuildEvent;
 use ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil;
@@ -32,6 +33,7 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         private PromptBuilder $promptBuilder,
         private ConfigProviderInterface $configProvider,
         private ToolRegistry $toolRegistry,
+        private ToolConfigService $toolConfigService,
         private AgentRegistry $agentRegistry,
         private CodeAgentRegistry $codeAgentRegistry,
         private SynapseModelPresetRepository $modelPresetRepository,
@@ -155,7 +157,9 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         // ── 4. Load history ──
         $modelId = $config->model ?? '';
         $caps = '' !== $modelId ? $this->capabilityRegistry->getCapabilities($modelId) : null;
-        $supportsVision = null === $caps || !empty($caps->getAcceptedMimeTypes());
+        $acceptedMimes = null !== $caps ? $caps->getAcceptedMimeTypes() : [];
+        // Vision = le modèle accepte au moins un type image (pour l'historique multipart)
+        $supportsVision = null === $caps || !empty($acceptedMimes);
 
         $contents = [];
         if (isset($options['history']) && is_array($options['history'])) {
@@ -164,13 +168,39 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             $contents = $this->sanitizeHistoryForNewTurn($history, $supportsVision);
         }
 
-        // Construire un content multipart si des fichiers sont attachés ET que le modèle les supporte
-        $attachments = $supportsVision ? $event->getAttachments() : [];
+        // Filtrer les attachments par types supportés par le modèle (images nécessitent vision, texte est universel)
+        $allAttachments = $event->getAttachments();
+        $attachments = !empty($acceptedMimes)
+            ? array_values(array_filter($allAttachments, fn ($a) => \in_array($a['mime_type'], $acceptedMimes, true)))
+            : $allAttachments;
 
         // Récupérer les pièces jointes générées précédemment (trailing) à injecter dans le message courant
         $trailingGeneratedAttachments = ($supportsVision && is_array($options['_trailing_generated_attachments'] ?? null))
             ? $options['_trailing_generated_attachments']
             : [];
+
+        // ── 5. Résoudre les outils AVANT d'injecter les attachments (nécessaire pour
+        //    savoir si code_execute est disponible → ne pas injecter le CSV inline).
+        $toolsOptionRaw = $options['tools'] ?? null;
+        /** @var list<string>|null $toolsOption */
+        $toolsOption = is_array($toolsOptionRaw) ? array_values(array_filter($toolsOptionRaw, 'is_string')) : (is_string($toolsOptionRaw) ? [$toolsOptionRaw] : null);
+        $toolsOverrideRaw = $options['tools_override'] ?? null;
+        /** @var list<string>|null $toolsOverride */
+        $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
+
+        if (!$config->isFunctionCallingEnabled()) {
+            $toolDefinitions = [];
+        } elseif (null !== $toolsOverride) {
+            $filtered = $this->toolConfigService->filterToolNames($toolsOverride, true);
+            $toolDefinitions = $this->toolRegistry->getDefinitions($filtered);
+        } elseif (is_array($toolsOption)) {
+            $filtered = $this->toolConfigService->filterToolNames($toolsOption, false);
+            $toolDefinitions = $this->toolRegistry->getDefinitions($filtered);
+        } else {
+            $toolDefinitions = $this->toolRegistry->getDefinitions(
+                $this->toolConfigService->getDefaultExposedToolNames()
+            );
+        }
 
         if (!empty($attachments) || !empty($trailingGeneratedAttachments)) {
             $parts = [];
@@ -180,11 +210,45 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
             foreach ($trailingGeneratedAttachments as $attPart) {
                 $parts[] = $attPart;
             }
+            // Détecter si code_execute est disponible — si oui, les fichiers texte
+            // sont accessibles via le sandbox et ne doivent PAS être injectés inline
+            // (évite que le LLM recopie le contenu dans un function call malformé).
+            $hasCodeExecute = !empty($toolDefinitions) && \in_array('code_execute', array_column($toolDefinitions, 'name'), true);
+
             foreach ($attachments as $attachment) {
-                $parts[] = [
-                    'type' => 'image_url',
-                    'image_url' => ['url' => 'data:'.$attachment['mime_type'].';base64,'.$attachment['data']],
-                ];
+                $mime = $attachment['mime_type'] ?? '';
+                if (str_starts_with($mime, 'text/') || 'application/json' === $mime) {
+                    $name = $attachment['name'] ?? 'fichier';
+
+                    // Si code_execute est disponible, ne pas injecter le contenu inline :
+                    // le fichier est dans le sandbox, le modèle doit utiliser open().
+                    if ($hasCodeExecute) {
+                        $parts[] = [
+                            'type' => 'text',
+                            'text' => "[Fichier joint : {$name} — disponible dans le sandbox Python, utilise code_execute avec open('{$name}') pour le lire]",
+                        ];
+                        continue;
+                    }
+
+                    // Pas de code_execute : injecter le contenu inline pour que le modèle puisse le lire
+                    $textContent = base64_decode($attachment['data'] ?? '', true);
+                    if (false === $textContent) {
+                        continue;
+                    }
+                    if (\strlen($textContent) > 102400) {
+                        $textContent = substr($textContent, 0, 102400)."\n...[tronqué, ".round(\strlen($textContent) / 1024).' Ko au total]';
+                    }
+                    $parts[] = [
+                        'type' => 'text',
+                        'text' => "--- Fichier : {$name} ---\n{$textContent}\n--- Fin fichier ---",
+                    ];
+                } else {
+                    // Image/PDF → base64 data URI (comportement existant)
+                    $parts[] = [
+                        'type' => 'image_url',
+                        'image_url' => ['url' => 'data:'.$mime.';base64,'.$attachment['data']],
+                    ];
+                }
             }
             $contents[] = ['role' => 'user', 'content' => $parts];
         } else {
@@ -192,18 +256,25 @@ class ContextBuilderSubscriber implements EventSubscriberInterface
         }
 
         // System instruction is now the first message in contents (OpenAI canonical format)
-        $toolsOptionRaw = $options['tools'] ?? null;
-        /** @var list<string>|null $toolsOption */
-        $toolsOption = is_array($toolsOptionRaw) ? array_values(array_filter($toolsOptionRaw, 'is_string')) : (is_string($toolsOptionRaw) ? [$toolsOptionRaw] : null);
-        $toolsOverrideRaw = $options['tools_override'] ?? null;
-        /** @var list<string>|null $toolsOverride */
-        $toolsOverride = is_array($toolsOverrideRaw) ? array_values(array_filter($toolsOverrideRaw, 'is_string')) : null;
+        // ($toolDefinitions déjà résolu plus haut, avant l'injection des attachments)
 
-        $toolDefinitions = !$config->isFunctionCallingEnabled()
-            ? []
-            : (null !== $toolsOverride
-                ? $this->toolRegistry->getDefinitions($toolsOverride)
-                : (is_array($toolsOption) ? $this->toolRegistry->getDefinitions($toolsOption) : $this->toolRegistry->getDefinitions()));
+        // Enrichir le system prompt avec la liste des fichiers disponibles dans le sandbox Python
+        $fileNames = [];
+        foreach ($attachments as $att) {
+            $name = $att['name'] ?? null;
+            if (\is_string($name) && '' !== $name) {
+                $fileNames[] = $name;
+            }
+        }
+        if (!empty($fileNames) && \is_string($systemMessage['content'] ?? null)) {
+            $fileList = implode("\n", array_map(fn (string $f) => "- `{$f}`", $fileNames));
+            $systemMessage['content'] .= "\n\n## Fichiers disponibles dans le sandbox Python\n"
+                ."Les fichiers suivants sont dans le répertoire courant (cwd) du sandbox code_execute :\n"
+                .$fileList."\n\n"
+                ."IMPORTANT : lis-les directement avec open('nom_du_fichier.csv') (chemin relatif, PAS de /mnt/data/ ni de chemin absolu). "
+                .'Ne recopie JAMAIS le contenu du fichier dans le code Python. '
+                .'Pour générer des fichiers, utilise OUTPUT_DIR (pas /mnt/data/).';
+        }
 
         $prompt = [
             'contents' => array_merge([$systemMessage], $contents),

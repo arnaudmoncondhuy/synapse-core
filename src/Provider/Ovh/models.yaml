@@ -1,7 +1,10 @@
 # Source: https://www.ovhcloud.com/fr/public-cloud/ai-endpoints/
+# RGPD : société française, hébergement UE, pas de Cloud Act.
+#         rgpd_risk: null (évaluation non nécessaire — conforme par défaut).
 models:
   gpt-oss-20b:
     provider: ovh
+    range: fast
     currency: EUR
     supports_thinking: true
     supports_safety_settings: false
@@ -19,6 +22,7 @@ models:
 
   gpt-oss-120b:
     provider: ovh
+    range: balanced
     currency: EUR
     supports_thinking: true
     supports_safety_settings: false
@@ -36,6 +40,7 @@ models:
 
   Qwen3-32B:
     provider: ovh
+    range: balanced
     currency: EUR
     supports_thinking: true
     supports_safety_settings: false
@@ -53,6 +58,7 @@ models:
 
   Llama-3.1-8B-Instruct:
     provider: ovh
+    range: fast
     currency: EUR
     supports_thinking: false
     supports_safety_settings: false
@@ -70,6 +76,7 @@ models:
 
   Mistral-7B-Instruct-v0.3:
     provider: ovh
+    range: fast
     currency: EUR
     supports_thinking: false
     supports_safety_settings: false
@@ -87,6 +94,7 @@ models:
 
   bge-m3:
     provider: ovh
+    range: specialized
     currency: EUR
     dimensions: [1024] # Dimension standard pour bge-m3
     supports_text_generation: false
@@ -107,6 +115,7 @@ models:
 
   Mistral-Small-3.2-24B-Instruct-2506:
     provider: ovh
+    range: balanced
     currency: EUR
     supports_thinking: false
     supports_safety_settings: false
@@ -125,6 +134,7 @@ models:
 
   stable-diffusion-xl-base-v10:
     provider: ovh
+    range: specialized
     currency: EUR
     supports_text_generation: false
     supports_image_generation: true
@@ -142,6 +152,7 @@ models:
 
   Qwen2.5-VL-72B-Instruct:
     provider: ovh
+    range: balanced
     currency: EUR
     supports_thinking: false
     supports_safety_settings: false

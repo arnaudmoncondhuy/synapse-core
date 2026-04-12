@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ArnaudMoncondhuy\SynapseCore\Engine;
 
+use ArnaudMoncondhuy\SynapseCore\Shared\Enum\ModelRange;
 use ArnaudMoncondhuy\SynapseCore\Shared\Model\ModelCapabilities;
 use Symfony\Component\Yaml\Yaml;
 
@@ -65,6 +66,7 @@ class ModelCapabilityRegistry
      */
     private const DEFAULTS = [
         'provider' => 'unknown',
+        'range' => 'balanced',
         // Phase 1.5 — convention supports_*
         'supports_thinking' => false,
         'supports_safety_settings' => false,
@@ -102,6 +104,7 @@ class ModelCapabilityRegistry
         return new ModelCapabilities(
             model: $model,
             provider: is_string($data['provider'] ?? null) ? (string) $data['provider'] : 'unknown',
+            range: ModelRange::fromString(is_string($data['range'] ?? null) ? $data['range'] : null),
             dimensions: is_array($data['dimensions'] ?? null) ? array_map(fn ($v) => is_numeric($v) ? (int) $v : 0, (array) $data['dimensions']) : [],
             currency: is_string($data['currency'] ?? null) ? (string) $data['currency'] : 'USD',
             // Phase 1.5 — convention supports_*
@@ -192,6 +195,7 @@ class ModelCapabilityRegistry
             $caps = $this->getCapabilities($modelId);
             $result[$modelId] = [
                 'provider' => $caps->provider,
+                'range' => $caps->range->value,
                 'dimensions' => $caps->dimensions,
                 'supportsTextGeneration' => $caps->supportsTextGeneration,
                 'supportsEmbedding' => $caps->supportsEmbedding,

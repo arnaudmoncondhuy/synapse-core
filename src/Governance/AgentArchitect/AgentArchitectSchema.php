@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace ArnaudMoncondhuy\SynapseCore\Governance\Architect;
+namespace ArnaudMoncondhuy\SynapseCore\Governance\AgentArchitect;
 
 /**
- * Schémas JSON Mode pour les différentes actions de l'{@see ArchitectAgent}.
+ * Schémas JSON Mode pour les différentes actions de l'{@see AgentArchitect}.
  *
  * Chaque méthode retourne un tableau `response_format` au format canonique
  * attendu par {@see \ArnaudMoncondhuy\SynapseCore\Engine\ResponseFormatNormalizer}
  * (OpenAI structured outputs). Les schémas définissent le contrat entre le LLM
- * et le {@see ArchitectProposalProcessor} qui applique les propositions.
+ * et le {@see AgentArchitectProcessor} qui applique les propositions.
  *
  * @internal utilitaire statique, pas un service DI
  */
-final class ArchitectResponseSchema
+final class AgentArchitectSchema
 {
     /**
      * Schéma pour la création d'un nouvel agent.

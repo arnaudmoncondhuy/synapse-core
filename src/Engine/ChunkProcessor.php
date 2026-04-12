@@ -37,6 +37,7 @@ class ChunkProcessor
         $safetyRatings = [];
         $providerRawParts = [];
         $generatedAttachments = [];
+        $malformedRecovery = false;
 
         foreach ($chunks as $chunkMixed) {
             if (!is_array($chunkMixed)) {
@@ -91,6 +92,11 @@ class ChunkProcessor
                 continue; // Skip function_calls collection for this chunk
             }
 
+            // Détecter un recovery MALFORMED_FUNCTION_CALL
+            if ((bool) ($chunk['_malformed_recovery'] ?? false)) {
+                $malformedRecovery = true;
+            }
+
             // Collect function calls in OpenAI format
             if (!empty($chunk['function_calls']) && is_array($chunk['function_calls'])) {
                 foreach ($chunk['function_calls'] as $fc) {
@@ -124,6 +130,6 @@ class ChunkProcessor
             }
         }
 
-        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $providerRawParts, $generatedAttachments);
+        return new ChunkProcessorResult($modelText, $modelToolCalls, $usage, $safetyRatings, $providerRawParts, $generatedAttachments, $malformedRecovery);
     }
 }
