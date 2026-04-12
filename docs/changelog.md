@@ -11,6 +11,39 @@ Les modifications importantes sont classées par catégorie :
 
 ---
 
+## [0.27] — 2026-04-11
+
+### Features
+
+#### `AbstractAgent::useMasterPrompt()` — opt-in Directive Fondamentale
+
+Nouvelle méthode sur `AbstractAgent` (valeur par défaut : `false`). Les agents code sont désormais exemptés de la Directive Fondamentale (master prompt) par défaut — l'agent contrôle entièrement son propre prompt. Les agents qui ont besoin d'hériter des règles de sécurité de l'application hôte peuvent opt-in :
+
+```php
+public function useMasterPrompt(): bool
+{
+    return true;
+}
+```
+
+Les agents BDD continuent de recevoir la directive fondamentale systématiquement. Le `MasterPromptSubscriber` lit le flag via `$options['_skip_master_prompt']` injecté par `ContextBuilderSubscriber`.
+
+#### `run_agent_test` — support des agents code
+
+L'outil MCP `run_agent_test` résout maintenant les deux types d'agents : BDD (`AgentRegistry`) et code (`CodeAgentRegistry`). Le champ `source` (`"db"` ou `"code"`) est ajouté à la réponse.
+
+#### `list_agents` — fusion DB + code
+
+`ListAgentsTool` liste maintenant les agents code (non shadowés par un agent BDD) en plus des agents BDD. Les agents code exposent : `systemPrompt` ("`(defined)`" ou "`(orchestrator)`"), `presetKey`, `allowedTools`.
+
+### Fixes
+
+#### Injection de la Directive Fondamentale sur les agents code
+
+Avant ce fix, `ContextBuilderSubscriber` injectait la directive fondamentale sur tous les agents, y compris les agents code qui gèrent leur propre prompt. Correction : le flag `_skip_master_prompt` est injecté dans les options quand l'agent est un `AbstractAgent` avec `useMasterPrompt() = false`.
+
+---
+
 ## [0.26] — 2026-04-06
 
 ### Features
@@ -93,7 +126,7 @@ Nouveau système de mémoire conversationnelle avec consentement explicite :
 - Implémentation du chiffrement XSalsa20-Poly1305 pour les credentials (API keys, service account JSON)
 - Chiffrement automatique lors de la sauvegarde via l'interface admin
 - Déchiffrement transparent lors du chargement en mémoire
-- Support `encryption.enabled: true/false` dans la configuration
+- Configuration via `synapse.encryption.key` (clé 32 bytes base64 dans `.env.local`)
 - Clés sensibles encryptées : `api_key`, `service_account_json`, `private_key`
 - Format de stockage : `base64(nonce_24bytes + ciphertext)` en BDD
 - Migration progressive : détection automatique des credentials non chiffrés lors de la sauvegarde
@@ -303,14 +336,13 @@ class MyLLMClient implements LlmClientInterface {
 
 ### Pour utiliser le chiffrement
 
-### Pour utiliser le chiffrement
-1. Générer une clé : `php -r "echo bin2hex(sodium_crypto_secretbox_keygen());"`
-2. Ajouter à `.env.local` : `SYNAPSE_ENCRYPTION_KEY=base64:...`
-3. Activer dans `synapse.yaml` :
+1. Générer une clé : `php -r "echo base64_encode(random_bytes(32));"`
+2. Ajouter à `.env.local` : `SYNAPSE_ENCRYPTION_KEY=<valeur_générée>`
+3. Configurer dans `synapse.yaml` :
    ```yaml
-   encryption:
-       enabled: true
-       key: '%env(SYNAPSE_ENCRYPTION_KEY)%'
+   synapse:
+       encryption:
+           key: '%env(SYNAPSE_ENCRYPTION_KEY)%'
    ```
 4. Les credentials existants seront chiffrés automatiquement lors de la prochaine sauvegarde
 

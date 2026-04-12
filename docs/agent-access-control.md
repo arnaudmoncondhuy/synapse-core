@@ -217,8 +217,8 @@ services:
 
 ---
 
-## 🔗 Voir aussi
+## Voir aussi
 
-- [Documentation agents](/docs/agents.md)
-- [Interface PermissionCheckerInterface](/packages/core/src/Contract/PermissionCheckerInterface.php)
-- [Tests unitaires](/packages/core/tests/Unit/Security/AgentPermissionCheckerTest.php)
+- [PermissionCheckerInterface](reference/contracts/permission-checker-interface.md)
+- [Agents via l'admin](guides/tones-presets.md#3-les-agents)
+- [Créer un agent en code](guides/custom-agents.md)

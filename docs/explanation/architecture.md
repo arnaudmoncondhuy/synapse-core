@@ -176,7 +176,7 @@ En cas de collision de nom, l'agent code prend la préséance (warning loggé).
 
 ### Garde-fou profondeur
 
-`AgentContext` transporte la profondeur courante et la profondeur max (`synapse.agents.max_depth`, défaut : 5). Si la limite est atteinte, `AgentResolver` dispatche `AgentDepthLimitReachedEvent` et lève `AgentDepthExceededException`.
+`AgentContext` transporte la profondeur courante et la profondeur max (`synapse.agents.max_depth`, défaut : 2 via `AgentContext::DEFAULT_MAX_DEPTH`). Si la limite est atteinte, `AgentResolver` dispatche `AgentDepthLimitReachedEvent` et lève `AgentDepthExceededException`.
 
 ---
 

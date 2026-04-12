@@ -34,9 +34,13 @@ Point d'entrée principal pour envoyer un message à l'IA.
 | `conversation_id` | `string` | ULID de la conversation à reprendre |
 | `user_id` | `string` | Identifiant de l'utilisateur (pour les spending limits) |
 | `estimated_cost_reference` | `float` | Coût estimé pour la vérification de plafond |
-| `streaming` | `bool` | Activer ou forcer le streaming (prioritaire sur la config) |
+| `streaming` | `bool` | Activer ou forcer le streaming (prioritaire sur la config). Forcé à `false` si `response_format` est présent |
 | `reset_conversation` | `bool` | Réinitialiser la conversation avant l'envoi |
 | `agent` | `string` | Clé de l'agent à utiliser |
+| `response_format` | `array` | Format de réponse structurée (JSON Schema). Requiert que le modèle supporte `response_schema`. Désactive automatiquement le streaming |
+| `module` | `string` | Module source pour le token accounting (ex: `'chat'`, `'agent'`) |
+| `action` | `string` | Action précise pour le token accounting (ex: `'chat_turn'`, `'agent_call'`) |
+| `context` | `AgentContext` | Contexte d'exécution d'agent (traçabilité, profondeur, budget). Fourni automatiquement par `AgentResolver` |
 
 **Retour :**
 
@@ -44,12 +48,14 @@ Point d'entrée principal pour envoyer un message à l'IA.
 [
     'answer'               => string,         // Réponse textuelle complète
     'debug_id'             => ?string,        // ID de debug (si mode debug activé)
-    'usage'                => array,          // Tokens consommés
+    'call_id'              => ?string,        // UUID du SynapseLlmCall (token accounting)
+    'usage'                => array,          // Tokens consommés (prompt_tokens, completion_tokens, total_tokens, ...)
     'safety'               => array,          // Évaluations de sécurité du provider
     'model'                => string,         // Identifiant du modèle utilisé
     'preset_id'            => ?int,           // ID du preset Doctrine actif
     'agent_id'             => ?int,           // ID de l'agent Doctrine actif
     'generated_attachments'=> array,          // Images générées (modèles image-only)
+    'structured_output'    => ?array,         // Présent si response_format était fourni
 ]
 ```
 
@@ -70,11 +76,15 @@ Lors d'un appel à `ask()`, le `ChatService` orchestre dans l'ordre :
 1. Dispatch de `SynapseGenerationStartedEvent`
 2. Application du preset override (si fourni dans les options)
 3. Exécution du `PromptPipeline` (5 phases : BUILD → ENRICH → OPTIMIZE → FINALIZE → CAPTURE)
-4. Vérification des spending limits (`SpendingLimitChecker`)
-5. Sélection du client LLM via `LlmClientRegistry`
-6. Boucle multi-tours via `MultiTurnExecutor` (max `config.maxTurns`)
-7. Dispatch de `SynapseGenerationCompletedEvent` et `SynapseExchangeCompletedEvent`
-8. Réinitialisation de l'override (bloc `finally`)
+4. Propagation de la config pipeline comme override (`configProvider.setOverride()`)
+5. Routing image-only (si le modèle ne supporte pas `text_generation` mais supporte `image_generation`)
+6. Vérification des spending limits (`SpendingLimitChecker`)
+7. Sélection du client LLM via `LlmClientRegistry`
+8. Validation du `response_format` (capacité `response_schema` du modèle)
+9. Boucle multi-tours via `MultiTurnExecutor` (max `config.maxTurns`)
+10. Enregistrement token accounting (`TokenAccountingService::logUsage()`)
+11. Dispatch de `SynapseExchangeCompletedEvent` (debug) et `SynapseGenerationCompletedEvent`
+12. Réinitialisation de l'override (bloc `finally`)
 
 ---
 

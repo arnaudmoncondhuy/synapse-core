@@ -14,18 +14,19 @@ Les deux sont résolvables par nom via `AgentResolver::resolve($name)`.
 
 ## 1. Écrire l'agent
 
-Créez une classe dans `src/Agent/` de votre application qui implémente `ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface` :
+La façon recommandée est d'étendre `AbstractAgent` plutôt qu'implémenter `AgentInterface` directement. `AbstractAgent` garantit la présence de l'`AgentContext`, injecte automatiquement le system prompt, et fournit les helpers de traçabilité.
 
 ```php
 // src/Agent/BulletinAnalyzerAgent.php
 namespace App\Agent;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\AbstractAgent;
+use ArnaudMoncondhuy\SynapseCore\Agent\AgentContext;
 use ArnaudMoncondhuy\SynapseCore\Agent\Input;
 use ArnaudMoncondhuy\SynapseCore\Agent\Output;
-use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 
-final class BulletinAnalyzerAgent implements AgentInterface
+final class BulletinAnalyzerAgent extends AbstractAgent
 {
     public function __construct(private readonly ChatService $chatService) {}
 
@@ -39,12 +40,17 @@ final class BulletinAnalyzerAgent implements AgentInterface
         return 'Analyse un bulletin scolaire et produit une synthèse structurée.';
     }
 
-    public function call(Input $input, array $options = []): Output
+    public function getSystemPrompt(): string
+    {
+        return 'Tu es un expert en analyse pédagogique. Extrais les points forts, '
+             . 'les points à améliorer et formule des conseils constructifs.';
+    }
+
+    protected function execute(Input $input, AgentContext $context): Output
     {
         $result = $this->chatService->ask(
-            "Analyse ce bulletin et extrais les points forts, points à améliorer et conseils : "
-                . $input->getMessage(),
-            ['stateless' => true, 'debug' => true],
+            $input->getMessage(),
+            $this->buildAskOptions(['stateless' => true]),
             $input->getAttachments(),
         );
 
@@ -55,9 +61,14 @@ final class BulletinAnalyzerAgent implements AgentInterface
 
 C'est tout. **Aucune configuration à ajouter** : tant que votre `services.yaml` auto-déclare les classes sous `src/`, Synapse découvre l'agent automatiquement via le tag DI `synapse.agent` (auto-configuré par le bundle).
 
+!!! note "AbstractAgent vs AgentInterface directement"
+    Vous pouvez également implémenter `AgentInterface` directement, mais vous devrez alors gérer manuellement l'extraction de l'`AgentContext` depuis `$options['context']`. `AbstractAgent` est préférable car il centralise cette validation et lève une `LogicException` explicite si le contexte est absent.
+
 ---
 
 ## 2. L'invoquer depuis un contrôleur / un handler / une commande
+
+Injectez `AgentResolver` (jamais l'agent directement — vous perdriez le contexte) :
 
 ```php
 use ArnaudMoncondhuy\SynapseCore\Agent\AgentResolver;
@@ -70,7 +81,7 @@ final class BulletinController extends AbstractController
     #[Route('/bulletin/analyze', methods: ['POST'])]
     public function analyze(Request $request): Response
     {
-        // Contexte racine, rempli avec la profondeur max configurée.
+        // Contexte racine avec la profondeur max configurée (synapse.agents.max_depth).
         $context = $this->agents->createRootContext(
             userId: $this->getUser()?->getUserIdentifier(),
             origin: 'direct',
@@ -96,13 +107,12 @@ final class BulletinController extends AbstractController
 
 ## 3. Composition agent → agent (avec garde-fou)
 
-Un agent peut en invoquer un autre. Le garde-fou de profondeur (`synapse.agents.max_depth`, défaut : 2) empêche les boucles ou les pyramides infinies. Pour un appel enfant, créez un contexte enfant depuis le contexte courant :
+Un agent peut en invoquer un autre. Le garde-fou de profondeur (`synapse.agents.max_depth`, défaut : 2 via `AgentContext::DEFAULT_MAX_DEPTH`) empêche les boucles ou les pyramides infinies. Pour un appel enfant depuis `AbstractAgent`, utilisez `$context` directement :
 
 ```php
-public function call(Input $input, array $options = []): Output
+protected function execute(Input $input, AgentContext $context): Output
 {
-    /** @var \ArnaudMoncondhuy\SynapseCore\Agent\AgentContext $parent */
-    $parent = $options['context'];
+    $parent = $context;
 
     // Profondeur +1, même user, préserve le workflow englobant.
     $childCtx = $parent->createChild(
@@ -114,10 +124,7 @@ public function call(Input $input, array $options = []): Output
     $summary = $summarizer->call(Input::ofMessage($input->getMessage()), ['context' => $childCtx]);
 
     // ... combine avec d'autres étapes
-    return Output::fromChatServiceResult([
-        'answer' => $summary->getAnswer(),
-        'usage' => $summary->getUsage(),
-    ]);
+    return Output::ofData(['answer' => $summary->getAnswer()]);
 }
 ```
 
@@ -149,5 +156,5 @@ Dans l'admin Synapse, la page Debug propose un filtre "Masquer les appels enfant
 ## Voir aussi
 
 - [AgentInterface — contrat complet](../reference/contracts/agent-interface.md)
+- [AbstractAgent — classe de base](../reference/abstract-agent.md)
 - [Créer des outils IA (Function Calling)](ai-tools.md) — même pattern d'auto-discovery
-- [PresetValidatorAgent](../../src/Agent/PresetValidator/PresetValidatorAgent.php) — exemple interne d'agent multi-étapes

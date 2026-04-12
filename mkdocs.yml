@@ -18,6 +18,7 @@ nav:
       - Services Cœurs:
           - ChatService: reference/chat-service.md
           - ConversationManager: reference/conversation-manager.md
+          - AbstractAgent: reference/abstract-agent.md
       - Interfaces (Contrats):
           - Vue d'ensemble: reference/contracts/overview.md
           - AgentInterface: reference/contracts/agent-interface.md

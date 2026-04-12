@@ -7,13 +7,21 @@ Synapse Core est entièrement évènementiel. Cela vous permet d'intervenir à c
 Voici l'ordre d'apparition des événements lors d'un appel à `ChatService::ask()` :
 
 1.  **`SynapseGenerationStartedEvent`** : Début global. Initialisation.
-2.  **`SynapsePrePromptEvent`** : **Crucial.** Modification du prompt système ou du contexte juste avant l'envoi.
+2.  **Pipeline de prompt (5 phases)** :
+    - `PromptBuildEvent` — Construction du prompt de base
+    - `PromptEnrichEvent` — Enrichissement (RAG, mémoire)
+    - `PromptOptimizeEvent` — Troncature du contexte
+    - `PromptFinalizeEvent` — Injection de la Directive Fondamentale
+    - `PromptCaptureEvent` — Capture pour le debug
 3.  **`SynapseChunkReceivedEvent`** : Répété pour chaque token reçu (Streaming).
 4.  **`SynapseToolCallRequestedEvent`** : Si le LLM demande un outil. Déclenche l'exécution.
 5.  **`SynapseToolCallCompletedEvent`** : Une fois l'outil exécuté, contient le résultat.
 6.  *Retour à l'étape 3 si le LLM a besoin de traiter les résultats d'outils.*
 7.  **`SynapseGenerationCompletedEvent`** : Fin de la génération textuelle.
 8.  **`SynapseExchangeCompletedEvent`** : Fin technique de l'échange (Debug & Logs).
+
+!!! note "SynapsePrePromptEvent (déprécié)"
+    L'ancien `SynapsePrePromptEvent` est conservé pour compatibilité mais ne sera plus dispatché dans une prochaine version majeure. Utilisez les events du pipeline à la place. Voir [Pipeline de Prompt](pre-prompt-event.md).
 
 ## Événements hors cycle de chat
 
@@ -130,11 +138,18 @@ class SpendingAlertSubscriber implements EventSubscriberInterface
 sequenceDiagram
     participant App
     participant ChatService
+    participant Pipeline
     participant LLM
-    
+
     App->>ChatService: ask($message)
     ChatService->>App: Event: GenerationStarted
-    ChatService->>App: Event: PrePrompt
+    ChatService->>Pipeline: PromptPipeline.build()
+    Pipeline->>App: Event: PromptBuildEvent
+    Pipeline->>App: Event: PromptEnrichEvent
+    Pipeline->>App: Event: PromptOptimizeEvent
+    Pipeline->>App: Event: PromptFinalizeEvent
+    Pipeline->>App: Event: PromptCaptureEvent
+    Pipeline-->>ChatService: prompt final
     ChatService->>LLM: Requête API
     loop Streaming
         LLM-->>ChatService: Token / Chunk

@@ -21,9 +21,10 @@ Gère les accès à l'administration et au chat.
 
 | Option | Type | Défaut | Description |
 |---|---|---|---|
-| `permission_checker` | string | `default` | Service de sécurité. Par défaut, bloque l'admin si la sécurité Symfony est absente. |
 | `admin_role` | string | `ROLE_ADMIN` | Le rôle requis pour accéder à l'administration (défaut: `/synapse/admin`). |
-| `chat_role` | string | `ROLE_USER` | Le rôle requis pour le chat (défaut: `/synapse/chat`). |
+| `chat_role` | string | `ROLE_USER` | Le rôle requis pour le chat (défaut: `/synapse/chat`). `PUBLIC_ACCESS` pour désactiver. |
+| `api_csrf_enabled` | bool | `true` | Active la vérification CSRF sur les endpoints `/synapse/api/*`. |
+| `mcp_trusted` | bool | `false` | Considère les requêtes sur `/_mcp` comme trusted (bypass du check admin). Nécessaire pour les clients MCP sans session HTTP. La sécurité devient alors une responsabilité réseau. |
 
 ### Routage (`routing`)
 
@@ -80,17 +81,28 @@ Puis `php bin/console cache:clear`. L’API reste protégée par la session / le
 
 ### Chiffrement (`encryption`)
 
-Pour sécuriser vos clés API et vos messages en base de données.
+Le chiffrement est **obligatoire**. La clé de 32 bytes est utilisée pour chiffrer les credentials des providers LLM stockés en base de données.
 
 ```yaml
 synapse:
     encryption:
-        enabled: true
         key: '%env(SYNAPSE_ENCRYPTION_KEY)%'
 ```
 
-> [!WARNING]
-> N'activez le chiffrement que si vous avez configuré une clé 32 bytes valide.
+Générez votre clé avec :
+
+```bash
+php -r "echo base64_encode(random_bytes(32));"
+```
+
+Puis ajoutez-la dans `.env.local` (ne jamais commiter cette valeur) :
+
+```env
+SYNAPSE_ENCRYPTION_KEY=base64_de_votre_clé
+```
+
+!!! warning "Clé obligatoire"
+    La configuration `encryption.key` est requise et ne peut pas être vide. Utilisez toujours `%env(SYNAPSE_ENCRYPTION_KEY)%` — jamais la clé en clair dans un fichier YAML commité.
 
 ### Rétention RGPD
 

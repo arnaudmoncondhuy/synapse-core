@@ -99,6 +99,80 @@ php bin/console synapse:rag:test "my query" --show-scores
 - Contenu du chunk pour validation
 - Métadonnées d'origine (file, page, etc.)
 
+## `synapse:agent:test-suite`
+
+Exécute la batterie de tests reproductibles d'un agent (Garde-fou #4). Utile en CI/CD pour détecter des régressions après une modification de prompt.
+
+```bash
+# Exécuter tous les cas de test d'un agent
+php bin/console synapse:agent:test-suite support_client
+
+# Avec un seuil de tolérance aux échecs
+php bin/console synapse:agent:test-suite support_client --fail-threshold=2
+
+# Afficher les réponses brutes de l'agent
+php bin/console synapse:agent:test-suite support_client --verbose-answers
+```
+
+**Codes de sortie :**
+- `0` : tous les cas sont passés
+- `1` : au moins un cas a échoué (ou le seuil `--fail-threshold` est dépassé)
+- `2` : erreur d'exécution (agent introuvable, exception LLM, etc.)
+
+Les cas de test (`SynapseAgentTestCase`) sont créés depuis l'admin ou via data fixtures.
+
+## `synapse:architect`
+
+Génère une définition d'agent ou de workflow via l'agent architecte (LLM-driven). Permet de créer des agents et workflows depuis une description en langage naturel.
+
+```bash
+# Créer un agent
+php bin/console synapse:architect create-agent "Un agent de support technique pour les utilisateurs"
+
+# Améliorer le prompt d'un agent existant
+php bin/console synapse:architect improve-prompt "Rendre le prompt plus concis" --agent-key=support_technique
+
+# Créer un workflow multi-agents
+php bin/console synapse:architect create-workflow "Analyser un document puis le résumer"
+
+# Mode simulation (affiche sans appliquer)
+php bin/console synapse:architect create-agent "..." --dry-run
+```
+
+**Actions disponibles :**
+- `create-agent` : Crée un nouvel agent (inactif, prompt en pending)
+- `improve-prompt` : Propose une nouvelle version de prompt pour un agent existant
+- `create-workflow` : Crée un nouveau workflow (inactif)
+
+**Options :**
+- `--dry-run` : Affiche la proposition sans la persister
+- `--agent-key=<key>` : Clé de l'agent cible (requis pour `improve-prompt`)
+- `--instructions=<texte>` : Directives supplémentaires pour le LLM
+
+## `synapse:preset:suggest`
+
+Recommande et crée un preset LLM optimal, soit par heuristique automatique, soit via appel LLM.
+
+```bash
+# Suggestion automatique (heuristique)
+php bin/console synapse:preset:suggest
+
+# Suggestion LLM-assistée avec description
+php bin/console synapse:preset:suggest "Je veux un modèle rapide et économique"
+
+# Avec activation automatique du preset créé
+php bin/console synapse:preset:suggest --heuristic --activate
+
+# Filtrer par provider, sans créer
+php bin/console synapse:preset:suggest --provider=anthropic --dry-run
+```
+
+**Options :**
+- `--dry-run` : Affiche la recommandation sans créer le preset
+- `--activate` : Active le preset créé comme preset par défaut
+- `--provider=<slug>` : Filtre les modèles par provider (ex: `anthropic`, `ovh`)
+- `--heuristic` : Force le mode heuristique sans appel LLM
+
 ## `synapse:version:update` (Interne)
 
 Met à jour le fichier `VERSION` avec la date courante au format `dev 0.YYMMDD`. Utilisé lors du process de release.

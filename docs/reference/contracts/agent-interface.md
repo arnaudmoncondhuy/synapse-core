@@ -19,6 +19,7 @@ use ArnaudMoncondhuy\SynapseCore\Agent\Output;
 interface AgentInterface
 {
     public function getName(): string;
+    public function getLabel(): string;
     public function getDescription(): string;
     public function call(Input $input, array $options = []): Output;
 }
@@ -29,6 +30,7 @@ interface AgentInterface
 | Méthode | Rôle |
 |---------|------|
 | `getName(): string` | Identifiant unique de l'agent (recommandé : snake_case, ex : `'preset_validator'`). |
+| `getLabel(): string` | Libellé court lisible (affiché dans l'admin). `AbstractAgent` fournit une implémentation par défaut (snake_case → Title Case). |
 | `getDescription(): string` | Description en langage naturel — utilisée dans l'admin et pour l'auto-documentation. |
 | `call(Input, array): Output` | Exécute la logique de l'agent. Retourne un `Output` structuré (réponse texte, données, usage, debugId, ...). |
 
@@ -41,18 +43,18 @@ Les noms `call()`, `Input` et `Output` sont volontairement alignés sur `Symfony
 
 Écarts assumés :
 
-- `getDescription()` est un ajout Synapse (utile pour l'admin UI), absent de `symfony/ai`.
+- `getLabel()` et `getDescription()` sont des ajouts Synapse (utiles pour l'admin UI), absents de `symfony/ai`.
 - Le contexte d'exécution (`AgentContext` : traçabilité, profondeur, budget) est transporté via `$options['context']`, pas en paramètre typé. Cela garde la signature `call()` **call-compatible mot pour mot** avec `symfony/ai`.
 
 !!! info "AgentInterface vs SynapseAgent"
-    `AgentInterface` est le contrat PHP pour les **agents "code"** (classes fournies par le bundle ou l'application hôte, découvertes par auto-configuration DI). `SynapseAgent` est l'entité Doctrine pour les **agents "config"** (système prompt, preset, ton, outils configurés depuis l'admin). Les deux mondes sont unifiés derrière le même contrat via [`AgentResolver`](../../../src/Agent/AgentResolver.php) et la classe d'adaptation `ConfiguredAgent`.
+    `AgentInterface` est le contrat PHP pour les **agents "code"** (classes fournies par le bundle ou l'application hôte, découvertes par auto-configuration DI). `SynapseAgent` est l'entité Doctrine pour les **agents "config"** (système prompt, preset, ton, outils configurés depuis l'admin). Les deux mondes sont unifiés derrière le même contrat via `AgentResolver` et la classe d'adaptation `ConfiguredAgent`.
 
 ---
 
 ## Cas d'usage typiques
 
 - Analyse multi-documents complexe
-- Validation d'un preset par simulation ([`PresetValidatorAgent`](../../../src/Agent/PresetValidator/PresetValidatorAgent.php))
+- Validation d'un preset par simulation (`PresetValidatorAgent` — exemple interne du bundle)
 - Génération de rapports structurés après plusieurs étapes de réflexion
 - Orchestration de sous-agents (via `AgentResolver` + `AgentContext::createChild()`, dans la limite de `synapse.agents.max_depth`)
 
@@ -60,15 +62,18 @@ Les noms `call()`, `Input` et `Output` sont volontairement alignés sur `Symfony
 
 ## Exemple : Agent d'analyse de document
 
+La façon recommandée est d'étendre `AbstractAgent` (qui garantit l'`AgentContext` et fournit `buildAskOptions()`) :
+
 ```php
 namespace App\Agent;
 
+use ArnaudMoncondhuy\SynapseCore\Agent\AbstractAgent;
+use ArnaudMoncondhuy\SynapseCore\Agent\AgentContext;
 use ArnaudMoncondhuy\SynapseCore\Agent\Input;
 use ArnaudMoncondhuy\SynapseCore\Agent\Output;
-use ArnaudMoncondhuy\SynapseCore\Contract\AgentInterface;
 use ArnaudMoncondhuy\SynapseCore\Engine\ChatService;
 
-final class DocumentAnalyzerAgent implements AgentInterface
+final class DocumentAnalyzerAgent extends AbstractAgent
 {
     public function __construct(private readonly ChatService $chatService) {}
 
@@ -82,12 +87,17 @@ final class DocumentAnalyzerAgent implements AgentInterface
         return 'Analyse un document et en extrait les points clés, les risques et les actions suggérées.';
     }
 
-    public function call(Input $input, array $options = []): Output
+    public function getSystemPrompt(): string
+    {
+        return 'Analyse le document fourni et retourne : '
+             . '1) les points clés 2) les risques 3) les actions suggérées.';
+    }
+
+    protected function execute(Input $input, AgentContext $context): Output
     {
         $result = $this->chatService->ask(
-            "Analyse ce document et retourne : 1) les points clés 2) les risques 3) les actions suggérées.\n\n"
-                . $input->getMessage(),
-            ['stateless' => true, 'debug' => true],
+            $input->getMessage(),
+            $this->buildAskOptions(['stateless' => true]),
             $input->getAttachments(),
         );
 
@@ -131,5 +141,6 @@ Voir le guide [Custom Agents](../../guides/custom-agents.md) pour un exemple com
 ## Voir aussi
 
 - [Custom Agents (host-side)](../../guides/custom-agents.md) — premier agent code en 20 lignes
+- [AbstractAgent](../abstract-agent.md) — classe de base recommandée
 - [Agents via l'admin](../../guides/tones-presets.md#3-les-agents) — agents configurés sans code
 - [Contrôle d'accès aux agents](../../agent-access-control.md) — restreindre l'accès par rôle
