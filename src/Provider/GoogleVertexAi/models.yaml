@@ -126,6 +126,7 @@ models:
     rgpd_risk: tolerated
     range: flagship
     currency: USD
+    deprecated_at: "2026-10-16"
     provider_regions:
       - us-central1
       - us-east1
@@ -163,6 +164,7 @@ models:
     rgpd_risk: tolerated
     range: balanced
     currency: USD
+    deprecated_at: "2026-10-16"
     provider_regions:
       - us-central1
       - us-east1
@@ -205,6 +207,7 @@ models:
     rgpd_risk: tolerated
     range: fast
     currency: USD
+    deprecated_at: "2026-10-16"
     provider_regions:
       - global
       - us-central1

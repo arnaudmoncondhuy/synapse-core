@@ -615,8 +615,10 @@ class OvhAiClient extends AbstractLlmClient implements EmbeddingClientInterface,
             $normalized['text'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $message['content']);
         }
 
-        // OVH retourne le reasoning dans message.reasoning_content (mode synchrone)
-        if (!empty($message['reasoning_content']) && is_string($message['reasoning_content'])) {
+        // OVH retourne le reasoning dans message.reasoning (anciennement reasoning_content, supprimé le 2026-05-11)
+        if (!empty($message['reasoning']) && is_string($message['reasoning'])) {
+            $normalized['thinking'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $message['reasoning']);
+        } elseif (!empty($message['reasoning_content']) && is_string($message['reasoning_content'])) {
             $normalized['thinking'] = \ArnaudMoncondhuy\SynapseCore\Shared\Util\TextUtil::sanitizeUtf8((string) $message['reasoning_content']);
         }
 
